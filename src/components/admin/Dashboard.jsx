@@ -1,9 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, Bell, Users, Shield, UserPlus, BarChart2, Settings, LogOut, Plus } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
 import DashboardContent from './DashboardContent';
 import StudentManagement from './StudentManagement';
 import GuardManagement from './GuardManagement';
 import Reports from './Reports';
+import AdminManagement from './AdminManagement';
+import SettingsPage from './SettingsPage';
+import RegisterStudent from './RegisterStudent';
+import ChangePassword from './ChangePassword';
+import Notifications from './Notifications';
 
 const navItems = [
     { key: 'dashboard', label: 'Dashboard', icon: 'grid' },
@@ -34,20 +40,46 @@ const NavIcon = ({ type, className }) => {
     }
 };
 
-const Dashboard = ({ onLogout }) => {
+const Dashboard = ({ onLogout, branding, onBrandingUpdate }) => {
     const [activePage, setActivePage] = useState('dashboard');
+    const [userEmail, setUserEmail] = useState('admin@vishnu.edu');
+
+    useEffect(() => {
+        const fetchUser = async () => {
+            // Get User
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                setUserEmail(user.email);
+            }
+        };
+        fetchUser();
+    }, []);
+
+    const handleBrandingUpdate = (key, value) => {
+        onBrandingUpdate(key, value);
+    };
 
     const renderContent = () => {
         switch (activePage) {
             case 'students':
-                return <StudentManagement />;
+                return <StudentManagement onNavigate={setActivePage} />;
             case 'guards':
                 return <GuardManagement />;
             case 'reports':
                 return <Reports />;
+            case 'admin':
+                return <AdminManagement />;
+            case 'settings':
+                return <SettingsPage onNavigate={setActivePage} branding={branding} onBrandingUpdate={handleBrandingUpdate} />;
+            case 'register-student':
+                return <RegisterStudent onCancel={() => setActivePage('students')} />;
+            case 'change-password':
+                return <ChangePassword onBack={() => setActivePage('settings')} />;
+            case 'notifications':
+                return <Notifications />;
             case 'dashboard':
             default:
-                return <DashboardContent />;
+                return <DashboardContent onNavigate={setActivePage} />;
         }
     };
 
@@ -57,13 +89,17 @@ const Dashboard = ({ onLogout }) => {
             <aside className="w-[240px] bg-white border-r border-gray-100 flex flex-col flex-shrink-0">
                 {/* Logo */}
                 <div className="p-5 flex items-center gap-3 border-b border-gray-100">
-                    <div className="w-10 h-10 bg-[#f47c20] rounded-xl flex items-center justify-center flex-shrink-0">
-                        <svg width="22" height="22" viewBox="0 0 100 100" fill="none">
-                            <defs><path id="c" d="M 50 15 L 75 28 L 65 44 L 50 35 L 35 44 L 25 28 Z" /></defs>
-                            <use href="#c" fill="white" />
-                            <use href="#c" fill="white" opacity="0.7" transform="rotate(120 50 50)" />
-                            <use href="#c" fill="white" opacity="0.7" transform="rotate(240 50 50)" />
-                        </svg>
+                    <div className="w-10 h-10 bg-[#f47c20] rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden">
+                        {branding.portalLogo ? (
+                            <img src={branding.portalLogo} alt="Portal Logo" className="w-full h-full object-cover" />
+                        ) : (
+                            <svg width="22" height="22" viewBox="0 0 100 100" fill="none">
+                                <defs><path id="c" d="M 50 15 L 75 28 L 65 44 L 50 35 L 35 44 L 25 28 Z" /></defs>
+                                <use href="#c" fill="white" />
+                                <use href="#c" fill="white" opacity="0.7" transform="rotate(120 50 50)" />
+                                <use href="#c" fill="white" opacity="0.7" transform="rotate(240 50 50)" />
+                            </svg>
+                        )}
                     </div>
                     <div>
                         <h2 className="font-bold text-[15px] text-gray-900 leading-tight">Vishnu Pass</h2>
@@ -98,7 +134,7 @@ const Dashboard = ({ onLogout }) => {
                         </div>
                         <div className="flex-1 min-w-0">
                             <p className="text-sm font-semibold text-gray-900 truncate">Admin User</p>
-                            <p className="text-[11px] text-gray-400 font-medium truncate">admin@vishnu.edu</p>
+                            <p className="text-[11px] text-gray-400 font-medium truncate">{userEmail}</p>
                         </div>
                         <button onClick={onLogout} title="Logout" className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
                             <LogOut className="w-4 h-4" />
@@ -120,13 +156,15 @@ const Dashboard = ({ onLogout }) => {
                         />
                     </div>
                     <div className="flex items-center gap-3 ml-6">
-                        <button className="p-2.5 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-xl transition-colors relative">
-                            <Bell className="w-5 h-5" />
+                        <button
+                            onClick={() => setActivePage('notifications')}
+                            className={`p-2.5 rounded-xl transition-all duration-300 relative ${activePage === 'notifications'
+                                    ? 'text-[#f47c20] bg-[#fff4eb] shadow-sm'
+                                    : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
+                                }`}
+                        >
+                            <Bell className="w-5 h-5 transition-transform duration-300 group-hover:rotate-12" />
                             <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
-                        </button>
-                        <button className="flex items-center gap-2 bg-[#f47c20] hover:bg-[#e06d1c] text-white font-semibold px-5 py-2.5 rounded-xl text-sm transition-colors shadow-sm">
-                            <Plus className="w-4 h-4" />
-                            New Entry
                         </button>
                     </div>
                 </header>

@@ -50,7 +50,7 @@ const statusStyles = {
     Graduated: 'bg-gray-100 text-gray-500 border-gray-200',
 };
 
-const StudentManagement = () => {
+const StudentManagement = ({ onNavigate }) => {
     const [currentPage, setCurrentPage] = useState(1);
     const [rowsPerPage, setRowsPerPage] = useState(10);
 
@@ -67,7 +67,7 @@ const StudentManagement = () => {
                         <Download className="w-4 h-4" />
                         Export CSV
                     </button>
-                    <button className="flex items-center gap-2 px-5 py-2.5 bg-[#f47c20] hover:bg-[#e06d1c] text-white rounded-xl text-sm font-semibold transition-colors shadow-sm">
+                    <button onClick={() => onNavigate('register-student')} className="flex items-center gap-2 px-5 py-2.5 bg-[#f47c20] hover:bg-[#e06d1c] text-white rounded-xl text-sm font-semibold transition-colors shadow-sm">
                         <Plus className="w-4 h-4" />
                         Add New Student
                     </button>

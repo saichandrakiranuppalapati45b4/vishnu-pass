@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { HelpCircle, Eye, EyeOff } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
-const LoginScreen = ({ onLogin }) => {
+const LoginScreen = ({ onLogin, branding }) => {
     const [showPassword, setShowPassword] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -55,13 +55,17 @@ const LoginScreen = ({ onLogin }) => {
             {/* Header */}
             <header className="flex justify-between items-center p-4 bg-[#f9fafb]">
                 <div className="flex items-center gap-2">
-                    {/* Mock Logo Icon */}
-                    <div className="bg-[#fef3c7] p-2 rounded-lg flex items-center justify-center border border-orange-100">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M12 2L3 7L3 11C3 16.5 6.8 21.5 12 23C17.2 21.5 21 16.5 21 11L21 7L12 2Z" fill="#F47C20" opacity="0.3" />
-                            <path d="M12 22C17 20.5 20 16 20 11V7.5L12 3L4 7.5V11C4 16 7 20.5 12 22Z" fill="#F47C20" />
-                            <circle cx="12" cy="11" r="3" fill="white" />
-                        </svg>
+                    {/* Portal Logo */}
+                    <div className="bg-[#fef3c7] w-10 h-10 rounded-lg flex items-center justify-center border border-orange-100 overflow-hidden">
+                        {branding?.portalLogo ? (
+                            <img src={branding.portalLogo} alt="Logo" className="w-full h-full object-cover" />
+                        ) : (
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M12 2L3 7L3 11C3 16.5 6.8 21.5 12 23C17.2 21.5 21 16.5 21 11L21 7L12 2Z" fill="#F47C20" opacity="0.3" />
+                                <path d="M12 22C17 20.5 20 16 20 11V7.5L12 3L4 7.5V11C4 16 7 20.5 12 22Z" fill="#F47C20" />
+                                <circle cx="12" cy="11" r="3" fill="white" />
+                            </svg>
+                        )}
                     </div>
                     <h1 className="text-xl font-bold text-gray-900 tracking-tight">Vishnu Pass</h1>
                 </div>
@@ -76,12 +80,15 @@ const LoginScreen = ({ onLogin }) => {
 
                     {/* Hero Image / Background Area */}
                     <div className="h-44 bg-gradient-to-t from-gray-100 to-gray-200 relative overflow-hidden">
-                        {/* Mocking a building using simple shapes for now if an image isn't available */}
-                        <div className="absolute inset-0 opacity-10 flex flex-col justify-end items-center pointer-events-none">
-                            <div className="w-3/4 h-24 border-t-8 border-l-8 border-r-8 border-gray-400 relative">
-                                <div className="absolute top-4 left-4 right-4 bottom-0 border-t-2 border-gray-400"></div>
+                        {branding?.loginBackground ? (
+                            <img src={branding.loginBackground} alt="Login Background" className="w-full h-full object-cover" />
+                        ) : (
+                            <div className="absolute inset-0 opacity-10 flex flex-col justify-end items-center pointer-events-none">
+                                <div className="w-3/4 h-24 border-t-8 border-l-8 border-r-8 border-gray-400 relative">
+                                    <div className="absolute top-4 left-4 right-4 bottom-0 border-t-2 border-gray-400"></div>
+                                </div>
                             </div>
-                        </div>
+                        )}
                         {/* Gradient overlay to blend bottom edge into white */}
                         <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white to-transparent"></div>
                     </div>
