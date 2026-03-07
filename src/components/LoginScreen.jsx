@@ -1,22 +1,52 @@
 import React, { useState } from 'react';
 import { HelpCircle, Eye, EyeOff } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 const LoginScreen = ({ onLogin }) => {
     const [showPassword, setShowPassword] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
+        setLoading(true);
 
-        // Hardcoded admin credential check as requested
-        if (email.trim() === 'saichandrakiranuppalapati@gmail.com' && password === 'Sai_kiran@45b4') {
+        try {
+            // Sign in with Supabase Auth
+            const { data, error: authError } = await supabase.auth.signInWithPassword({
+                email: email.trim(),
+                password: password,
+            });
+
+            if (authError) {
+                setError(authError.message);
+                setLoading(false);
+                return;
+            }
+
+            // Verify the user is an admin
+            const { data: adminData, error: adminError } = await supabase
+                .from('admins')
+                .select('*')
+                .eq('email', email.trim())
+                .single();
+
+            if (adminError || !adminData) {
+                setError('Access denied. You are not an admin.');
+                await supabase.auth.signOut();
+                setLoading(false);
+                return;
+            }
+
             onLogin();
-        } else {
-            setError('Invalid credentials. Please try again.');
+        } catch (err) {
+            setError('Something went wrong. Please try again.');
         }
+
+        setLoading(false);
     };
 
     return (
