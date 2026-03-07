@@ -89,15 +89,15 @@ const Dashboard = ({ onLogout, branding, onBrandingUpdate }) => {
             <aside className="w-[240px] bg-white border-r border-gray-100 flex flex-col flex-shrink-0">
                 {/* Logo */}
                 <div className="p-5 flex items-center gap-3 border-b border-gray-100">
-                    <div className="w-10 h-10 bg-[#f47c20] rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden">
                         {branding.portalLogo ? (
                             <img src={branding.portalLogo} alt="Portal Logo" className="w-full h-full object-cover" />
                         ) : (
                             <svg width="22" height="22" viewBox="0 0 100 100" fill="none">
                                 <defs><path id="c" d="M 50 15 L 75 28 L 65 44 L 50 35 L 35 44 L 25 28 Z" /></defs>
-                                <use href="#c" fill="white" />
-                                <use href="#c" fill="white" opacity="0.7" transform="rotate(120 50 50)" />
-                                <use href="#c" fill="white" opacity="0.7" transform="rotate(240 50 50)" />
+                                <use href="#c" fill="#f47c20" />
+                                <use href="#c" fill="#f47c20" opacity="0.7" transform="rotate(120 50 50)" />
+                                <use href="#c" fill="#f47c20" opacity="0.7" transform="rotate(240 50 50)" />
                             </svg>
                         )}
                     </div>
@@ -159,8 +159,8 @@ const Dashboard = ({ onLogout, branding, onBrandingUpdate }) => {
                         <button
                             onClick={() => setActivePage('notifications')}
                             className={`p-2.5 rounded-xl transition-all duration-300 relative ${activePage === 'notifications'
-                                    ? 'text-[#f47c20] bg-[#fff4eb] shadow-sm'
-                                    : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
+                                ? 'text-[#f47c20] bg-[#fff4eb] shadow-sm'
+                                : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
                                 }`}
                         >
                             <Bell className="w-5 h-5 transition-transform duration-300 group-hover:rotate-12" />
