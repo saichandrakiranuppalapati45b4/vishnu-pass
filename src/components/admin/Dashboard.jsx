@@ -133,7 +133,7 @@ const Dashboard = ({ onLogout, branding, onBrandingUpdate }) => {
                             </div>
                         </div>
                         <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-gray-900 truncate">Admin User</p>
+                            <p className="text-sm font-semibold text-gray-900 truncate">{branding.adminName || 'Admin User'}</p>
                             <p className="text-[11px] text-gray-400 font-medium truncate">{userEmail}</p>
                         </div>
                         <button onClick={onLogout} title="Logout" className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">

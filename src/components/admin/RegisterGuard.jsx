@@ -1,0 +1,281 @@
+import React, { useState } from 'react';
+import { Camera, ChevronDown } from 'lucide-react';
+
+const RegisterGuard = ({ onCancel }) => {
+    const [formData, setFormData] = useState({
+        fullName: '',
+        employeeId: '',
+        contactNumber: '',
+        assignedGate: '',
+        shiftType: '',
+        emergencyName: '',
+        emergencyContact: ''
+    });
+
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const gates = ["Main Entrance A", "North Gate B", "Library Entrance", "Hostel Block D"];
+
+    const handleRegister = (e) => {
+        e.preventDefault();
+        // Here we would typically make an API call to save the new guard
+        console.log("Registering new guard:", formData);
+        onCancel(); // Return to previous view after successful registration (mocked)
+    };
+
+    return (
+        <div className="flex-1 overflow-y-auto p-8 bg-gray-50/30">
+            {/* Page Header */}
+            <div className="mb-8">
+                <h1 className="text-[26px] font-bold text-gray-900 mb-1">Register New Guard</h1>
+            </div>
+
+            {/* Main Content Card */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden max-w-4xl animate-in fade-in slide-in-from-bottom-4 duration-500">
+                {/* Card Header */}
+                <div className="p-8 border-b border-gray-50">
+                    <h2 className="text-xl font-bold text-gray-900 mb-1">New Guard Registration</h2>
+                    <p className="text-sm text-gray-500 font-medium">Enter details to register a new security personnel for campus gate management.</p>
+                </div>
+
+                <div className="p-8">
+                    <form onSubmit={handleRegister}>
+
+                        {/* Profile Photo Section */}
+                        <div className="mb-8">
+                            <label className="block text-sm font-bold text-gray-700 mb-4">Profile Photo</label>
+                            <div className="flex items-center gap-6">
+                                <button type="button" className="w-[100px] h-[100px] rounded-2xl border-2 border-dashed border-[#cbd5e1] bg-[#f8fafc] flex flex-col items-center justify-center text-[#64748b] hover:bg-[#f1f5f9] hover:border-[#94a3b8] transition-colors group">
+                                    <Camera className="w-6 h-6 mb-1 text-[#94a3b8] group-hover:text-[#64748b] transition-colors" />
+                                    <span className="text-[9px] font-bold tracking-wider uppercase">Upload</span>
+                                </button>
+                                <div>
+                                    <h3 className="text-sm font-bold text-gray-900 mb-1">Click to upload or drag and drop</h3>
+                                    <p className="text-xs text-gray-400 font-medium">SVG, PNG, JPG or GIF (max. 800×800px)</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Basic Info Grid */}
+                        <div className="grid grid-cols-2 gap-x-8 gap-y-6 mb-8">
+                            {/* Full Name */}
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-2">Full Name</label>
+                                <input
+                                    type="text"
+                                    placeholder="e.g. Johnathan Doe"
+                                    value={formData.fullName}
+                                    onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                                    className="w-full px-4 py-2.5 bg-gray-50/50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#f47c20]/20 focus:border-[#f47c20] text-sm font-medium transition-colors"
+                                    required
+                                />
+                            </div>
+
+                            {/* Employee ID */}
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-2">Employee ID</label>
+                                <input
+                                    type="text"
+                                    placeholder="VP-GUARD-2024-XXX"
+                                    value={formData.employeeId}
+                                    onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}
+                                    className="w-full px-4 py-2.5 bg-gray-50/50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#f47c20]/20 focus:border-[#f47c20] text-sm font-medium transition-colors"
+                                    required
+                                />
+                            </div>
+
+                            {/* Contact Number */}
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-2">Contact Number</label>
+                                <input
+                                    type="tel"
+                                    placeholder="+91 00000 00000"
+                                    value={formData.contactNumber}
+                                    onChange={(e) => setFormData({ ...formData, contactNumber: e.target.value })}
+                                    className="w-full px-4 py-2.5 bg-gray-50/50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#f47c20]/20 focus:border-[#f47c20] text-sm font-medium transition-colors"
+                                    required
+                                />
+                            </div>
+
+                            {/* Assigned Gate (Custom Select) */}
+                            <div className="relative z-20">
+                                <label className="block text-sm font-bold text-gray-700 mb-2">Assigned Gate</label>
+                                <div className="relative">
+                                    {isDropdownOpen && (
+                                        <div
+                                            className="fixed inset-0 z-10"
+                                            onClick={() => setIsDropdownOpen(false)}
+                                        />
+                                    )}
+                                    <div
+                                        onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                                        className={`w-full px-4 py-2.5 bg-gray-50/50 border rounded-lg flex items-center justify-between cursor-pointer transition-colors relative z-20 ${isDropdownOpen
+                                                ? 'border-[#f47c20] ring-2 ring-[#f47c20]/20 bg-white'
+                                                : 'border-gray-200 hover:border-gray-300'
+                                            }`}
+                                    >
+                                        <span className={`text-sm font-medium ${formData.assignedGate ? 'text-gray-900' : 'text-gray-500'}`}>
+                                            {formData.assignedGate || 'Select a gate location'}
+                                        </span>
+                                        <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                                    </div>
+
+                                    {isDropdownOpen && (
+                                        <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-100 rounded-xl shadow-lg overflow-hidden z-30 animate-in fade-in slide-in-from-top-2 duration-150">
+                                            <div className="py-1 max-h-48 overflow-y-auto">
+                                                {gates.map(gate => (
+                                                    <button
+                                                        key={gate}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setFormData({ ...formData, assignedGate: gate });
+                                                            setIsDropdownOpen(false);
+                                                        }}
+                                                        className="w-full text-left px-4 py-2.5 text-sm font-medium hover:bg-gray-50 transition-colors flex items-center justify-between group"
+                                                    >
+                                                        <span className={`${formData.assignedGate === gate ? 'text-[#f47c20] font-bold' : 'text-gray-700 group-hover:text-gray-900'}`}>
+                                                            {gate}
+                                                        </span>
+                                                        {formData.assignedGate === gate && (
+                                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#f47c20]">
+                                                                <path d="M20 6 9 17l-5-5" />
+                                                            </svg>
+                                                        )}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Shift Type Section */}
+                        <div className="mb-10">
+                            <label className="block text-sm font-bold text-gray-700 mb-3">Shift Type</label>
+                            <div className="grid grid-cols-3 gap-4">
+                                {/* Morning Shift */}
+                                <label className={`flex items-center p-4 border rounded-xl cursor-pointer transition-all ${formData.shiftType === 'Morning'
+                                        ? 'border-[#f47c20] bg-[#fffaf5] shadow-[0_0_0_1px_#f47c20_inset]'
+                                        : 'border-gray-100 hover:border-gray-200 bg-white'
+                                    }`}>
+                                    <div className={`w-5 h-5 rounded-full border flex items-center justify-center mr-4 flex-shrink-0 transition-colors ${formData.shiftType === 'Morning' ? 'border-[#f47c20]' : 'border-gray-300'
+                                        }`}>
+                                        {formData.shiftType === 'Morning' && <div className="w-2.5 h-2.5 rounded-full bg-[#f47c20]" />}
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-bold text-gray-900 mb-0.5">Morning</p>
+                                        <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">06:00 AM - 02:00 PM</p>
+                                    </div>
+                                    {/* Invisible radio input */}
+                                    <input
+                                        type="radio"
+                                        name="shiftType"
+                                        value="Morning"
+                                        className="hidden"
+                                        checked={formData.shiftType === 'Morning'}
+                                        onChange={(e) => setFormData({ ...formData, shiftType: e.target.value })}
+                                        required
+                                    />
+                                </label>
+
+                                {/* Afternoon Shift */}
+                                <label className={`flex items-center p-4 border rounded-xl cursor-pointer transition-all ${formData.shiftType === 'Afternoon'
+                                        ? 'border-[#f47c20] bg-[#fffaf5] shadow-[0_0_0_1px_#f47c20_inset]'
+                                        : 'border-gray-100 hover:border-gray-200 bg-white'
+                                    }`}>
+                                    <div className={`w-5 h-5 rounded-full border flex items-center justify-center mr-4 flex-shrink-0 transition-colors ${formData.shiftType === 'Afternoon' ? 'border-[#f47c20]' : 'border-gray-300'
+                                        }`}>
+                                        {formData.shiftType === 'Afternoon' && <div className="w-2.5 h-2.5 rounded-full bg-[#f47c20]" />}
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-bold text-gray-900 mb-0.5">Afternoon</p>
+                                        <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">02:00 PM - 10:00 PM</p>
+                                    </div>
+                                    <input
+                                        type="radio"
+                                        name="shiftType"
+                                        value="Afternoon"
+                                        className="hidden"
+                                        checked={formData.shiftType === 'Afternoon'}
+                                        onChange={(e) => setFormData({ ...formData, shiftType: e.target.value })}
+                                    />
+                                </label>
+
+                                {/* Night Shift */}
+                                <label className={`flex items-center p-4 border rounded-xl cursor-pointer transition-all ${formData.shiftType === 'Night'
+                                        ? 'border-[#f47c20] bg-[#fffaf5] shadow-[0_0_0_1px_#f47c20_inset]'
+                                        : 'border-gray-100 hover:border-gray-200 bg-white'
+                                    }`}>
+                                    <div className={`w-5 h-5 rounded-full border flex items-center justify-center mr-4 flex-shrink-0 transition-colors ${formData.shiftType === 'Night' ? 'border-[#f47c20]' : 'border-gray-300'
+                                        }`}>
+                                        {formData.shiftType === 'Night' && <div className="w-2.5 h-2.5 rounded-full bg-[#f47c20]" />}
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-bold text-gray-900 mb-0.5">Night</p>
+                                        <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">10:00 PM - 08:00 AM</p>
+                                    </div>
+                                    <input
+                                        type="radio"
+                                        name="shiftType"
+                                        value="Night"
+                                        className="hidden"
+                                        checked={formData.shiftType === 'Night'}
+                                        onChange={(e) => setFormData({ ...formData, shiftType: e.target.value })}
+                                    />
+                                </label>
+                            </div>
+                        </div>
+
+                        {/* Emergency Contact Information Section */}
+                        <div className="pt-6 border-t border-gray-50 pb-8 relative z-10">
+                            <h3 className="text-xs font-bold text-[#8fa1b4] uppercase tracking-widest mb-6">Emergency Contact Information</h3>
+                            <div className="grid grid-cols-2 gap-x-8 gap-y-6">
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">Contact Name</label>
+                                    <input
+                                        type="text"
+                                        placeholder="Primary contact person"
+                                        value={formData.emergencyName}
+                                        onChange={(e) => setFormData({ ...formData, emergencyName: e.target.value })}
+                                        className="w-full px-4 py-2.5 bg-gray-50/50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#f47c20]/20 focus:border-[#f47c20] text-sm font-medium transition-colors"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">Contact Number</label>
+                                    <input
+                                        type="tel"
+                                        placeholder="+91 00000 00000"
+                                        value={formData.emergencyContact}
+                                        onChange={(e) => setFormData({ ...formData, emergencyContact: e.target.value })}
+                                        className="w-full px-4 py-2.5 bg-gray-50/50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#f47c20]/20 focus:border-[#f47c20] text-sm font-medium transition-colors"
+                                        required
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Footer Actions */}
+                        <div className="pt-6 border-t border-gray-50 flex justify-end items-center gap-4 sticky bottom-0 bg-white z-0">
+                            <button
+                                type="button"
+                                onClick={onCancel}
+                                className="px-5 py-2.5 text-sm font-bold text-gray-600 hover:text-gray-900 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="submit"
+                                className="px-6 py-2.5 bg-[#f47c20] hover:bg-[#e06d1c] text-white rounded-lg text-sm font-bold transition-colors shadow-sm cursor-pointer"
+                            >
+                                Register Guard
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default RegisterGuard;

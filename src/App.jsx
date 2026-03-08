@@ -9,7 +9,8 @@ function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [branding, setBranding] = useState({
     portalLogo: null,
-    loginBackground: null
+    loginBackground: null,
+    adminName: 'Admin User'
   });
 
   React.useEffect(() => {
@@ -25,7 +26,8 @@ function App() {
         });
         setBranding({
           portalLogo: brandingMap.portalLogo || null,
-          loginBackground: brandingMap.loginBackground || null
+          loginBackground: brandingMap.loginBackground || null,
+          adminName: brandingMap.adminName || 'Admin User'
         });
       }
     };

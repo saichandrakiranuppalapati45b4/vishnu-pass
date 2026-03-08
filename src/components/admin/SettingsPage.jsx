@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings as SettingsIcon, Palette, User, Upload, ChevronDown, Building2, Plus, X, Shield, Loader2 } from 'lucide-react';
+import { Settings as SettingsIcon, Palette, User, Upload, ChevronDown, Building2, Plus, X, Shield, Loader2, CheckCircle2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 const SettingsPage = ({ onNavigate, branding, onBrandingUpdate }) => {
@@ -17,10 +17,13 @@ const SettingsPage = ({ onNavigate, branding, onBrandingUpdate }) => {
     const [deptToRemove, setDeptToRemove] = useState(null);
     const [loading, setLoading] = useState(true);
     const [userEmail, setUserEmail] = useState('admin@vishnupass.com');
+    const [adminName, setAdminName] = useState(branding.adminName || 'Admin User');
     const [timezone, setTimezone] = useState('Indian Standard Time (IST) - UTC+5:30');
     const [language, setLanguage] = useState('English (United States)');
     const [isSavingGeneral, setIsSavingGeneral] = useState(false);
     const [saveSuccess, setSaveSuccess] = useState(false);
+    const [isSavingProfile, setIsSavingProfile] = useState(false);
+    const [profileSaveSuccess, setProfileSaveSuccess] = useState(false);
 
     // Fetch departments and user email from Supabase on mount
     useEffect(() => {
@@ -131,6 +134,32 @@ const SettingsPage = ({ onNavigate, branding, onBrandingUpdate }) => {
         setIsSavingGeneral(false);
         setSaveSuccess(true);
         setTimeout(() => setSaveSuccess(false), 3000);
+    };
+
+    const handleSaveProfile = async () => {
+        if (!adminName.trim()) return;
+
+        try {
+            setIsSavingProfile(true);
+
+            // 1. Save to database
+            const { error: dbError } = await supabase
+                .from('portal_settings')
+                .upsert({ key: 'adminName', value: adminName.trim() }, { onConflict: 'key' });
+
+            if (dbError) throw dbError;
+
+            // 2. Update Global State
+            onBrandingUpdate('adminName', adminName.trim());
+
+            setProfileSaveSuccess(true);
+            setTimeout(() => setProfileSaveSuccess(false), 3000);
+        } catch (err) {
+            console.error('Error saving profile:', err);
+            alert('Failed to save profile name. Please try again.');
+        } finally {
+            setIsSavingProfile(false);
+        }
     };
 
     return (
@@ -410,7 +439,8 @@ const SettingsPage = ({ onNavigate, branding, onBrandingUpdate }) => {
                             <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Full Name</label>
                             <input
                                 type="text"
-                                defaultValue="Vishnu Admin"
+                                value={adminName}
+                                onChange={(e) => setAdminName(e.target.value)}
                                 className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#f47c20]/20 focus:border-[#f47c20]"
                             />
                         </div>
@@ -434,12 +464,36 @@ const SettingsPage = ({ onNavigate, branding, onBrandingUpdate }) => {
                                 <p className="text-[11px] text-gray-400 font-medium">Update your account password</p>
                             </div>
                         </div>
-                        <button
-                            onClick={() => onNavigate('change-password')}
-                            className="px-6 py-2.5 bg-[#f47c20] hover:bg-[#e06d1c] text-white font-semibold rounded-xl text-sm transition-colors shadow-sm"
-                        >
-                            Change Password
-                        </button>
+                        <div className="flex items-center gap-3">
+                            <button
+                                onClick={handleSaveProfile}
+                                disabled={isSavingProfile || !adminName.trim()}
+                                className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 shadow-sm flex items-center gap-2 ${profileSaveSuccess
+                                    ? 'bg-emerald-500 text-white'
+                                    : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
+                                    } disabled:opacity-50`}
+                            >
+                                {isSavingProfile ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        <span>Saving Profile...</span>
+                                    </>
+                                ) : profileSaveSuccess ? (
+                                    <>
+                                        <CheckCircle2 className="w-4 h-4" />
+                                        <span>Profile Saved!</span>
+                                    </>
+                                ) : (
+                                    <span>Save Profile</span>
+                                )}
+                            </button>
+                            <button
+                                onClick={() => onNavigate('change-password')}
+                                className="px-6 py-2.5 bg-[#f47c20] hover:bg-[#e06d1c] text-white font-semibold rounded-xl text-sm transition-colors shadow-sm"
+                            >
+                                Change Password
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
