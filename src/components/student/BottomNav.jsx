@@ -1,10 +1,10 @@
 import React from 'react';
-import { Home, QrCode, Clock, User } from 'lucide-react';
+import { Home, ScanLine, Clock, User } from 'lucide-react';
 
 const BottomNav = ({ activeTab, onTabChange }) => {
     const tabs = [
         { id: 'home', icon: Home, label: 'HOME' },
-        { id: 'pass', icon: QrCode, label: 'PASS' },
+        { id: 'scan', icon: ScanLine, label: 'SCAN' },
         { id: 'logs', icon: Clock, label: 'LOGS' },
         { id: 'profile', icon: User, label: 'PROFILE' },
     ];

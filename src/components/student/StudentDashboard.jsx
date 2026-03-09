@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import Home from './Home';
 import BottomNav from './BottomNav';
-import { QrCode, Clock, User, LogOut } from 'lucide-react';
+import ScanScreen from './ScanScreen';
+import { ScanLine, Clock, User, LogOut } from 'lucide-react';
 
 // eslint-disable-next-line no-unused-vars
 const PlaceholderView = ({ title, icon: HeroIcon }) => (
@@ -21,8 +22,8 @@ const StudentDashboard = ({ studentData, onLogout }) => {
         switch (activeTab) {
             case 'home':
                 return <Home studentData={studentData} />;
-            case 'pass':
-                return <PlaceholderView title="Digital Pass" icon={QrCode} />;
+            case 'scan':
+                return <ScanScreen studentData={studentData} />;
             case 'logs':
                 return <PlaceholderView title="Movement Logs" icon={Clock} />;
             case 'profile':

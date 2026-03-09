@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, Bell, User, ArrowRight, LogIn, LogOut, CheckCircle2 } from 'lucide-react';
+import { Bell, User, ArrowRight, LogIn, LogOut, CheckCircle2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { format } from 'date-fns';
 
@@ -42,25 +42,17 @@ const Home = ({ studentData }) => {
         <div className="flex-1 bg-[#f8f9fb] pb-24 overflow-y-auto font-sans">
             {/* Header */}
             <header className="flex justify-between items-center p-6 bg-white shadow-sm border-b border-gray-100">
-                <button className="w-12 h-12 bg-orange-50 rounded-2xl flex items-center justify-center text-[#f47c20]">
-                    <Menu className="w-6 h-6" />
-                </button>
-                <h1 className="text-xl font-black text-gray-900 tracking-tight">Vishnu Pass</h1>
                 <div className="flex items-center gap-3">
-                    <button className="relative p-1 text-gray-400">
-                        <Bell className="w-6 h-6" />
-                        <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-orange-500 rounded-full border-2 border-white"></span>
-                    </button>
-                    <div className="w-12 h-12 rounded-full border-2 border-[#d8b4fe] p-0.5 shadow-sm">
-                        {studentData?.photo_url ? (
-                            <img src={studentData.photo_url} alt="Profile" className="w-full h-full rounded-full object-cover" />
-                        ) : (
-                            <div className="w-full h-full rounded-full bg-purple-100 flex items-center justify-center text-purple-600 font-bold">
-                                {initials}
-                            </div>
-                        )}
+                    <div className="w-10 h-10 flex items-center justify-center overflow-hidden">
+                        <img src="/vishnu-logo.png" alt="Vishnu Logo" className="w-full h-full object-contain" />
                     </div>
+                    <h1 className="text-xl font-black text-gray-900 tracking-tight">Vishnu Pass</h1>
                 </div>
+
+                <button className="relative p-1 text-gray-400">
+                    <Bell className="w-6 h-6" />
+                    <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-orange-500 rounded-full border-2 border-white"></span>
+                </button>
             </header>
 
             {/* Main Content */}
@@ -74,11 +66,11 @@ const Home = ({ studentData }) => {
                     <div className="relative z-10">
                         {/* Profile Info Row */}
                         <div className="flex items-center gap-6 mb-10">
-                            <div className="w-24 h-24 rounded-[28px] overflow-hidden border-2 border-white shadow-lg bg-orange-50">
+                            <div className="relative w-24 h-24 rounded-full overflow-hidden border-2 border-white shadow-lg bg-orange-50 flex-shrink-0">
                                 {studentData?.photo_url ? (
                                     <img src={studentData.photo_url} alt="Student" className="w-full h-full object-cover" />
                                 ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-[#f47c20] text-2xl font-black">
+                                    <div className="w-full h-full rounded-full flex items-center justify-center text-[#f47c20] text-2xl font-black">
                                         {initials}
                                     </div>
                                 )}
