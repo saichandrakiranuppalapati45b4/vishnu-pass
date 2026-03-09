@@ -8,9 +8,9 @@ const GuardProfile = ({ guardData, onLogout }) => {
         : 'GP';
 
     const menuItems = [
-        { icon: <Bell className="w-5 h-5 text-blue-500" />, label: 'Notification Settings', description: 'Alerts for unauthorized access attempts' },
-        { icon: <ShieldCheck className="w-5 h-5 text-emerald-500" />, label: 'Security & Privacy', description: 'Manage your login credentials' },
-        { icon: <Heart className="w-5 h-5 text-rose-500" />, label: 'Emergency Contacts', description: 'Update your standby contact info' },
+        { icon: <Bell className="w-5 h-5 text-blue-500" />, label: 'Notification Settings', description: 'Alerts for unauthorized access attempts', tab: 'notifications' },
+        { icon: <ShieldCheck className="w-5 h-5 text-emerald-500" />, label: 'Security & Privacy', description: 'Manage your login credentials', tab: 'security' },
+        { icon: <Heart className="w-5 h-5 text-rose-500" />, label: 'Emergency Contacts', description: 'Update your standby contact info', tab: 'emergency' },
     ];
 
     return (
@@ -78,7 +78,11 @@ const GuardProfile = ({ guardData, onLogout }) => {
                 <div className="bg-white rounded-[40px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-50 p-6 space-y-2">
                     <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest px-2 mb-4">Account Management</h3>
                     {menuItems.map((item, index) => (
-                        <button key={index} className="w-full flex items-center justify-between p-4 rounded-3xl hover:bg-slate-50 transition-all group active:scale-[0.98]">
+                        <button
+                            key={index}
+                            onClick={() => onNavigate && onNavigate(item.tab)}
+                            className="w-full flex items-center justify-between p-4 rounded-3xl hover:bg-slate-50 transition-all group active:scale-[0.98]"
+                        >
                             <div className="flex items-center gap-4">
                                 <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center group-hover:bg-white group-hover:shadow-md transition-all">
                                     {item.icon}

@@ -154,11 +154,30 @@ const GuardHome = ({ guardData, onScan }) => {
                         Refreshes in <span className="text-[#f47c20] font-black">{seconds}s</span>
                     </p>
 
-                    <button className="w-full py-4 bg-gradient-to-r from-[#f47c20] to-[#e06b12] text-white font-black rounded-2xl shadow-xl shadow-[#f47c20]/20 flex items-center justify-center gap-3 active:scale-[0.98] transition-all">
+                    <button
+                        onClick={onScan}
+                        className="w-full py-4 bg-gradient-to-r from-[#f47c20] to-[#e06b12] text-white font-black rounded-2xl shadow-xl shadow-[#f47c20]/20 flex items-center justify-center gap-3 active:scale-[0.98] transition-all"
+                    >
                         <RefreshCw className="w-5 h-5" />
                         Refresh QR Code
                     </button>
                 </div>
+            </div>
+
+            {/* Quick Actions / Scan Button */}
+            <div className="px-6 mt-6">
+                <button
+                    onClick={onScan}
+                    className="w-full py-6 bg-slate-900 text-white rounded-[32px] shadow-xl shadow-slate-900/10 flex items-center justify-center gap-4 group active:scale-[0.98] transition-all border border-slate-800"
+                >
+                    <div className="w-12 h-12 rounded-2xl bg-[#f47c20] flex items-center justify-center shadow-lg shadow-[#f47c20]/20 group-hover:scale-110 transition-transform">
+                        <Scan className="w-6 h-6" />
+                    </div>
+                    <div className="text-left">
+                        <p className="text-[10px] font-black text-[#f47c20] uppercase tracking-widest leading-none mb-1">Gate Entry</p>
+                        <p className="text-lg font-black tracking-tight leading-none">START SCANNER</p>
+                    </div>
+                </button>
             </div>
 
             {/* Recent Activity Section */}
