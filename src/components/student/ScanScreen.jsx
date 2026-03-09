@@ -91,118 +91,140 @@ const ScanScreen = ({ studentData, onBack }) => {
     }
 
     return (
-        <div className="flex-1 flex flex-col bg-[#1e1a17] overflow-hidden relative font-sans">
-            {/* Header */}
-            <header className="px-6 py-8 flex justify-between items-center relative z-20">
-                <button
-                    onClick={onBack}
-                    className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center text-white active:scale-90 transition-transform"
-                >
-                    <ChevronLeft className="w-6 h-6" />
-                </button>
-                <div className="px-6 py-2.5 rounded-2xl bg-white/10 backdrop-blur-md text-white font-black text-xs tracking-widest uppercase">
-                    Open Scanner
-                </div>
-                <button
-                    onClick={() => setTorchOn(!torchOn)}
-                    className={`w-12 h-12 rounded-full backdrop-blur-md flex items-center justify-center transition-all ${torchOn ? 'bg-[#f47c20] text-white shadow-lg shadow-[#f47c20]/40' : 'bg-white/10 text-white'
-                        }`}
-                >
-                    <Zap className={`w-5 h-5 ${torchOn ? 'fill-white' : ''}`} />
-                </button>
-            </header>
-
-            {/* Instruction */}
-            <div className="px-8 mb-12 relative z-20 text-center">
-                <div className="inline-block px-6 py-4 rounded-[24px] bg-white/5 backdrop-blur-sm border border-white/10">
-                    <p className="text-white/80 text-sm font-bold tracking-tight">
-                        Position the Gate's QR code within the frame
-                    </p>
-                </div>
+        <div className="flex-1 flex flex-col bg-black overflow-hidden relative font-sans min-h-screen">
+            {/* Camera Background Layer */}
+            <div className="absolute inset-0 z-0 h-full w-full">
+                <Scanner
+                    onResult={handleScan}
+                    onError={(error) => setErrorMessage(error?.message)}
+                    components={{ audio: false, torch: torchOn }}
+                    styles={{
+                        container: { width: '100%', height: '100%' },
+                        video: { objectFit: 'cover', width: '100%', height: '100%' }
+                    }}
+                />
+                {/* Visual Scrim Overlay - provides contrast for white UI text */}
+                <div className="absolute inset-0 bg-[#1e1a17]/50 backdrop-blur-[1px] z-10" />
             </div>
 
-            {/* Scanner Frame */}
-            <div className="flex-1 flex flex-col items-center justify-start px-8 relative z-10">
-                <div className="w-full max-w-[300px] aspect-square relative rounded-[40px] overflow-hidden border border-white/5 shadow-2xl">
-                    {/* Brackets */}
-                    <div className="absolute top-0 left-0 w-16 h-16 border-l-[6px] border-t-[6px] border-[#f47c20] rounded-tl-[32px] z-20 shadow-[-4px_-4px_10px_rgba(244,124,32,0.2)]" />
-                    <div className="absolute top-0 right-0 w-16 h-16 border-r-[6px] border-t-[6px] border-[#f47c20] rounded-tr-[32px] z-20 shadow-[4px_-4px_10px_rgba(244,124,32,0.2)]" />
-                    <div className="absolute bottom-0 left-0 w-16 h-16 border-l-[6px] border-b-[6px] border-[#f47c20] rounded-bl-[32px] z-20 shadow-[-4px_4px_10px_rgba(244,124,32,0.2)]" />
-                    <div className="absolute bottom-0 right-0 w-16 h-16 border-r-[6px] border-b-[6px] border-[#f47c20] rounded-br-[32px] z-20 shadow-[4px_4px_10px_rgba(244,124,32,0.2)]" />
+            {/* UI Overlays Layer */}
+            <div className="relative z-20 flex flex-col flex-1 h-full">
+                {/* Header */}
+                <header className="px-6 py-10 flex justify-between items-center relative z-20">
+                    <button
+                        onClick={onBack}
+                        className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-xl border border-white/10 flex items-center justify-center text-white active:scale-90 transition-transform"
+                    >
+                        <ChevronLeft className="w-6 h-6" />
+                    </button>
+                    <div className="px-6 py-3 rounded-2xl bg-white/10 backdrop-blur-xl border border-white/10 text-white font-black text-[10px] tracking-[0.2em] uppercase">
+                        Open Scanner
+                    </div>
+                    <button
+                        onClick={() => setTorchOn(!torchOn)}
+                        className={`w-12 h-12 rounded-full border backdrop-blur-xl flex items-center justify-center transition-all ${torchOn
+                            ? 'bg-[#f47c20] border-[#f47c20] text-white shadow-lg shadow-[#f47c20]/40'
+                            : 'bg-white/10 border-white/10 text-white'
+                            }`}
+                    >
+                        <Zap className={`w-5 h-5 ${torchOn ? 'fill-white' : ''}`} />
+                    </button>
+                </header>
 
-                    {/* Animated Scan Line */}
-                    {status === 'idle' && (
-                        <div className="absolute top-0 left-4 right-4 h-1 bg-gradient-to-r from-transparent via-[#f47c20] to-transparent z-20 shadow-[0_0_15px_#f47c20] animate-[scan_2.5s_ease-in-out_infinite]" />
-                    )}
-
-                    <Scanner
-                        onResult={handleScan}
-                        onError={(error) => setErrorMessage(error?.message)}
-                        components={{ audio: false, torch: torchOn }}
-                        styles={{
-                            container: { width: '100%', height: '100%', opacity: 0.6 },
-                            video: { objectFit: 'cover' }
-                        }}
-                    />
-
-                    {/* Processing/Error Overlays */}
-                    {(status === 'processing' || status === 'error') && (
-                        <div className="absolute inset-0 bg-[#1e1a17]/90 backdrop-blur-xl z-30 flex flex-col items-center justify-center p-8 text-center animate-in fade-in zoom-in duration-300">
-                            {status === 'processing' ? (
-                                <>
-                                    <div className="w-20 h-20 relative flex items-center justify-center mb-6">
-                                        <div className="absolute inset-0 rounded-full border-4 border-white/10" />
-                                        <div className="absolute inset-0 rounded-full border-4 border-[#f47c20] border-t-transparent animate-spin" />
-                                        <Shield className="w-8 h-8 text-[#f47c20]" />
-                                    </div>
-                                    <p className="text-white font-black uppercase tracking-widest text-sm">Verifying...</p>
-                                </>
-                            ) : (
-                                <>
-                                    <div className="w-16 h-16 rounded-full bg-rose-500/20 flex items-center justify-center text-rose-500 mb-6">
-                                        <X className="w-8 h-8" />
-                                    </div>
-                                    <h3 className="text-xl font-black text-rose-400 mb-2 uppercase tracking-tighter italic">Failed</h3>
-                                    <p className="text-white/60 text-xs font-bold mb-8 leading-relaxed px-4">
-                                        {errorMessage || "Verification failed. Please try again."}
-                                    </p>
-                                    <button
-                                        onClick={resetScanner}
-                                        className="px-8 py-3.5 bg-white text-black font-black rounded-2xl shadow-xl active:scale-95 transition-all text-[10px] tracking-widest uppercase"
-                                    >
-                                        Try Again
-                                    </button>
-                                </>
-                            )}
-                        </div>
-                    )}
+                {/* Instruction - High Visibility Overlay */}
+                <div className="px-8 mt-2 mb-4 relative z-20 text-center">
+                    <div className="inline-block px-8 py-5 rounded-[32px] bg-black/40 backdrop-blur-2xl border border-white/10 shadow-3xl">
+                        <p className="text-white/90 text-[13px] font-bold tracking-tight">
+                            Position the Gate's QR code within the frame
+                        </p>
+                    </div>
                 </div>
-            </div>
 
-            {/* Recent Scan Overlay Group */}
-            <div className="px-6 pb-20 mt-auto relative z-20">
-                <h3 className="text-white/40 text-[10px] font-black uppercase tracking-[0.2em] mb-4 ml-2">Recent Scan</h3>
+                {/* Scanner Frame - Centered Focus Area */}
+                <div className="flex-1 flex items-center justify-center px-10 relative z-30 mb-20">
+                    <div className="w-full max-w-[280px] aspect-square relative">
+                        {/* Brackets */}
+                        <div className="absolute top-0 left-0 w-20 h-20 border-l-[8px] border-t-[8px] border-[#f47c20] rounded-tl-[48px] z-20 shadow-[-8px_-8px_20px_rgba(244,124,32,0.3)]" />
+                        <div className="absolute top-0 right-0 w-20 h-20 border-r-[8px] border-t-[8px] border-[#f47c20] rounded-tr-[48px] z-20 shadow-[8px_-8px_20px_rgba(244,124,32,0.3)]" />
+                        <div className="absolute bottom-0 left-0 w-20 h-20 border-l-[8px] border-b-[8px] border-[#f47c20] rounded-bl-[48px] z-20 shadow-[-8px_8px_20px_rgba(244,124,32,0.3)]" />
+                        <div className="absolute bottom-0 right-0 w-20 h-20 border-r-[8px] border-b-[8px] border-[#f47c20] rounded-br-[48px] z-20 shadow-[8px_8px_20px_rgba(244,124,32,0.3)]" />
 
-                <div className="bg-white/10 backdrop-blur-2xl border border-white/5 rounded-[32px] p-5 flex items-center justify-between shadow-2xl">
-                    <div className="flex items-center gap-4">
-                        <div className="w-14 h-14 rounded-2xl overflow-hidden border border-white/10 bg-[#f4a261]/20 flex items-center justify-center relative">
-                            {studentData?.photo_url ? (
-                                <img src={studentData.photo_url} alt="" className="w-full h-full object-cover" />
-                            ) : (
-                                <span className="text-2xl text-[#f4a261] font-black">{studentData?.full_name?.[0]}</span>
-                            )}
-                        </div>
-                        <div>
-                            <h4 className="text-lg font-black text-white leading-none mb-1.5 tracking-tight">{studentData?.full_name}</h4>
-                            <p className="text-[11px] font-bold text-white/40 mb-1 leading-none uppercase tracking-wider">
-                                ID: {studentData?.student_id}
-                            </p>
-                        </div>
+                        {/* Animated Laser Scan Line */}
+                        {status === 'idle' && (
+                            <div className="absolute top-0 left-6 right-6 h-[2px] bg-gradient-to-r from-transparent via-[#f47c20] to-transparent z-20 shadow-[0_0_20px_#f47c20,0_0_10px_#f47c20] animate-[scan_3s_ease-in-out_infinite]" />
+                        )}
+
+                        {/* Inner Glowing Guideline */}
+                        <div className="absolute inset-6 border border-white/5 rounded-[32px] z-10 opacity-30" />
+                    </div>
+                </div>
+
+                {/* Processing/Error Full Screen Overlays */}
+                {(status === 'processing' || status === 'error') && (
+                    <div className="absolute inset-0 bg-[#1e1a17]/95 backdrop-blur-3xl z-50 flex flex-col items-center justify-center p-8 text-center animate-in fade-in zoom-in duration-300">
+                        {status === 'processing' ? (
+                            <>
+                                <div className="w-24 h-24 relative flex items-center justify-center mb-8">
+                                    <div className="absolute inset-0 rounded-full border-4 border-white/5" />
+                                    <div className="absolute inset-0 rounded-full border-4 border-[#f47c20] border-t-transparent animate-spin" />
+                                    <Shield className="w-10 h-10 text-[#f47c20]" />
+                                </div>
+                                <h3 className="text-white font-black uppercase tracking-[0.3em] text-sm mb-2">Authenticating</h3>
+                                <p className="text-white/40 text-[10px] font-bold">Connecting to Vishnu Identity Server...</p>
+                            </>
+                        ) : (
+                            <>
+                                <div className="w-20 h-20 rounded-full bg-rose-500/20 flex items-center justify-center text-rose-500 mb-8 border border-rose-500/20 shadow-2xl shadow-rose-500/10">
+                                    <X className="w-10 h-10" />
+                                </div>
+                                <h3 className="text-2xl font-black text-white mb-3 uppercase tracking-tighter italic">Access Denied</h3>
+                                <p className="text-rose-400 font-bold text-[11px] mb-10 leading-relaxed px-10">
+                                    {errorMessage || "Verification failed. Please try again."}
+                                </p>
+                                <button
+                                    onClick={resetScanner}
+                                    className="px-10 py-4 bg-white text-black font-black rounded-3xl shadow-2xl active:scale-95 transition-all text-[11px] tracking-widest uppercase hover:bg-gray-100"
+                                >
+                                    Try Again
+                                </button>
+                            </>
+                        )}
+                    </div>
+                )}
+
+                {/* Recent Scan Overlay Group - Fixed at bottom */}
+                <div className="px-6 pb-12 mt-auto relative z-30">
+                    <div className="flex items-center justify-between mb-4 px-2">
+                        <h3 className="text-white/40 text-[10px] font-black uppercase tracking-[0.2em]">Recent Scan</h3>
+                        <div className="w-2 h-2 rounded-full bg-[#f47c20] animate-pulse" />
                     </div>
 
-                    <div className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-400">
-                        <CheckCircle2 className="w-4 h-4" />
-                        <span className="text-[10px] font-black uppercase tracking-widest italic">Verified</span>
+                    <div className="bg-white/10 backdrop-blur-3xl border border-white/10 rounded-[40px] p-6 flex items-center justify-between shadow-3xl">
+                        <div className="flex items-center gap-5">
+                            <div className="w-16 h-16 rounded-[24px] overflow-hidden border-2 border-white/10 bg-[#f47c20]/10 flex items-center justify-center relative shadow-inner">
+                                {studentData?.photo_url ? (
+                                    <img src={studentData.photo_url} alt="" className="w-full h-full object-cover" />
+                                ) : (
+                                    <span className="text-3xl text-[#f47c20] font-black opacity-60">{studentData?.full_name?.[0]}</span>
+                                )}
+                            </div>
+                            <div>
+                                <h4 className="text-xl font-black text-white leading-none mb-2 tracking-tight">{studentData?.full_name}</h4>
+                                <div className="flex items-center gap-3">
+                                    <span className="px-3 py-1 rounded-full bg-white/5 text-white/40 text-[9px] font-black tracking-widest uppercase border border-white/5">
+                                        ID: {studentData?.student_id}
+                                    </span>
+                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex flex-col items-center gap-1">
+                            <div className="w-12 h-12 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                                <CheckCircle2 className="w-6 h-6" />
+                            </div>
+                            <span className="text-[10px] font-black text-emerald-400/80 uppercase tracking-widest italic">Verified</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -210,11 +232,16 @@ const ScanScreen = ({ studentData, onBack }) => {
             <style dangerouslySetInnerHTML={{
                 __html: `
                 @keyframes scan {
-                    0%, 100% { transform: translateY(20px); opacity: 0; }
-                    50% { transform: translateY(250px); opacity: 1; }
+                    0%, 100% { transform: translateY(0); opacity: 0; }
+                    10% { opacity: 1; }
+                    90% { opacity: 1; }
+                    100% { transform: translateY(280px); opacity: 0; }
                 }
                 .font-sans {
-                    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                    font-family: 'Outfit', 'Inter', -apple-system, sans-serif;
+                }
+                .shadow-3xl {
+                    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
                 }
             ` }} />
         </div>
