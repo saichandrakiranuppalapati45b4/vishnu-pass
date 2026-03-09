@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, TrendingUp, RefreshCw, Clock, ShieldCheck, ShieldAlert, User, MoreHorizontal, AlertTriangle } from 'lucide-react';
+import { Bell, TrendingUp, RefreshCw, Clock, ShieldCheck, ShieldAlert, User, MoreHorizontal, AlertTriangle, Scan } from 'lucide-react';
 import { format } from 'date-fns';
 
 const GuardHome = ({ guardData, onScan }) => {
