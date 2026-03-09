@@ -1,8 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Download, Plus, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronDown, Filter, MoreVertical, Loader2, User, BadgeCheck, Shield, Trash2 } from 'lucide-react';
+import {
+    Plus, Search, Filter, Download, MoreVertical,
+    ChevronDown, Trash2, User, ChevronLeft, ChevronRight,
+    ChevronsLeft, ChevronsRight, Pencil, Loader2
+} from 'lucide-react';
 
 import { supabase } from '../../lib/supabase';
 import { logAuditAction } from '../../utils/auditLogger';
+import EditStudentModal from './EditStudentModal';
 
 // Helper function to generate a consistent color from a name
 const stringToColor = (name) => {
@@ -38,6 +43,7 @@ const StudentManagement = ({ onNavigate }) => {
     // Dropdown State
     const [openDropdown, setOpenDropdown] = useState(null); // 'dept' | 'batch' | null
     const [actionMenuId, setActionMenuId] = useState(null); // student.id | null
+    const [editingStudent, setEditingStudent] = useState(null);
     const dropdownRef = useRef(null);
     const actionMenuRef = useRef(null);
 
@@ -313,26 +319,25 @@ const StudentManagement = ({ onNavigate }) => {
                                                 <div className="absolute z-50 right-0 mt-2 w-44 bg-white border border-gray-100 rounded-xl shadow-xl ring-1 ring-black/5 animate-in fade-in zoom-in-95">
                                                     <div className="py-1.5 px-1">
                                                         <button
-                                                            onClick={() => onNavigate('student-profile', student.id)}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setEditingStudent(student);
+                                                                setActionMenuId(null);
+                                                            }}
                                                             className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-gray-700 hover:bg-orange-50 hover:text-[#f47c20] rounded-lg transition-colors"
                                                         >
-                                                            <User className="w-3.5 h-3.5" />
-                                                            Quick View
-                                                        </button>
-                                                        <button className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-gray-700 hover:bg-orange-50 hover:text-[#f47c20] rounded-lg transition-colors">
-                                                            <BadgeCheck className="w-3.5 h-3.5" />
-                                                            View Pass
-                                                        </button>
-                                                        <div className="my-1 border-t border-gray-50" />
-                                                        <button className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-red-500 hover:bg-red-50 rounded-lg transition-colors">
-                                                            <Shield className="w-3.5 h-3.5" />
-                                                            Deactivate
+                                                            <Pencil className="w-3.5 h-3.5" />
+                                                            Edit Record
                                                         </button>
                                                         <button
-                                                            onClick={() => handleDeleteStudent(student.id, student.full_name)}
-                                                            className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-100 rounded-lg transition-colors mt-0.5"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleDeleteStudent(student.id, student.full_name);
+                                                                setActionMenuId(null);
+                                                            }}
+                                                            className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
                                                         >
-                                                            <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                                                            <Trash2 className="w-3.5 h-3.5" />
                                                             Delete Record
                                                         </button>
                                                     </div>
@@ -376,6 +381,14 @@ const StudentManagement = ({ onNavigate }) => {
                     </div>
                 </div>
             </div>
+            {/* Modals */}
+            {editingStudent && (
+                <EditStudentModal
+                    student={editingStudent}
+                    onClose={() => setEditingStudent(null)}
+                    onUpdate={fetchStudents}
+                />
+            )}
         </div>
     );
 };

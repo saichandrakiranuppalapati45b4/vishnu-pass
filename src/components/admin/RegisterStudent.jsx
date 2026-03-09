@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { User, GraduationCap, Camera, ChevronDown, Loader2 } from 'lucide-react';
+import { User, GraduationCap, Camera, ChevronDown, Loader2, Lock } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { logAuditAction } from '../../utils/auditLogger';
 
@@ -85,6 +85,8 @@ const RegisterStudent = ({ onCancel }) => {
         studentId: '',
         gender: '',
         email: '',
+        password: '',
+        confirmPassword: '',
         department: '',
         yearOfStudy: '',
         hostel: '',
@@ -134,6 +136,14 @@ const RegisterStudent = ({ onCancel }) => {
         setIsSubmitting(true);
 
         try {
+            // 0. Validation
+            if (formData.password !== formData.confirmPassword) {
+                throw new Error("Passwords do not match");
+            }
+            if (!formData.password || formData.password.length < 6) {
+                throw new Error("Password must be at least 6 characters");
+            }
+
             let photoUrl = null;
 
             // 1. Upload Photo if selected
@@ -153,10 +163,25 @@ const RegisterStudent = ({ onCancel }) => {
                 photoUrl = publicUrl;
             }
 
-            // 2. Insert Student Record
+            // 2. Create Auth User
+            const { data: authData, error: authError } = await supabase.auth.signUp({
+                email: formData.email.trim(),
+                password: formData.password,
+                options: {
+                    data: {
+                        full_name: formData.fullName.trim(),
+                        role: 'student'
+                    }
+                }
+            });
+
+            if (authError) throw authError;
+
+            // 3. Insert Student Record
             const { error: insertError } = await supabase
                 .from('students')
                 .insert({
+                    id: authData.user.id,
                     full_name: formData.fullName.trim(),
                     student_id: formData.studentId.trim(),
                     gender: formData.gender,
@@ -170,7 +195,7 @@ const RegisterStudent = ({ onCancel }) => {
 
             if (insertError) throw insertError;
 
-            // 3. Log the action
+            // 4. Log the action
             await logAuditAction({
                 action: 'Registered Student',
                 resource: formData.studentId,
@@ -283,6 +308,41 @@ const RegisterStudent = ({ onCancel }) => {
                                     className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#f47c20]/20 focus:border-[#f47c20] placeholder:text-gray-400"
                                 />
                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Password Settings */}
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-6 mb-8">
+                    <div className="flex items-center gap-2.5 mb-5">
+                        <Lock className="w-4 h-4 text-[#f47c20]" />
+                        <h3 className="text-sm font-bold text-gray-900">Set Student Password</h3>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-6">
+                        <div>
+                            <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Password</label>
+                            <input
+                                type="password"
+                                placeholder="••••••••"
+                                value={formData.password}
+                                onChange={(e) => handleChange('password', e.target.value)}
+                                className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#f47c20]/20 focus:border-[#f47c20] placeholder:text-gray-400"
+                                required
+                                minLength={6}
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Confirm Password</label>
+                            <input
+                                type="password"
+                                placeholder="••••••••"
+                                value={formData.confirmPassword}
+                                onChange={(e) => handleChange('confirmPassword', e.target.value)}
+                                className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#f47c20]/20 focus:border-[#f47c20] placeholder:text-gray-400"
+                                required
+                                minLength={6}
+                            />
                         </div>
                     </div>
                 </div>

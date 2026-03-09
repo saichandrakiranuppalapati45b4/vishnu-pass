@@ -88,11 +88,9 @@ const Dashboard = ({ onLogout, branding, onBrandingUpdate }) => {
             case 'audit-logs':
                 return <AuditLogs onBack={() => setActivePage('admin')} />;
             case 'notifications':
-                return <Notifications />;
+                return <Notifications onBack={() => setActivePage('dashboard')} />;
             case 'flow-optimization':
                 return <FlowOptimization onBack={() => setActivePage('dashboard')} />;
-            case 'audit-logs':
-                return <AuditLogs />;
             case 'dashboard':
             default:
                 return <DashboardContent onNavigate={(page, id) => {

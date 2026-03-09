@@ -82,7 +82,7 @@ const FlowOptimization = ({ onBack }) => {
             });
 
             logs?.forEach(log => {
-                if (matrix[log.access_point_id]) {
+                if (log && log.access_point_id && matrix[log.access_point_id]) {
                     const hour = new Date(log.created_at).getHours();
                     matrix[log.access_point_id][hour]++;
                 }

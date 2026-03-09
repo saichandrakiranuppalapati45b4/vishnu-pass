@@ -69,6 +69,7 @@ const Reports = () => {
                 .order('created_at', { ascending: false });
 
             if (statsError) throw statsError;
+            if (!allLogs) return;
 
             // 2. Calculate Stats
             const now = new Date();
