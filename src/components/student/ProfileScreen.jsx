@@ -1,12 +1,25 @@
-import React from 'react';
-import { ChevronLeft, Edit2, GraduationCap, Mail, Shield, Bell, Globe, LogOut } from 'lucide-react';
+import React, { useState } from 'react';
+import { ChevronLeft, GraduationCap, Mail, Shield, Bell, Globe, LogOut } from 'lucide-react';
+import SecurityPassword from './SecurityPassword';
+import NotificationSettings from './NotificationSettings';
+import AppLanguage from './AppLanguage';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 const ProfileScreen = ({ studentData, onLogout }) => {
+    const [subPage, setSubPage] = useState(null);
+    const { language, setLanguage, t } = useLanguage();
+
+    const languageMap = {
+        en: 'English',
+        te: 'Telugu',
+        hi: 'Hindi',
+        ta: 'Tamil'
+    };
+
     const initials = studentData?.full_name
         ? studentData.full_name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
         : '??';
 
-    // Extract department short name
     const deptShort = studentData?.departments?.name
         ? studentData.departments.name.split(' ').map(w => w[0]).join('').toUpperCase()
         : 'DEPT';
@@ -16,18 +29,33 @@ const ProfileScreen = ({ studentData, onLogout }) => {
             studentData?.year_of_study === 3 ? 'rd' : 'th'
         } Year`;
 
+    // If on a sub-page, render that instead
+    if (subPage === 'security') {
+        return <SecurityPassword onBack={() => setSubPage(null)} />;
+    }
+    if (subPage === 'notifications') {
+        return <NotificationSettings onBack={() => setSubPage(null)} />;
+    }
+    if (subPage === 'language') {
+        return <AppLanguage
+            currentLanguage={language}
+            onLanguageChange={(lang) => setLanguage(lang)}
+            onBack={() => setSubPage(null)}
+        />;
+    }
+
     const settingsItems = [
-        { icon: Shield, label: 'Security & Password', value: '', chevron: true },
-        { icon: Bell, label: 'Notifications', value: '', chevron: true },
-        { icon: Globe, label: 'App Language', value: 'English', chevron: true },
+        { icon: Shield, label: t('profile.security'), value: '', chevron: true, action: () => setSubPage('security') },
+        { icon: Bell, label: t('profile.notifications'), value: '', chevron: true, action: () => setSubPage('notifications') },
+        { icon: Globe, label: t('profile.language'), value: languageMap[language] || 'English', chevron: true, action: () => setSubPage('language') },
     ];
 
     return (
         <div className="flex-1 flex flex-col bg-[#f8f9fb] overflow-hidden">
             {/* Header */}
-            <div className="bg-white px-5 pt-12 pb-4 border-b border-gray-100 shadow-sm">
+            <div className="bg-white px-5 pt-8 pb-4 border-b border-gray-100 shadow-sm">
                 <div className="flex items-center">
-                    <h1 className="text-xl font-black text-gray-900">Student Profile</h1>
+                    <h1 className="text-xl font-black text-gray-900">{t('profile.title')}</h1>
                 </div>
             </div>
 
@@ -54,7 +82,7 @@ const ProfileScreen = ({ studentData, onLogout }) => {
 
                     {/* Name & ID */}
                     <h2 className="text-xl font-black text-gray-900 mb-1">{studentData?.full_name || 'Student'}</h2>
-                    <p className="text-sm text-gray-400 font-bold mb-3">ID: {studentData?.student_id || 'N/A'}</p>
+                    <p className="text-sm text-gray-400 font-bold mb-3">{t('profile.id')}: {studentData?.student_id || 'N/A'}</p>
 
                     {/* Badges */}
                     <div className="flex items-center gap-2">
@@ -70,7 +98,7 @@ const ProfileScreen = ({ studentData, onLogout }) => {
                 {/* Personal Information */}
                 <div className="px-5 mt-6">
                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.1em] mb-3 pl-1">
-                        Personal Information
+                        {t('profile.personalInfo')}
                     </p>
                     <div className="space-y-3">
                         {/* Department */}
@@ -79,7 +107,7 @@ const ProfileScreen = ({ studentData, onLogout }) => {
                                 <GraduationCap className="w-5 h-5 text-[#f47c20]" />
                             </div>
                             <div className="min-w-0">
-                                <p className="text-xs text-gray-400 font-medium">Department</p>
+                                <p className="text-xs text-gray-400 font-medium">{t('profile.department')}</p>
                                 <p className="text-sm font-bold text-gray-900 truncate">
                                     {studentData?.departments?.name || 'N/A'}
                                 </p>
@@ -92,7 +120,7 @@ const ProfileScreen = ({ studentData, onLogout }) => {
                                 <Mail className="w-5 h-5 text-[#f47c20]" />
                             </div>
                             <div className="min-w-0">
-                                <p className="text-xs text-gray-400 font-medium">University Email</p>
+                                <p className="text-xs text-gray-400 font-medium">{t('profile.email')}</p>
                                 <p className="text-sm font-bold text-gray-900 truncate">
                                     {studentData?.email || 'N/A'}
                                 </p>
@@ -104,7 +132,7 @@ const ProfileScreen = ({ studentData, onLogout }) => {
                 {/* Account Settings */}
                 <div className="px-5 mt-6">
                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.1em] mb-3 pl-1">
-                        Account Settings
+                        {t('profile.accountSettings')}
                     </p>
                     <div className="bg-white rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)] border border-gray-50 overflow-hidden divide-y divide-gray-50">
                         {settingsItems.map((item, i) => {
@@ -112,6 +140,7 @@ const ProfileScreen = ({ studentData, onLogout }) => {
                             return (
                                 <button
                                     key={i}
+                                    onClick={item.action}
                                     className="w-full flex items-center gap-4 p-4 hover:bg-gray-50/50 transition-colors active:scale-[0.99]"
                                 >
                                     <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center flex-shrink-0">
@@ -137,7 +166,7 @@ const ProfileScreen = ({ studentData, onLogout }) => {
                         className="w-full py-4 bg-red-50 border border-red-100 text-red-500 font-black rounded-2xl flex items-center justify-center gap-2 active:scale-95 transition-all"
                     >
                         <LogOut className="w-5 h-5" />
-                        Sign Out
+                        {t('profile.signOut')}
                     </button>
                 </div>
 

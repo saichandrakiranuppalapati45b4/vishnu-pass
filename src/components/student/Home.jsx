@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { Bell, User, ArrowRight, LogIn, LogOut, CheckCircle2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { format } from 'date-fns';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 const Home = ({ studentData }) => {
     const [logs, setLogs] = useState([]);
     const [loadingLogs, setLoadingLogs] = useState(true);
+    const { t } = useLanguage();
 
     useEffect(() => {
         const fetchLogs = async () => {
@@ -110,7 +112,7 @@ const Home = ({ studentData }) => {
                 <section>
                     <div className="flex items-center justify-between mb-6">
                         <h3 className="text-lg font-black text-gray-900 flex items-center gap-2">
-                            Recent Entry Logs
+                            {t('home.latestActivity')}
                         </h3>
                         <button className="text-sm font-bold text-[#f47c20] hover:underline">View All</button>
                     </div>
@@ -131,7 +133,7 @@ const Home = ({ studentData }) => {
                                             {log.movement_type === 'ENTRY' ? <LogIn className="w-6 h-6" /> : <LogOut className="w-6 h-6" />}
                                         </div>
                                         <div>
-                                            <h4 className="font-black text-gray-900">{log.guard_gates?.name || 'Main Gate'} - {log.movement_type || 'Entry'}</h4>
+                                            <h4 className="font-black text-gray-900">{log.guard_gates?.name || 'Main Gate'} - {log.movement_type === 'ENTRY' ? t('home.entry') : t('home.exit')}</h4>
                                             <p className="text-xs font-bold text-gray-400 tracking-wide">
                                                 {format(new Date(log.created_at), 'MMM dd, yyyy')} • {format(new Date(log.created_at), 'hh:mm a')}
                                             </p>
