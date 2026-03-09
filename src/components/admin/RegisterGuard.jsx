@@ -3,22 +3,27 @@ import { Camera, ChevronDown, Loader2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { logAuditAction } from '../../utils/auditLogger';
 
-const RegisterGuard = ({ onCancel }) => {
+const RegisterGuard = ({ onCancel, initialData }) => {
+    const isEditMode = !!initialData;
+
     const [formData, setFormData] = useState({
-        fullName: '',
-        employeeId: '',
-        contactNumber: '',
-        assignedGate: '',
-        shiftType: '',
-        emergencyName: '',
-        emergencyContact: ''
+        fullName: initialData?.full_name || '',
+        employeeId: initialData?.employee_id || '',
+        email: initialData?.email || '',
+        password: '',
+        confirmPassword: '',
+        contactNumber: initialData?.contact_number || '',
+        assignedGate: initialData?.gate_id || '',
+        shiftType: initialData?.shift_id || '',
+        emergencyName: initialData?.emergency_contact_name || '',
+        emergencyContact: initialData?.emergency_contact_number || ''
     });
 
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [gates, setGates] = useState([]);
     const [shifts, setShifts] = useState([]);
     const [photoFile, setPhotoFile] = useState(null);
-    const [photoPreview, setPhotoPreview] = useState(null);
+    const [photoPreview, setPhotoPreview] = useState(initialData?.photo_url || null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState(null);
     const fileInputRef = useRef(null);
@@ -48,8 +53,15 @@ const RegisterGuard = ({ onCancel }) => {
         setError(null);
         setIsSubmitting(true);
 
+        // Validation
+        if (!isEditMode && formData.password !== formData.confirmPassword) {
+            setError("Passwords do not match.");
+            setIsSubmitting(false);
+            return;
+        }
+
         try {
-            let photoUrl = null;
+            let photoUrl = initialData?.photo_url || null;
 
             // 1. Upload Photo if selected
             if (photoFile) {
@@ -68,25 +80,55 @@ const RegisterGuard = ({ onCancel }) => {
                 photoUrl = publicUrl;
             }
 
-            // 2. Insert Guard Record
-            const { error: insertError } = await supabase
-                .from('guards')
-                .insert({
-                    full_name: formData.fullName.trim(),
-                    employee_id: formData.employeeId.trim(),
-                    contact_number: formData.contactNumber.trim(),
-                    gate_id: formData.assignedGate || null, // UUID string
-                    shift_id: formData.shiftType || null, // UUID string
-                    emergency_contact_name: formData.emergencyName.trim(),
-                    emergency_contact_number: formData.emergencyContact.trim(),
-                    photo_url: photoUrl
+            const guardPayload = {
+                full_name: formData.fullName.trim(),
+                employee_id: formData.employeeId.trim(),
+                email: formData.email.trim(),
+                contact_number: formData.contactNumber.trim(),
+                gate_id: formData.assignedGate || null, // UUID string
+                shift_id: formData.shiftType || null, // UUID string
+                emergency_contact_name: formData.emergencyName.trim(),
+                emergency_contact_number: formData.emergencyContact.trim(),
+                photo_url: photoUrl
+            };
+
+            // 2. Auth & Database Record
+            if (isEditMode) {
+                // Update Guard Record
+                const { error: updateError } = await supabase
+                    .from('guards')
+                    .update(guardPayload)
+                    .eq('id', initialData.id);
+                if (updateError) throw updateError;
+            } else {
+                // a. Create Auth User
+                const { data: authData, error: authError } = await supabase.auth.signUp({
+                    email: formData.email.trim(),
+                    password: formData.password,
+                    options: {
+                        data: {
+                            full_name: formData.fullName.trim(),
+                            role: 'guard'
+                        }
+                    }
                 });
 
-            if (insertError) throw insertError;
+                if (authError) throw authError;
+
+                // b. Insert Guard Record
+                const { error: insertError } = await supabase
+                    .from('guards')
+                    .insert({
+                        id: authData.user.id,
+                        ...guardPayload
+                    });
+
+                if (insertError) throw insertError;
+            }
 
             // 3. Log the action
             await logAuditAction({
-                action: 'Registered Guard',
+                action: isEditMode ? 'Updated Guard' : 'Registered Guard',
                 resource: formData.employeeId,
                 details: {
                     name: formData.fullName,
@@ -109,15 +151,21 @@ const RegisterGuard = ({ onCancel }) => {
         <div className="flex-1 overflow-y-auto p-8 bg-gray-50/30">
             {/* Page Header */}
             <div className="mb-8">
-                <h1 className="text-[26px] font-bold text-gray-900 mb-1">Register New Guard</h1>
+                <h1 className="text-[26px] font-bold text-gray-900 mb-1">
+                    {isEditMode ? 'Edit Guard Profile' : 'Register New Guard'}
+                </h1>
             </div>
 
             {/* Main Content Card */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden max-w-4xl animate-in fade-in slide-in-from-bottom-4 duration-500">
                 {/* Card Header */}
                 <div className="p-8 border-b border-gray-50">
-                    <h2 className="text-xl font-bold text-gray-900 mb-1">New Guard Registration</h2>
-                    <p className="text-sm text-gray-500 font-medium">Enter details to register a new security personnel for campus gate management.</p>
+                    <h2 className="text-xl font-bold text-gray-900 mb-1">
+                        {isEditMode ? 'Edit Details' : 'New Guard Registration'}
+                    </h2>
+                    <p className="text-sm text-gray-500 font-medium">
+                        {isEditMode ? 'Update the details for this security personnel.' : 'Enter details to register a new security personnel for campus gate management.'}
+                    </p>
                 </div>
 
                 <div className="p-8">
@@ -144,7 +192,9 @@ const RegisterGuard = ({ onCancel }) => {
                                     ) : (
                                         <>
                                             <Camera className="w-6 h-6 mb-1 text-[#94a3b8] group-hover:text-[#64748b] transition-colors" />
-                                            <span className="text-[9px] font-bold tracking-wider uppercase">Upload</span>
+                                            <span className="text-[9px] font-bold tracking-wider uppercase">
+                                                {isEditMode ? 'Update Photo' : 'Upload'}
+                                            </span>
                                         </>
                                     )}
                                 </button>
@@ -189,6 +239,48 @@ const RegisterGuard = ({ onCancel }) => {
                                     required
                                 />
                             </div>
+
+                            {/* Email Address */}
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-2">Email Address</label>
+                                <input
+                                    type="email"
+                                    placeholder="guard@university.edu"
+                                    value={formData.email}
+                                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                    className="w-full px-4 py-2.5 bg-gray-50/50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#f47c20]/20 focus:border-[#f47c20] text-sm font-medium transition-colors"
+                                    required
+                                />
+                            </div>
+
+                            {!isEditMode && (
+                                <>
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">Set Password</label>
+                                        <input
+                                            type="password"
+                                            placeholder="••••••••"
+                                            value={formData.password}
+                                            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                            className="w-full px-4 py-2.5 bg-gray-50/50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#f47c20]/20 focus:border-[#f47c20] text-sm font-medium transition-colors"
+                                            required
+                                            minLength={6}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">Confirm Password</label>
+                                        <input
+                                            type="password"
+                                            placeholder="••••••••"
+                                            value={formData.confirmPassword}
+                                            onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                                            className="w-full px-4 py-2.5 bg-gray-50/50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#f47c20]/20 focus:border-[#f47c20] text-sm font-medium transition-colors"
+                                            required
+                                            minLength={6}
+                                        />
+                                    </div>
+                                </>
+                            )}
 
                             {/* Contact Number */}
                             <div>
@@ -339,7 +431,10 @@ const RegisterGuard = ({ onCancel }) => {
                                 className={`px-6 py-2.5 bg-[#f47c20] hover:bg-[#e06d1c] text-white rounded-lg text-sm font-bold transition-colors shadow-sm flex items-center gap-2 ${isSubmitting ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'}`}
                             >
                                 {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
-                                {isSubmitting ? 'Registering...' : 'Register Guard'}
+                                {isEditMode
+                                    ? (isSubmitting ? 'Saving...' : 'Save Changes')
+                                    : (isSubmitting ? 'Registering...' : 'Register Guard')
+                                }
                             </button>
                         </div>
                     </form>

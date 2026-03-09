@@ -40,7 +40,7 @@ const LoginScreen = ({ onLogin, branding }) => {
                 return;
             }
 
-            // If not admin, check for student
+            // Check student
             const { data: studentData } = await supabase
                 .from('students')
                 .select('*, departments(name)')
@@ -53,10 +53,24 @@ const LoginScreen = ({ onLogin, branding }) => {
                 return;
             }
 
+            // Check guard
+            const { data: guardData } = await supabase
+                .from('guards')
+                .select('*, guard_gates(name), guard_shifts(name)')
+                .eq('email', email.trim())
+                .single();
+
+            if (guardData) {
+                onLogin('guard', guardData);
+                setLoading(false);
+                return;
+            }
+
             // If neither, access denied
             setError('Access denied. No account found for this user.');
             await supabase.auth.signOut();
-        } catch {
+        } catch (err) {
+            console.error(err);
             setError('Something went wrong. Please try again.');
         }
 

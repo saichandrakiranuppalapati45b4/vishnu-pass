@@ -3,13 +3,14 @@ import SplashScreen from './components/SplashScreen';
 import LoginScreen from './components/LoginScreen';
 import Dashboard from './components/admin/Dashboard';
 import StudentDashboard from './components/student/StudentDashboard';
+import GuardDashboard from './components/guard/GuardDashboard';
 import { supabase } from './lib/supabase';
 
 function App() {
   const [showSplash, setShowSplash] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
-  const [userRole, setUserRole] = useState(null); // 'admin' | 'student'
+  const [userRole, setUserRole] = useState(null); // 'admin' | 'student' | 'guard'
   const [userData, setUserData] = useState(null);
   const [branding, setBranding] = useState({
     portalLogo: null,
@@ -67,6 +68,21 @@ function App() {
         if (studentData && mounted) {
           setUserRole('student');
           setUserData(studentData);
+          setIsLoggedIn(true);
+          setIsAuthLoading(false);
+          return;
+        }
+
+        // Check guard
+        const { data: guardData } = await supabase
+          .from('guards')
+          .select('*, guard_gates(name), guard_shifts(name)')
+          .eq('email', user.email)
+          .single();
+
+        if (guardData && mounted) {
+          setUserRole('guard');
+          setUserData(guardData);
           setIsLoggedIn(true);
           setIsAuthLoading(false);
           return;
@@ -140,6 +156,8 @@ function App() {
       ) : isLoggedIn ? (
         userRole === 'admin' ? (
           <Dashboard onLogout={handleLogout} branding={branding} onBrandingUpdate={handleBrandingUpdate} />
+        ) : userRole === 'guard' ? (
+          <GuardDashboard onLogout={handleLogout} guardData={userData} />
         ) : (
           <StudentDashboard onLogout={handleLogout} studentData={userData} />
         )

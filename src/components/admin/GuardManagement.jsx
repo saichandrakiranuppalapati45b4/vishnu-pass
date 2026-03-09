@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronRight, ChevronLeft, MoreVertical, MapPin } from 'lucide-react';
 import RegisterGuard from './RegisterGuard';
+import GuardProfile from './GuardProfile';
 import { supabase } from '../../lib/supabase';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -21,6 +22,9 @@ const stringToColor = (name) => {
 const GuardManagement = () => {
     const [activeTab, setActiveTab] = useState('all');
     const [isRegistering, setIsRegistering] = useState(false);
+    const [selectedGuard, setSelectedGuard] = useState(null);
+    const [openDropdownId, setOpenDropdownId] = useState(null);
+    const [editGuardData, setEditGuardData] = useState(null);
     const [guards, setGuards] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -62,10 +66,61 @@ const GuardManagement = () => {
         return false;
     });
 
+    const handleActionClick = (e, guardId) => {
+        e.stopPropagation(); // Prevent opening the profile view
+        setOpenDropdownId(openDropdownId === guardId ? null : guardId);
+    };
+
+    const handleEditGuard = (e, guard) => {
+        e.stopPropagation();
+        setOpenDropdownId(null);
+        setEditGuardData(guard);
+        setIsRegistering(true);
+    };
+
+    const handleDeleteGuard = async (e, guardId) => {
+        e.stopPropagation();
+        setOpenDropdownId(null);
+        if (window.confirm("Are you sure you want to delete this guard profile?")) {
+            // Delete logic would go here
+            try {
+                const { error } = await supabase.from('guards').delete().eq('id', guardId);
+                if (error) throw error;
+                fetchGuards();
+            } catch (err) {
+                console.error("Error deleting guard:", err);
+                alert("Failed to delete guard.");
+            }
+        }
+    };
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = () => setOpenDropdownId(null);
+        document.addEventListener('click', handleClickOutside);
+        return () => document.removeEventListener('click', handleClickOutside);
+    }, []);
+
     return (
         <>
             {isRegistering ? (
-                <RegisterGuard onCancel={() => setIsRegistering(false)} />
+                <RegisterGuard
+                    initialData={editGuardData}
+                    onCancel={() => {
+                        setIsRegistering(false);
+                        setEditGuardData(null);
+                    }}
+                />
+            ) : selectedGuard ? (
+                <GuardProfile
+                    guard={selectedGuard}
+                    onBack={() => setSelectedGuard(null)}
+                    onEdit={(guard) => {
+                        setEditGuardData(guard);
+                        setSelectedGuard(null);
+                        setIsRegistering(true);
+                    }}
+                />
             ) : (
                 <div className="flex-1 overflow-y-auto p-8">
                     {/* Header */}
@@ -148,7 +203,11 @@ const GuardManagement = () => {
                                     </tr>
                                 ) : (
                                     filteredGuards.map((guard) => (
-                                        <tr key={guard.id} className="hover:bg-gray-50/50 transition-colors group">
+                                        <tr
+                                            key={guard.id}
+                                            onClick={() => setSelectedGuard(guard)}
+                                            className="hover:bg-gray-50/50 transition-colors group cursor-pointer"
+                                        >
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-3">
                                                     {guard.photo_url ? (
@@ -183,10 +242,31 @@ const GuardManagement = () => {
                                             <td className="px-6 py-4 text-sm text-gray-500 font-medium">
                                                 {guard.created_at ? `${formatDistanceToNow(new Date(guard.created_at))} ago` : '-'}
                                             </td>
-                                            <td className="px-6 py-4 text-right">
-                                                <button className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors opacity-0 group-hover:opacity-100">
+                                            <td className="px-6 py-4 text-right relative">
+                                                <button
+                                                    onClick={(e) => handleActionClick(e, guard.id)}
+                                                    className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                                                >
                                                     <MoreVertical className="w-4 h-4" />
                                                 </button>
+
+                                                {/* Dropdown Menu */}
+                                                {openDropdownId === guard.id && (
+                                                    <div className="absolute right-6 top-10 w-40 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-50 animate-in fade-in zoom-in-95 duration-100">
+                                                        <button
+                                                            onClick={(e) => handleEditGuard(e, guard)}
+                                                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-[#f47c20] transition-colors"
+                                                        >
+                                                            Edit Profile
+                                                        </button>
+                                                        <button
+                                                            onClick={(e) => handleDeleteGuard(e, guard.id)}
+                                                            className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                                                        >
+                                                            Delete Profile
+                                                        </button>
+                                                    </div>
+                                                )}
                                             </td>
                                         </tr>
                                     ))
