@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { User, GraduationCap, Camera, ChevronDown } from 'lucide-react';
+import { User, GraduationCap, Camera, ChevronDown, Loader2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { logAuditAction } from '../../utils/auditLogger';
 
 // Custom Dropdown Component
 const CustomSelect = ({ label, value, options, placeholder = 'Select', onChange }) => {
@@ -72,6 +73,12 @@ const hostelOptions = [
     { value: 'hosteler', label: 'Hosteler' },
 ];
 
+const batchOptions = [
+    { value: '2023', label: 'Batch 2023' },
+    { value: '2024', label: 'Batch 2024' },
+    { value: '2025', label: 'Batch 2025' },
+];
+
 const RegisterStudent = ({ onCancel }) => {
     const [formData, setFormData] = useState({
         fullName: '',
@@ -81,10 +88,16 @@ const RegisterStudent = ({ onCancel }) => {
         department: '',
         yearOfStudy: '',
         hostel: '',
+        batch: '2024',
     });
 
     const [departments, setDepartments] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [photoFile, setPhotoFile] = useState(null);
+    const [photoPreview, setPhotoPreview] = useState(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [error, setError] = useState(null);
+    const fileInputRef = useRef(null);
 
     // Fetch live departments from Supabase
     useEffect(() => {
@@ -107,11 +120,75 @@ const RegisterStudent = ({ onCancel }) => {
         setFormData((prev) => ({ ...prev, [field]: value }));
     };
 
-    const handleSubmit = (e) => {
+    const handlePhotoChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            setPhotoFile(file);
+            setPhotoPreview(URL.createObjectURL(file));
+        }
+    };
+
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        // Future: save to Supabase
-        alert('Student record added successfully!');
-        onCancel();
+        setError(null);
+        setIsSubmitting(true);
+
+        try {
+            let photoUrl = null;
+
+            // 1. Upload Photo if selected
+            if (photoFile) {
+                const fileExt = photoFile.name.split('.').pop();
+                const fileName = `student_${Date.now()}.${fileExt}`;
+                const { error: uploadError } = await supabase.storage
+                    .from('students')
+                    .upload(fileName, photoFile);
+
+                if (uploadError) throw uploadError;
+
+                const { data: { publicUrl } } = supabase.storage
+                    .from('students')
+                    .getPublicUrl(fileName);
+
+                photoUrl = publicUrl;
+            }
+
+            // 2. Insert Student Record
+            const { error: insertError } = await supabase
+                .from('students')
+                .insert({
+                    full_name: formData.fullName.trim(),
+                    student_id: formData.studentId.trim(),
+                    gender: formData.gender,
+                    email: formData.email.trim(),
+                    department_id: formData.department || null,
+                    year_of_study: formData.yearOfStudy,
+                    hostel_type: formData.hostel,
+                    batch: formData.batch,
+                    photo_url: photoUrl
+                });
+
+            if (insertError) throw insertError;
+
+            // 3. Log the action
+            await logAuditAction({
+                action: 'Registered Student',
+                resource: formData.studentId,
+                details: {
+                    name: formData.fullName,
+                    department: formData.department,
+                    batch: formData.batch
+                }
+            });
+
+            // Success
+            onCancel();
+        } catch (err) {
+            console.error("Error registering student:", err);
+            setError(err.message || 'Failed to register student. Please try again.');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (
@@ -127,9 +204,27 @@ const RegisterStudent = ({ onCancel }) => {
                     {/* Student Photo */}
                     <div className="col-span-1 bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-6 flex flex-col items-center">
                         <h3 className="text-sm font-semibold text-gray-900 mb-5 self-start">Student Photo</h3>
-                        <div className="w-28 h-28 bg-[#f4f6f8] border-2 border-dashed border-gray-200 rounded-2xl flex flex-col items-center justify-center mb-4 cursor-pointer hover:border-[#f47c20] hover:bg-orange-50/30 transition-colors group">
-                            <Camera className="w-6 h-6 text-gray-300 group-hover:text-[#f47c20] transition-colors mb-1" />
-                            <span className="text-[10px] text-gray-400 font-medium group-hover:text-[#f47c20] transition-colors">Upload Image</span>
+
+                        <input
+                            type="file"
+                            ref={fileInputRef}
+                            onChange={handlePhotoChange}
+                            accept="image/*"
+                            className="hidden"
+                        />
+
+                        <div
+                            onClick={() => fileInputRef.current.click()}
+                            className="w-28 h-28 bg-[#f4f6f8] border-2 border-dashed border-gray-200 rounded-2xl flex flex-col items-center justify-center mb-4 cursor-pointer hover:border-[#f47c20] hover:bg-orange-50/30 transition-colors group overflow-hidden"
+                        >
+                            {photoPreview ? (
+                                <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
+                            ) : (
+                                <>
+                                    <Camera className="w-6 h-6 text-gray-300 group-hover:text-[#f47c20] transition-colors mb-1" />
+                                    <span className="text-[10px] text-gray-400 font-medium group-hover:text-[#f47c20] transition-colors">Upload Image</span>
+                                </>
+                            )}
                         </div>
                         <p className="text-[10px] text-gray-400 font-medium text-center leading-relaxed mt-auto">
                             Upload a high-quality portrait photo.<br />
@@ -199,7 +294,7 @@ const RegisterStudent = ({ onCancel }) => {
                         <h3 className="text-sm font-bold text-gray-900">Academic Details</h3>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div className="grid grid-cols-3 gap-4 mb-4">
                         <CustomSelect
                             label="Department"
                             value={formData.department}
@@ -208,10 +303,16 @@ const RegisterStudent = ({ onCancel }) => {
                             onChange={(val) => handleChange('department', val)}
                         />
                         <CustomSelect
-                            label="Year of Study"
+                            label="Year"
                             value={formData.yearOfStudy}
                             options={yearOptions}
                             onChange={(val) => handleChange('yearOfStudy', val)}
+                        />
+                        <CustomSelect
+                            label="Batch"
+                            value={formData.batch}
+                            options={batchOptions}
+                            onChange={(val) => handleChange('batch', val)}
                         />
                     </div>
 
@@ -224,20 +325,38 @@ const RegisterStudent = ({ onCancel }) => {
                 </div>
 
                 {/* Actions */}
-                <div className="flex items-center justify-end gap-4">
-                    <button
-                        type="button"
-                        onClick={onCancel}
-                        className="px-6 py-2.5 text-sm font-semibold text-gray-600 hover:text-gray-800 transition-colors"
-                    >
-                        Cancel
-                    </button>
-                    <button
-                        type="submit"
-                        className="px-6 py-2.5 bg-[#f47c20] hover:bg-[#e06d1c] text-white font-semibold rounded-xl text-sm transition-colors shadow-sm"
-                    >
-                        Add Student Record
-                    </button>
+                <div className="flex items-center justify-between gap-4">
+                    <div className="flex-1">
+                        {error && (
+                            <p className="text-xs font-bold text-red-500 bg-red-50 px-3 py-2 rounded-lg inline-block">
+                                Error: {error}
+                            </p>
+                        )}
+                    </div>
+                    <div className="flex items-center gap-4">
+                        <button
+                            type="button"
+                            onClick={onCancel}
+                            disabled={isSubmitting}
+                            className="px-6 py-2.5 text-sm font-semibold text-gray-600 hover:text-gray-800 transition-colors disabled:opacity-50 cursor-pointer"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={isSubmitting}
+                            className="flex items-center gap-2 px-6 py-2.5 bg-[#f47c20] hover:bg-[#e06d1c] text-white font-semibold rounded-xl text-sm transition-colors shadow-sm disabled:opacity-50 cursor-pointer"
+                        >
+                            {isSubmitting ? (
+                                <>
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    Saving...
+                                </>
+                            ) : (
+                                'Add Student Record'
+                            )}
+                        </button>
+                    </div>
                 </div>
             </form>
         </div>

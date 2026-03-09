@@ -2,11 +2,14 @@ import React, { useState } from 'react';
 import SplashScreen from './components/SplashScreen';
 import LoginScreen from './components/LoginScreen';
 import Dashboard from './components/admin/Dashboard';
+import StudentDashboard from './components/student/StudentDashboard';
 import { supabase } from './lib/supabase';
 
 function App() {
   const [showSplash, setShowSplash] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userRole, setUserRole] = useState(null); // 'admin' | 'student'
+  const [userData, setUserData] = useState(null);
   const [branding, setBranding] = useState({
     portalLogo: null,
     loginBackground: null,
@@ -38,15 +41,28 @@ function App() {
     setBranding(prev => ({ ...prev, [key]: value }));
   };
 
-  const handleLogin = () => setIsLoggedIn(true);
-  const handleLogout = () => setIsLoggedIn(false);
+  const handleLogin = (role, data) => {
+    setUserRole(role);
+    setUserData(data);
+    setIsLoggedIn(true);
+  };
+
+  const handleLogout = () => {
+    setUserRole(null);
+    setUserData(null);
+    setIsLoggedIn(false);
+  };
 
   return (
     <>
       {showSplash ? (
         <SplashScreen onFinish={() => setShowSplash(false)} branding={branding} />
       ) : isLoggedIn ? (
-        <Dashboard onLogout={handleLogout} branding={branding} onBrandingUpdate={handleBrandingUpdate} />
+        userRole === 'admin' ? (
+          <Dashboard onLogout={handleLogout} branding={branding} onBrandingUpdate={handleBrandingUpdate} />
+        ) : (
+          <StudentDashboard onLogout={handleLogout} studentData={userData} />
+        )
       ) : (
         <LoginScreen onLogin={handleLogin} branding={branding} />
       )}

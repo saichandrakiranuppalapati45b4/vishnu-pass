@@ -1,36 +1,173 @@
-import React from 'react';
-import { ChevronDown, MoreVertical, TrendingUp, Clock, ArrowUpRight } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ChevronDown, TrendingUp, Clock, ArrowUpRight, Loader2 } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
+import { formatDistanceToNow } from 'date-fns';
 
-const logs = [
-    {
-        name: 'John Doe',
-        id: 'ID: #VP-3029',
-        accessPoint: 'North Gate 02',
-        type: 'AUTHORIZED',
-        typeColor: 'text-blue-600 bg-blue-50',
-        status: 'Success',
-        statusColor: 'text-emerald-600',
-        timestamp: '2023-11-24 14:23:18',
-        avatar: '#4f46e5',
-    },
-    {
-        name: 'Marcus Smith',
-        id: 'ID: #VP-8821',
-        accessPoint: 'South Cargo Gate',
-        type: 'MANUAL OVERRIDE',
-        typeColor: 'text-amber-600 bg-amber-50',
-        status: 'Success',
-        statusColor: 'text-emerald-600',
-        timestamp: '2023-11-24 14:18:45',
-        avatar: '#059669',
-    },
-];
+// Helper function to generate a consistent color from a name
+const stringToColor = (name) => {
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+        hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    let color = '#';
+    for (let i = 0; i < 3; i++) {
+        const value = (hash >> (i * 8)) & 0xff;
+        color += `00${value.toString(16)}`.slice(-2);
+    }
+    return color;
+};
 
-// SVG path for the wave chart
-const chartPath = 'M 30 140 C 60 140, 70 60, 100 80 C 130 100, 140 40, 170 50 C 200 60, 210 130, 240 120 C 270 110, 280 30, 310 40 C 340 50, 350 100, 380 110 C 410 120, 420 60, 450 70 C 480 80, 490 140, 520 130';
-const chartFill = 'M 30 140 C 60 140, 70 60, 100 80 C 130 100, 140 40, 170 50 C 200 60, 210 130, 240 120 C 270 110, 280 30, 310 40 C 340 50, 350 100, 380 110 C 410 120, 420 60, 450 70 C 480 80, 490 140, 520 130 L 520 180 L 30 180 Z';
+const movementTypeStyles = {
+    'AUTHORIZED': 'text-blue-600 bg-blue-50',
+    'MANUAL OVERRIDE': 'text-amber-600 bg-amber-50',
+    'GUEST ACCESS': 'text-emerald-600 bg-emerald-50',
+};
 
 const Reports = () => {
+    const [logs, setLogs] = useState([]);
+    const [stats, setStats] = useState({
+        total: 0,
+        weeklyIncrease: 0,
+        peakHour: 'N/A',
+        peakHourEntries: 0
+    });
+    const [accessTypes, setAccessTypes] = useState({
+        authorized: 0,
+        override: 0,
+        guest: 0
+    });
+    const [trendData, setTrendData] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        fetchInitialData();
+
+        // Real-time subscription
+        const channel = supabase
+            .channel('reports_changes')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'movement_logs' }, () => {
+                fetchInitialData(false); // Refresh data on new entry
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, []);
+
+    const fetchInitialData = async (showLoading = true) => {
+        if (showLoading) setLoading(true);
+        try {
+            // 1. Fetch all logs and try to join with students
+            const { data: allLogs, error: statsError } = await supabase
+                .from('movement_logs')
+                .select(`
+                    *,
+                    guard_gates(name),
+                    students:student_id (full_name, photo_url)
+                `)
+                .order('created_at', { ascending: false });
+
+            if (statsError) throw statsError;
+
+            // 2. Calculate Stats
+            const now = new Date();
+            const last7Days = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            const prev7Days = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+
+            const logsLast7Days = allLogs.filter(l => new Date(l.created_at) >= last7Days);
+            const logsPrev7Days = allLogs.filter(l => new Date(l.created_at) >= prev7Days && new Date(l.created_at) < last7Days);
+
+            const total = allLogs.length;
+            const weeklyInc = logsPrev7Days.length > 0
+                ? ((logsLast7Days.length - logsPrev7Days.length) / logsPrev7Days.length) * 100
+                : 0;
+
+            // Group by hour for peak hour
+            const hourCounts = {};
+            allLogs.forEach(l => {
+                const hour = new Date(l.created_at).getHours();
+                hourCounts[hour] = (hourCounts[hour] || 0) + 1;
+            });
+            const peakHourId = Object.keys(hourCounts).reduce((a, b) => hourCounts[a] > hourCounts[b] ? a : b, '0');
+            const peakHourStr = `${peakHourId.padStart(2, '0')}:00 - ${(parseInt(peakHourId) + 1).toString().padStart(2, '0')}:00`;
+
+            setStats({
+                total,
+                weeklyIncrease: weeklyInc.toFixed(1),
+                peakHour: peakHourStr,
+                peakHourEntries: peakHourId in hourCounts ? Math.round(hourCounts[peakHourId] / 7) : 0
+            });
+
+            // 3. Access Types
+            const types = { 'AUTHORIZED': 0, 'MANUAL OVERRIDE': 0, 'GUEST ACCESS': 0 };
+            allLogs.forEach(l => types[l.movement_type] = (types[l.movement_type] || 0) + 1);
+            setAccessTypes({
+                authorized: types['AUTHORIZED'],
+                override: types['MANUAL OVERRIDE'],
+                guest: types['GUEST ACCESS']
+            });
+
+            // 4. Trend Data (Last 7 days)
+            const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+            const trend = Array(7).fill(0).map((_, i) => {
+                const date = new Date(now.getTime() - (6 - i) * 24 * 60 * 60 * 1000);
+                const count = allLogs.filter(l => new Date(l.created_at).toDateString() === date.toDateString()).length;
+                return { day: days[date.getDay()], count };
+            });
+            setTrendData(trend);
+
+            // 5. Recent Logs
+            setLogs(allLogs.slice(0, 10));
+
+        } catch (error) {
+            console.error('Error fetching reports data:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Calculate chart path based on dynamic trendData
+    const maxVal = Math.max(...trendData.map(d => d.count), 10);
+    const getChartPath = () => {
+        if (trendData.length === 0) return '';
+        const width = 490;
+        const height = 120;
+        const spacing = width / 6;
+
+        let path = `M 30 ${160 - (trendData[0].count / maxVal) * height}`;
+        trendData.slice(1).forEach((d, i) => {
+            path += ` L ${30 + (i + 1) * spacing} ${160 - (d.count / maxVal) * height}`;
+        });
+        return path;
+    };
+
+    const getChartFill = () => {
+        const path = getChartPath();
+        if (!path) return '';
+        return `${path} L 520 180 L 30 180 Z`;
+    };
+
+    if (loading) {
+        return (
+            <div className="flex-1 flex items-center justify-center bg-gray-50/30">
+                <div className="flex flex-col items-center gap-3">
+                    <Loader2 className="w-8 h-8 text-[#f47c20] animate-spin" />
+                    <p className="text-sm font-semibold text-gray-500">Generating real-time analytics...</p>
+                </div>
+            </div>
+        );
+    }
+
+    const totalAccess = accessTypes.authorized + accessTypes.override + accessTypes.guest || 1;
+    const authPct = Math.round((accessTypes.authorized / totalAccess) * 100);
+    const overPct = Math.round((accessTypes.override / totalAccess) * 100);
+    const guestPct = 100 - authPct - overPct;
+
+    const strokeDash = 376.99; // 2 * PI * 60
+    const authOffset = 0;
+    const overOffset = -(authPct / 100) * strokeDash;
+    const guestOffset = -((authPct + overPct) / 100) * strokeDash;
     return (
         <div className="flex-1 overflow-y-auto p-8">
 
@@ -44,10 +181,10 @@ const Reports = () => {
                             <TrendingUp className="w-4 h-4 text-red-500" />
                         </div>
                     </div>
-                    <h3 className="text-[28px] font-bold text-gray-900 leading-tight mb-1">12,840</h3>
-                    <p className="text-xs text-emerald-500 font-semibold flex items-center gap-1">
-                        <ArrowUpRight className="w-3 h-3" />
-                        +5.2% from last week
+                    <h3 className="text-[28px] font-bold text-gray-900 leading-tight mb-1">{stats.total.toLocaleString()}</h3>
+                    <p className={`text-xs font-semibold flex items-center gap-1 ${parseFloat(stats.weeklyIncrease) >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                        <ArrowUpRight className={`w-3 h-3 ${parseFloat(stats.weeklyIncrease) < 0 ? 'rotate-90' : ''}`} />
+                        {stats.weeklyIncrease}% from last week
                     </p>
                 </div>
 
@@ -59,8 +196,8 @@ const Reports = () => {
                             <Clock className="w-4 h-4 text-[#f47c20]" />
                         </div>
                     </div>
-                    <h3 className="text-[28px] font-bold text-gray-900 leading-tight mb-1">14:00 - 15:00</h3>
-                    <p className="text-xs text-gray-400 font-medium">Average 842 entries/hr</p>
+                    <h3 className="text-[28px] font-bold text-gray-900 leading-tight mb-1">{stats.peakHour}</h3>
+                    <p className="text-xs text-gray-400 font-medium">Average {stats.peakHourEntries} entries/hr</p>
                 </div>
 
                 {/* Weekly Increase */}
@@ -71,8 +208,8 @@ const Reports = () => {
                             <ArrowUpRight className="w-4 h-4 text-emerald-500" />
                         </div>
                     </div>
-                    <h3 className="text-[28px] font-bold text-emerald-600 leading-tight mb-1">+12.5%</h3>
-                    <p className="text-xs text-gray-400 font-medium">Compared to previous period</p>
+                    <h3 className="text-[28px] font-bold text-emerald-600 leading-tight mb-1">+{authPct}%</h3>
+                    <p className="text-xs text-gray-400 font-medium">Authorized Authorization Rate</p>
                 </div>
             </div>
 
@@ -101,15 +238,18 @@ const Reports = () => {
                             <line x1="30" y1="160" x2="520" y2="160" stroke="#f1f5f9" strokeWidth="1" />
 
                             {/* Fill area */}
-                            <path d={chartFill} fill="url(#orangeGradient)" />
+                            <path d={getChartFill()} fill="url(#orangeGradient)" />
 
                             {/* Line */}
-                            <path d={chartPath} fill="none" stroke="#f47c20" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                            <path d={getChartPath()} fill="none" stroke="#f47c20" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
 
-                            {/* Dots at peaks */}
-                            <circle cx="170" cy="50" r="4" fill="#f47c20" />
-                            <circle cx="310" cy="40" r="4" fill="#f47c20" />
-                            <circle cx="450" cy="70" r="4" fill="#f47c20" />
+                            {/* Dynamic Dots at keys */}
+                            {trendData.map((d, i) => {
+                                const width = 490;
+                                const height = 120;
+                                const spacing = width / 6;
+                                return <circle key={i} cx={30 + i * spacing} cy={160 - (d.count / maxVal) * height} r="4" fill="#f47c20" />;
+                            })}
 
                             {/* Gradient definition */}
                             <defs>
@@ -121,8 +261,8 @@ const Reports = () => {
                         </svg>
                         {/* X-axis labels */}
                         <div className="flex justify-between px-4 mt-1">
-                            {['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'].map((day) => (
-                                <span key={day} className="text-[10px] font-bold text-gray-300 uppercase tracking-wider">{day}</span>
+                            {trendData.map((d, i) => (
+                                <span key={i} className="text-[10px] font-bold text-gray-300 uppercase tracking-wider">{d.day}</span>
                             ))}
                         </div>
                     </div>
@@ -141,32 +281,32 @@ const Reports = () => {
                             <svg width="160" height="160" viewBox="0 0 160 160">
                                 {/* Background */}
                                 <circle cx="80" cy="80" r="60" fill="none" stroke="#f1f5f9" strokeWidth="20" />
-                                {/* Authorized - 70% = 252° */}
+                                {/* Authorized */}
                                 <circle cx="80" cy="80" r="60" fill="none" stroke="#f47c20" strokeWidth="20"
-                                    strokeDasharray="264 376.99"
-                                    strokeDashoffset="0"
+                                    strokeDasharray={`${(authPct / 100) * strokeDash} ${strokeDash}`}
+                                    strokeDashoffset={authOffset}
                                     transform="rotate(-90 80 80)"
                                     strokeLinecap="round"
                                 />
-                                {/* Manual Override - 20% = 72° */}
+                                {/* Manual Override */}
                                 <circle cx="80" cy="80" r="60" fill="none" stroke="#7c3aed" strokeWidth="20"
-                                    strokeDasharray="75.4 376.99"
-                                    strokeDashoffset="-264"
+                                    strokeDasharray={`${(overPct / 100) * strokeDash} ${strokeDash}`}
+                                    strokeDashoffset={overOffset}
                                     transform="rotate(-90 80 80)"
                                     strokeLinecap="round"
                                 />
-                                {/* Guest Access - 10% = 36° */}
+                                {/* Guest Access */}
                                 <circle cx="80" cy="80" r="60" fill="none" stroke="#84cc16" strokeWidth="20"
-                                    strokeDasharray="37.7 376.99"
-                                    strokeDashoffset="-339.4"
+                                    strokeDasharray={`${(guestPct / 100) * strokeDash} ${strokeDash}`}
+                                    strokeDashoffset={guestOffset}
                                     transform="rotate(-90 80 80)"
                                     strokeLinecap="round"
                                 />
                             </svg>
                             {/* Center text */}
                             <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                <span className="text-2xl font-bold text-gray-900">2.4k</span>
-                                <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">Daily Avg</span>
+                                <span className="text-2xl font-bold text-gray-900">{stats.total.toLocaleString()}</span>
+                                <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">Total</span>
                             </div>
                         </div>
                     </div>
@@ -178,21 +318,21 @@ const Reports = () => {
                                 <span className="w-2.5 h-2.5 rounded-full bg-[#f47c20]"></span>
                                 <span className="text-sm text-gray-600 font-medium">Authorized</span>
                             </div>
-                            <span className="text-sm font-bold text-gray-900">70%</span>
+                            <span className="text-sm font-bold text-gray-900">{authPct}%</span>
                         </div>
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                                 <span className="w-2.5 h-2.5 rounded-full bg-[#7c3aed]"></span>
                                 <span className="text-sm text-gray-600 font-medium">Manual Override</span>
                             </div>
-                            <span className="text-sm font-bold text-gray-900">20%</span>
+                            <span className="text-sm font-bold text-gray-900">{overPct}%</span>
                         </div>
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                                 <span className="w-2.5 h-2.5 rounded-full bg-[#84cc16]"></span>
                                 <span className="text-sm text-gray-600 font-medium">Guest Access</span>
                             </div>
-                            <span className="text-sm font-bold text-gray-900">10%</span>
+                            <span className="text-sm font-bold text-gray-900">{guestPct}%</span>
                         </div>
                     </div>
                 </div>
@@ -218,35 +358,45 @@ const Reports = () => {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
-                        {logs.map((log, index) => (
-                            <tr key={index} className="hover:bg-gray-50/50 transition-colors">
+                        {logs.map((log) => (
+                            <tr key={log.id} className="hover:bg-gray-50/50 transition-colors">
                                 <td className="px-6 py-4">
                                     <div className="flex items-center gap-3">
-                                        <div
-                                            className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-                                            style={{ backgroundColor: log.avatar }}
-                                        >
-                                            {log.name.split(' ').map(n => n[0]).join('')}
-                                        </div>
+                                        {log.students?.photo_url ? (
+                                            <img
+                                                src={log.students.photo_url}
+                                                alt={log.user_name}
+                                                className="w-9 h-9 rounded-full object-cover flex-shrink-0 border border-gray-100 shadow-sm"
+                                            />
+                                        ) : (
+                                            <div
+                                                className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+                                                style={{ backgroundColor: stringToColor(log.user_name) }}
+                                            >
+                                                {log.user_name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                                            </div>
+                                        )}
                                         <div>
-                                            <p className="font-semibold text-gray-900 text-sm">{log.name}</p>
-                                            <p className="text-xs text-gray-400 font-medium">{log.id}</p>
+                                            <p className="font-semibold text-gray-900 text-sm">{log.students?.full_name || log.user_name}</p>
+                                            <p className="text-xs text-gray-400 font-medium">{log.student_id ? `ID: #${log.student_id}` : 'Guest'}</p>
                                         </div>
                                     </div>
                                 </td>
-                                <td className="px-6 py-4 text-gray-600 font-medium">{log.accessPoint}</td>
+                                <td className="px-6 py-4 text-gray-600 font-medium">{log.guard_gates?.name || 'Gate 1'}</td>
                                 <td className="px-6 py-4">
-                                    <span className={`inline-flex px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md ${log.typeColor}`}>
-                                        {log.type}
+                                    <span className={`inline-flex px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md ${movementTypeStyles[log.movement_type]}`}>
+                                        {log.movement_type}
                                     </span>
                                 </td>
                                 <td className="px-6 py-4">
-                                    <span className={`text-sm font-semibold ${log.statusColor} flex items-center gap-1.5`}>
-                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                    <span className={`text-sm font-semibold ${log.status === 'Success' ? 'text-emerald-600' : 'text-red-600'} flex items-center gap-1.5`}>
+                                        <span className={`w-1.5 h-1.5 rounded-full ${log.status === 'Success' ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
                                         {log.status}
                                     </span>
                                 </td>
-                                <td className="px-6 py-4 text-gray-500 font-medium text-sm">{log.timestamp}</td>
+                                <td className="px-6 py-4 text-gray-500 font-medium text-xs whitespace-nowrap">
+                                    {formatDistanceToNow(new Date(log.created_at), { addSuffix: true })}
+                                </td>
                             </tr>
                         ))}
                     </tbody>

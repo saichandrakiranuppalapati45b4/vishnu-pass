@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
-import { Camera, ChevronDown } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Camera, ChevronDown, Loader2 } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
+import { logAuditAction } from '../../utils/auditLogger';
 
 const RegisterGuard = ({ onCancel }) => {
     const [formData, setFormData] = useState({
@@ -13,13 +15,94 @@ const RegisterGuard = ({ onCancel }) => {
     });
 
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-    const gates = ["Main Entrance A", "North Gate B", "Library Entrance", "Hostel Block D"];
+    const [gates, setGates] = useState([]);
+    const [shifts, setShifts] = useState([]);
+    const [photoFile, setPhotoFile] = useState(null);
+    const [photoPreview, setPhotoPreview] = useState(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [error, setError] = useState(null);
+    const fileInputRef = useRef(null);
 
-    const handleRegister = (e) => {
+    // Fetch dynamic gates and shifts from Supabase
+    useEffect(() => {
+        const fetchConfig = async () => {
+            const { data: gateData } = await supabase.from('guard_gates').select('*').order('name');
+            if (gateData) setGates(gateData);
+
+            const { data: shiftData } = await supabase.from('guard_shifts').select('*').order('name');
+            if (shiftData) setShifts(shiftData);
+        };
+        fetchConfig();
+    }, []);
+
+    const handlePhotoChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            setPhotoFile(file);
+            setPhotoPreview(URL.createObjectURL(file));
+        }
+    };
+
+    const handleRegister = async (e) => {
         e.preventDefault();
-        // Here we would typically make an API call to save the new guard
-        console.log("Registering new guard:", formData);
-        onCancel(); // Return to previous view after successful registration (mocked)
+        setError(null);
+        setIsSubmitting(true);
+
+        try {
+            let photoUrl = null;
+
+            // 1. Upload Photo if selected
+            if (photoFile) {
+                const fileExt = photoFile.name.split('.').pop();
+                const fileName = `guard_${Date.now()}.${fileExt}`;
+                const { error: uploadError } = await supabase.storage
+                    .from('guards')
+                    .upload(fileName, photoFile);
+
+                if (uploadError) throw uploadError;
+
+                const { data: { publicUrl } } = supabase.storage
+                    .from('guards')
+                    .getPublicUrl(fileName);
+
+                photoUrl = publicUrl;
+            }
+
+            // 2. Insert Guard Record
+            const { error: insertError } = await supabase
+                .from('guards')
+                .insert({
+                    full_name: formData.fullName.trim(),
+                    employee_id: formData.employeeId.trim(),
+                    contact_number: formData.contactNumber.trim(),
+                    gate_id: formData.assignedGate || null, // UUID string
+                    shift_id: formData.shiftType || null, // UUID string
+                    emergency_contact_name: formData.emergencyName.trim(),
+                    emergency_contact_number: formData.emergencyContact.trim(),
+                    photo_url: photoUrl
+                });
+
+            if (insertError) throw insertError;
+
+            // 3. Log the action
+            await logAuditAction({
+                action: 'Registered Guard',
+                resource: formData.employeeId,
+                details: {
+                    name: formData.fullName,
+                    gate: gates.find(g => g.id === formData.assignedGate)?.name || 'Unknown',
+                    shift: shifts.find(s => s.id === formData.shiftType)?.name || 'Unknown'
+                }
+            });
+
+            // Success, return to directory
+            onCancel();
+        } catch (err) {
+            console.error("Error registering guard:", err);
+            setError(err.message || 'Failed to register guard. Please try again.');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (
@@ -44,9 +127,26 @@ const RegisterGuard = ({ onCancel }) => {
                         <div className="mb-8">
                             <label className="block text-sm font-bold text-gray-700 mb-4">Profile Photo</label>
                             <div className="flex items-center gap-6">
-                                <button type="button" className="w-[100px] h-[100px] rounded-2xl border-2 border-dashed border-[#cbd5e1] bg-[#f8fafc] flex flex-col items-center justify-center text-[#64748b] hover:bg-[#f1f5f9] hover:border-[#94a3b8] transition-colors group">
-                                    <Camera className="w-6 h-6 mb-1 text-[#94a3b8] group-hover:text-[#64748b] transition-colors" />
-                                    <span className="text-[9px] font-bold tracking-wider uppercase">Upload</span>
+                                <input
+                                    type="file"
+                                    ref={fileInputRef}
+                                    className="hidden"
+                                    accept="image/*"
+                                    onChange={handlePhotoChange}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => fileInputRef.current.click()}
+                                    className="w-[100px] h-[100px] rounded-2xl border-2 border-dashed border-[#cbd5e1] bg-[#f8fafc] flex flex-col items-center justify-center text-[#64748b] hover:bg-[#f1f5f9] hover:border-[#94a3b8] overflow-hidden transition-colors group relative"
+                                >
+                                    {photoPreview ? (
+                                        <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
+                                    ) : (
+                                        <>
+                                            <Camera className="w-6 h-6 mb-1 text-[#94a3b8] group-hover:text-[#64748b] transition-colors" />
+                                            <span className="text-[9px] font-bold tracking-wider uppercase">Upload</span>
+                                        </>
+                                    )}
                                 </button>
                                 <div>
                                     <h3 className="text-sm font-bold text-gray-900 mb-1">Click to upload or drag and drop</h3>
@@ -54,6 +154,13 @@ const RegisterGuard = ({ onCancel }) => {
                                 </div>
                             </div>
                         </div>
+
+                        {error && (
+                            <div className="mb-6 p-4 bg-red-50 text-red-600 rounded-xl text-sm font-medium border border-red-100 flex items-center gap-2">
+                                <span className="bg-red-100 text-red-600 p-1 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold font-mono">!</span>
+                                {error}
+                            </div>
+                        )}
 
                         {/* Basic Info Grid */}
                         <div className="grid grid-cols-2 gap-x-8 gap-y-6 mb-8">
@@ -109,12 +216,12 @@ const RegisterGuard = ({ onCancel }) => {
                                     <div
                                         onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                                         className={`w-full px-4 py-2.5 bg-gray-50/50 border rounded-lg flex items-center justify-between cursor-pointer transition-colors relative z-20 ${isDropdownOpen
-                                                ? 'border-[#f47c20] ring-2 ring-[#f47c20]/20 bg-white'
-                                                : 'border-gray-200 hover:border-gray-300'
+                                            ? 'border-[#f47c20] ring-2 ring-[#f47c20]/20 bg-white'
+                                            : 'border-gray-200 hover:border-gray-300'
                                             }`}
                                     >
                                         <span className={`text-sm font-medium ${formData.assignedGate ? 'text-gray-900' : 'text-gray-500'}`}>
-                                            {formData.assignedGate || 'Select a gate location'}
+                                            {formData.assignedGate ? gates.find(g => g.id === formData.assignedGate)?.name : 'Select a gate location'}
                                         </span>
                                         <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} />
                                     </div>
@@ -122,20 +229,22 @@ const RegisterGuard = ({ onCancel }) => {
                                     {isDropdownOpen && (
                                         <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-100 rounded-xl shadow-lg overflow-hidden z-30 animate-in fade-in slide-in-from-top-2 duration-150">
                                             <div className="py-1 max-h-48 overflow-y-auto">
-                                                {gates.map(gate => (
+                                                {gates.length === 0 ? (
+                                                    <div className="px-4 py-3 text-sm text-gray-500 text-center">No gates configured yet. Add them in Settings.</div>
+                                                ) : gates.map(gate => (
                                                     <button
-                                                        key={gate}
+                                                        key={gate.id}
                                                         type="button"
                                                         onClick={() => {
-                                                            setFormData({ ...formData, assignedGate: gate });
+                                                            setFormData({ ...formData, assignedGate: gate.id });
                                                             setIsDropdownOpen(false);
                                                         }}
                                                         className="w-full text-left px-4 py-2.5 text-sm font-medium hover:bg-gray-50 transition-colors flex items-center justify-between group"
                                                     >
-                                                        <span className={`${formData.assignedGate === gate ? 'text-[#f47c20] font-bold' : 'text-gray-700 group-hover:text-gray-900'}`}>
-                                                            {gate}
+                                                        <span className={`${formData.assignedGate === gate.id ? 'text-[#f47c20] font-bold' : 'text-gray-700 group-hover:text-gray-900'}`}>
+                                                            {gate.name}
                                                         </span>
-                                                        {formData.assignedGate === gate && (
+                                                        {formData.assignedGate === gate.id && (
                                                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#f47c20]">
                                                                 <path d="M20 6 9 17l-5-5" />
                                                             </svg>
@@ -152,78 +261,38 @@ const RegisterGuard = ({ onCancel }) => {
                         {/* Shift Type Section */}
                         <div className="mb-10">
                             <label className="block text-sm font-bold text-gray-700 mb-3">Shift Type</label>
-                            <div className="grid grid-cols-3 gap-4">
-                                {/* Morning Shift */}
-                                <label className={`flex items-center p-4 border rounded-xl cursor-pointer transition-all ${formData.shiftType === 'Morning'
-                                        ? 'border-[#f47c20] bg-[#fffaf5] shadow-[0_0_0_1px_#f47c20_inset]'
-                                        : 'border-gray-100 hover:border-gray-200 bg-white'
-                                    }`}>
-                                    <div className={`w-5 h-5 rounded-full border flex items-center justify-center mr-4 flex-shrink-0 transition-colors ${formData.shiftType === 'Morning' ? 'border-[#f47c20]' : 'border-gray-300'
-                                        }`}>
-                                        {formData.shiftType === 'Morning' && <div className="w-2.5 h-2.5 rounded-full bg-[#f47c20]" />}
-                                    </div>
-                                    <div>
-                                        <p className="text-sm font-bold text-gray-900 mb-0.5">Morning</p>
-                                        <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">06:00 AM - 02:00 PM</p>
-                                    </div>
-                                    {/* Invisible radio input */}
-                                    <input
-                                        type="radio"
-                                        name="shiftType"
-                                        value="Morning"
-                                        className="hidden"
-                                        checked={formData.shiftType === 'Morning'}
-                                        onChange={(e) => setFormData({ ...formData, shiftType: e.target.value })}
-                                        required
-                                    />
-                                </label>
-
-                                {/* Afternoon Shift */}
-                                <label className={`flex items-center p-4 border rounded-xl cursor-pointer transition-all ${formData.shiftType === 'Afternoon'
-                                        ? 'border-[#f47c20] bg-[#fffaf5] shadow-[0_0_0_1px_#f47c20_inset]'
-                                        : 'border-gray-100 hover:border-gray-200 bg-white'
-                                    }`}>
-                                    <div className={`w-5 h-5 rounded-full border flex items-center justify-center mr-4 flex-shrink-0 transition-colors ${formData.shiftType === 'Afternoon' ? 'border-[#f47c20]' : 'border-gray-300'
-                                        }`}>
-                                        {formData.shiftType === 'Afternoon' && <div className="w-2.5 h-2.5 rounded-full bg-[#f47c20]" />}
-                                    </div>
-                                    <div>
-                                        <p className="text-sm font-bold text-gray-900 mb-0.5">Afternoon</p>
-                                        <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">02:00 PM - 10:00 PM</p>
-                                    </div>
-                                    <input
-                                        type="radio"
-                                        name="shiftType"
-                                        value="Afternoon"
-                                        className="hidden"
-                                        checked={formData.shiftType === 'Afternoon'}
-                                        onChange={(e) => setFormData({ ...formData, shiftType: e.target.value })}
-                                    />
-                                </label>
-
-                                {/* Night Shift */}
-                                <label className={`flex items-center p-4 border rounded-xl cursor-pointer transition-all ${formData.shiftType === 'Night'
-                                        ? 'border-[#f47c20] bg-[#fffaf5] shadow-[0_0_0_1px_#f47c20_inset]'
-                                        : 'border-gray-100 hover:border-gray-200 bg-white'
-                                    }`}>
-                                    <div className={`w-5 h-5 rounded-full border flex items-center justify-center mr-4 flex-shrink-0 transition-colors ${formData.shiftType === 'Night' ? 'border-[#f47c20]' : 'border-gray-300'
-                                        }`}>
-                                        {formData.shiftType === 'Night' && <div className="w-2.5 h-2.5 rounded-full bg-[#f47c20]" />}
-                                    </div>
-                                    <div>
-                                        <p className="text-sm font-bold text-gray-900 mb-0.5">Night</p>
-                                        <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">10:00 PM - 08:00 AM</p>
-                                    </div>
-                                    <input
-                                        type="radio"
-                                        name="shiftType"
-                                        value="Night"
-                                        className="hidden"
-                                        checked={formData.shiftType === 'Night'}
-                                        onChange={(e) => setFormData({ ...formData, shiftType: e.target.value })}
-                                    />
-                                </label>
-                            </div>
+                            {shifts.length === 0 ? (
+                                <div className="p-4 border border-dashed border-gray-300 rounded-xl text-sm font-medium text-gray-500 text-center">
+                                    No shifts configured. Add them in Settings.
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-3 gap-4">
+                                    {shifts.map((shift) => (
+                                        <label key={shift.id} className={`flex items-center p-4 border rounded-xl cursor-pointer transition-all ${formData.shiftType === shift.id
+                                            ? 'border-[#f47c20] bg-[#fffaf5] shadow-[0_0_0_1px_#f47c20_inset]'
+                                            : 'border-gray-100 hover:border-gray-200 bg-white'
+                                            }`}>
+                                            <div className={`w-5 h-5 rounded-full border flex items-center justify-center mr-4 flex-shrink-0 transition-colors ${formData.shiftType === shift.id ? 'border-[#f47c20]' : 'border-gray-300'
+                                                }`}>
+                                                {formData.shiftType === shift.id && <div className="w-2.5 h-2.5 rounded-full bg-[#f47c20]" />}
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-bold text-gray-900 mb-0.5">{shift.name}</p>
+                                                <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">{shift.time}</p>
+                                            </div>
+                                            <input
+                                                type="radio"
+                                                name="shiftType"
+                                                value={shift.id}
+                                                className="hidden"
+                                                checked={formData.shiftType === shift.id}
+                                                onChange={() => setFormData({ ...formData, shiftType: shift.id })}
+                                                required
+                                            />
+                                        </label>
+                                    ))}
+                                </div>
+                            )}
                         </div>
 
                         {/* Emergency Contact Information Section */}
@@ -266,9 +335,11 @@ const RegisterGuard = ({ onCancel }) => {
                             </button>
                             <button
                                 type="submit"
-                                className="px-6 py-2.5 bg-[#f47c20] hover:bg-[#e06d1c] text-white rounded-lg text-sm font-bold transition-colors shadow-sm cursor-pointer"
+                                disabled={isSubmitting}
+                                className={`px-6 py-2.5 bg-[#f47c20] hover:bg-[#e06d1c] text-white rounded-lg text-sm font-bold transition-colors shadow-sm flex items-center gap-2 ${isSubmitting ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'}`}
                             >
-                                Register Guard
+                                {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
+                                {isSubmitting ? 'Registering...' : 'Register Guard'}
                             </button>
                         </div>
                     </form>

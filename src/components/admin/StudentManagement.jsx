@@ -1,48 +1,22 @@
-import React, { useState } from 'react';
-import { Download, Plus, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronDown, Filter, MoreVertical } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Download, Plus, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronDown, Filter, MoreVertical, Loader2, User, BadgeCheck, Shield, Trash2 } from 'lucide-react';
 
-const students = [
-    {
-        name: 'Rahul Sharma',
-        email: 'rahul.s@university.edu',
-        id: 'VP-2024-0012',
-        department: 'Computer Science & Eng.',
-        status: 'Active',
-        avatar: '#4f46e5',
-    },
-    {
-        name: 'Ananya Iyer',
-        email: 'ananya.i@university.edu',
-        id: 'VP-2024-0459',
-        department: 'Electronics & Comm.',
-        status: 'On Leave',
-        avatar: '#e11d48',
-    },
-    {
-        name: 'Vikrant Gupta',
-        email: 'vik.g@university.edu',
-        id: 'VP-2024-0102',
-        department: 'Mechanical Eng.',
-        status: 'Active',
-        avatar: '#0891b2',
-    },
-    {
-        name: 'Priya Das',
-        email: 'priya.d@university.edu',
-        id: 'VP-2023-0992',
-        department: 'Civil Engineering',
-        status: 'Graduated',
-        avatar: '#7c3aed',
-    },
-    {
-        name: 'Arjun Reddy',
-        email: 'arjun.r@university.edu',
-        id: 'VP-2024-1108',
-        department: 'Information Technology',
-        status: 'Active',
-        avatar: '#059669',
-    },
-];
+import { supabase } from '../../lib/supabase';
+import { logAuditAction } from '../../utils/auditLogger';
+
+// Helper function to generate a consistent color from a name
+const stringToColor = (name) => {
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+        hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    let color = '#';
+    for (let i = 0; i < 3; i++) {
+        const value = (hash >> (i * 8)) & 0xff;
+        color += `00${value.toString(16)}`.slice(-2);
+    }
+    return color;
+};
 
 const statusStyles = {
     Active: 'bg-emerald-50 text-emerald-600 border-emerald-200',
@@ -51,8 +25,114 @@ const statusStyles = {
 };
 
 const StudentManagement = ({ onNavigate }) => {
-    const [currentPage, setCurrentPage] = useState(1);
-    const [rowsPerPage, setRowsPerPage] = useState(10);
+    const [students, setStudents] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [totalCount, setTotalCount] = useState(0);
+    const [departments, setDepartments] = useState([]);
+
+    // Filter State
+    const [deptFilter, setDeptFilter] = useState('all');
+    const [statusFilter, setStatusFilter] = useState('all');
+    const [batchFilter, setBatchFilter] = useState('all');
+
+    // Dropdown State
+    const [openDropdown, setOpenDropdown] = useState(null); // 'dept' | 'batch' | null
+    const [actionMenuId, setActionMenuId] = useState(null); // student.id | null
+    const dropdownRef = useRef(null);
+    const actionMenuRef = useRef(null);
+
+    useEffect(() => {
+        fetchDepartments();
+    }, []);
+
+    useEffect(() => {
+        fetchStudents();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [deptFilter, statusFilter, batchFilter]);
+
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+                setOpenDropdown(null);
+            }
+            if (actionMenuRef.current && !actionMenuRef.current.contains(e.target)) {
+                setActionMenuId(null);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const fetchDepartments = async () => {
+        const { data } = await supabase.from('departments').select('*').order('name');
+        if (data) setDepartments(data);
+    };
+
+    const fetchStudents = async () => {
+        setIsLoading(true);
+        try {
+            let query = supabase
+                .from('students')
+                .select('*, departments(name)', { count: 'exact' });
+
+            if (deptFilter !== 'all') {
+                query = query.eq('department_id', deptFilter);
+            }
+
+            if (statusFilter === 'Active Only') {
+                query = query.eq('status', 'Active');
+            }
+
+            if (batchFilter !== 'all') {
+                query = query.eq('batch', batchFilter);
+            }
+
+            const { data, error, count } = await query
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+            setStudents(data || []);
+            setTotalCount(count || 0);
+        } catch (error) {
+            console.error('Error fetching students:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleDeleteStudent = async (studentId, studentName) => {
+        if (!window.confirm(`Are you sure you want to delete ${studentName}? This action cannot be undone.`)) {
+            return;
+        }
+
+        try {
+            const { error } = await supabase
+                .from('students')
+                .delete()
+                .eq('id', studentId);
+
+            if (error) throw error;
+
+            // Log the action
+            await logAuditAction({
+                action: 'Deleted Student',
+                resource: studentName,
+                details: { id: studentId }
+            });
+
+            // Refresh list
+            fetchStudents();
+            setActionMenuId(null);
+        } catch (error) {
+            console.error('Error deleting student:', error);
+            alert('Failed to delete student. Please try again.');
+        }
+    };
+
+    const getDeptName = () => {
+        if (deptFilter === 'all') return 'All Departments';
+        return departments.find(d => d.id === deptFilter)?.name || 'All Departments';
+    };
 
     return (
         <div className="flex-1 overflow-y-auto p-8">
@@ -60,7 +140,7 @@ const StudentManagement = ({ onNavigate }) => {
             <div className="flex items-start justify-between mb-6">
                 <div>
                     <h1 className="text-[26px] font-bold text-gray-900 mb-1">Student Directory</h1>
-                    <p className="text-sm text-gray-500 font-medium">Manage and monitor 4,281 student records across all campuses.</p>
+                    <p className="text-sm text-gray-500 font-medium">Manage and monitor {totalCount.toLocaleString()} student records across all campuses.</p>
                 </div>
                 <div className="flex items-center gap-3">
                     <button className="flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors shadow-sm">
@@ -82,23 +162,79 @@ const StudentManagement = ({ onNavigate }) => {
             </div>
 
             {/* Filters */}
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center justify-between mb-6" ref={dropdownRef}>
                 <div className="flex items-center gap-3">
-                    <button className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
-                        All Departments
-                        <ChevronDown className="w-4 h-4 text-gray-400" />
-                    </button>
-                    <button className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
-                        <Filter className="w-3.5 h-3.5 text-gray-400" />
+                    {/* Department Filter */}
+                    <div className="relative">
+                        <button
+                            onClick={() => setOpenDropdown(openDropdown === 'dept' ? null : 'dept')}
+                            className={`flex items-center gap-2 px-4 py-2 bg-white border rounded-lg text-sm font-medium transition-colors ${deptFilter !== 'all' ? 'border-[#f47c20] text-[#f47c20]' : 'border-gray-200 text-gray-700 hover:bg-gray-50'}`}
+                        >
+                            {getDeptName()}
+                            <ChevronDown className={`w-4 h-4 transition-transform ${openDropdown === 'dept' ? 'rotate-180' : ''}`} />
+                        </button>
+
+                        {openDropdown === 'dept' && (
+                            <div className="absolute z-50 top-full left-0 mt-1.5 w-64 bg-white border border-gray-200 rounded-xl shadow-lg ring-1 ring-black/5 overflow-hidden animate-in fade-in slide-in-from-top-1">
+                                <div className="py-1 max-h-60 overflow-y-auto">
+                                    <button
+                                        onClick={() => { setDeptFilter('all'); setOpenDropdown(null); }}
+                                        className={`w-full text-left px-4 py-2 text-sm ${deptFilter === 'all' ? 'bg-orange-50 text-[#f47c20] font-bold' : 'text-gray-700 hover:bg-gray-50'}`}
+                                    >
+                                        All Departments
+                                    </button>
+                                    {departments.map((dept) => (
+                                        <button
+                                            key={dept.id}
+                                            onClick={() => { setDeptFilter(dept.id); setOpenDropdown(null); }}
+                                            className={`w-full text-left px-4 py-2 text-sm ${deptFilter === dept.id ? 'bg-orange-50 text-[#f47c20] font-bold' : 'text-gray-700 hover:bg-gray-50'}`}
+                                        >
+                                            {dept.name}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Active Only Filter */}
+                    <button
+                        onClick={() => setStatusFilter(statusFilter === 'Active' ? 'all' : 'Active')}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${statusFilter === 'Active' ? 'bg-[#f47c20] text-white border-[#f47c20]' : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'}`}
+                    >
+                        <Filter className={`w-3.5 h-3.5 ${statusFilter === 'Active' ? 'text-white' : 'text-gray-400'}`} />
                         Active Only
                     </button>
-                    <button className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
-                        Batch 2024
-                        <ChevronDown className="w-4 h-4 text-gray-400" />
-                    </button>
+
+                    {/* Batch Filter */}
+                    <div className="relative">
+                        <button
+                            onClick={() => setOpenDropdown(openDropdown === 'batch' ? null : 'batch')}
+                            className={`flex items-center gap-2 px-4 py-2 bg-white border rounded-lg text-sm font-medium transition-colors ${batchFilter !== 'all' ? 'border-[#f47c20] text-[#f47c20]' : 'border-gray-200 text-gray-700 hover:bg-gray-50'}`}
+                        >
+                            {batchFilter === 'all' ? 'Select Batch' : `Batch ${batchFilter}`}
+                            <ChevronDown className={`w-4 h-4 transition-transform ${openDropdown === 'batch' ? 'rotate-180' : ''}`} />
+                        </button>
+
+                        {openDropdown === 'batch' && (
+                            <div className="absolute z-50 top-full left-0 mt-1.5 w-40 bg-white border border-gray-200 rounded-xl shadow-lg ring-1 ring-black/5 overflow-hidden animate-in fade-in slide-in-from-top-1">
+                                <div className="py-1">
+                                    {['all', '2023', '2024', '2025'].map((batch) => (
+                                        <button
+                                            key={batch}
+                                            onClick={() => { setBatchFilter(batch); setOpenDropdown(null); }}
+                                            className={`w-full text-left px-4 py-2 text-sm ${batchFilter === batch ? 'bg-orange-50 text-[#f47c20] font-bold' : 'text-gray-700 hover:bg-gray-50'}`}
+                                        >
+                                            {batch === 'all' ? 'All Batches' : `Batch ${batch}`}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
                 <div className="text-sm text-gray-400 font-medium flex items-center gap-2">
-                    Showing 1-10 of 4,281
+                    Showing {students.length} of {totalCount}
                     <div className="flex items-center gap-1 ml-2">
                         <button className="p-1 text-gray-300 hover:text-gray-500 transition-colors"><ChevronLeft className="w-4 h-4" /></button>
                         <button className="p-1 text-gray-300 hover:text-gray-500 transition-colors"><ChevronRight className="w-4 h-4" /></button>
@@ -119,45 +255,103 @@ const StudentManagement = ({ onNavigate }) => {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
-                        {students.map((student, index) => (
-                            <tr key={index} className="hover:bg-gray-50/50 transition-colors group">
-                                <td className="px-6 py-4">
-                                    <div className="flex items-center gap-3">
-                                        <div
-                                            className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-                                            style={{ backgroundColor: student.avatar }}
-                                        >
-                                            {student.name.split(' ').map(n => n[0]).join('')}
-                                        </div>
-                                        <div>
-                                            <p className="font-semibold text-gray-900 text-sm">{student.name}</p>
-                                            <p className="text-xs text-gray-400 font-medium">{student.email}</p>
-                                        </div>
+                        {isLoading ? (
+                            <tr>
+                                <td colSpan="5" className="px-6 py-12 text-center text-gray-400">
+                                    <div className="flex flex-col items-center gap-3">
+                                        <Loader2 className="w-8 h-8 animate-spin text-[#f47c20]" />
+                                        <p className="text-sm font-medium">Fetching student directory...</p>
                                     </div>
                                 </td>
-                                <td className="px-6 py-4 text-gray-600 font-medium">{student.id}</td>
-                                <td className="px-6 py-4 text-gray-600 font-medium">{student.department}</td>
-                                <td className="px-6 py-4">
-                                    <span className={`inline-flex px-3 py-1 text-xs font-bold rounded-full border ${statusStyles[student.status]}`}>
-                                        {student.status}
-                                    </span>
-                                </td>
-                                <td className="px-6 py-4 text-right">
-                                    <button className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors opacity-0 group-hover:opacity-100">
-                                        <MoreVertical className="w-4 h-4" />
-                                    </button>
-                                </td>
                             </tr>
-                        ))}
+                        ) : students.length === 0 ? (
+                            <tr>
+                                <td colSpan="5" className="px-6 py-12 text-center text-gray-400">No student records found.</td>
+                            </tr>
+                        ) : (
+                            students.map((student) => (
+                                <tr
+                                    key={student.id}
+                                    onClick={() => onNavigate('student-profile', student.id)}
+                                    className="hover:bg-gray-50/50 transition-colors group cursor-pointer"
+                                >
+                                    <td className="px-6 py-4">
+                                        <div className="flex items-center gap-3">
+                                            {student.photo_url ? (
+                                                <img src={student.photo_url} alt="" className="w-9 h-9 rounded-full object-cover border border-gray-100" />
+                                            ) : (
+                                                <div
+                                                    className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+                                                    style={{ backgroundColor: stringToColor(student.full_name) }}
+                                                >
+                                                    {student.full_name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
+                                                </div>
+                                            )}
+                                            <div>
+                                                <p className="font-semibold text-gray-900 text-sm">{student.full_name}</p>
+                                                <p className="text-xs text-gray-400 font-medium">{student.email}</p>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td className="px-6 py-4 text-gray-600 font-medium">{student.student_id}</td>
+                                    <td className="px-6 py-4 text-gray-600 font-medium">{student.departments?.name || 'General'}</td>
+                                    <td className="px-6 py-4">
+                                        <span className={`inline-flex px-3 py-1 text-xs font-bold rounded-full border ${statusStyles[student.status] || statusStyles['Active']}`}>
+                                            {student.status || 'Active'}
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
+                                        <div className="relative inline-block text-left" ref={actionMenuId === student.id ? actionMenuRef : null}>
+                                            <button
+                                                onClick={() => setActionMenuId(actionMenuId === student.id ? null : student.id)}
+                                                className={`p-1.5 text-gray-400 hover:text-gray-600 transition-colors rounded-lg ${actionMenuId === student.id ? 'bg-gray-100 text-gray-900' : 'opacity-0 group-hover:opacity-100'}`}
+                                            >
+                                                <MoreVertical className="w-4 h-4" />
+                                            </button>
+
+                                            {actionMenuId === student.id && (
+                                                <div className="absolute z-50 right-0 mt-2 w-44 bg-white border border-gray-100 rounded-xl shadow-xl ring-1 ring-black/5 animate-in fade-in zoom-in-95">
+                                                    <div className="py-1.5 px-1">
+                                                        <button
+                                                            onClick={() => onNavigate('student-profile', student.id)}
+                                                            className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-gray-700 hover:bg-orange-50 hover:text-[#f47c20] rounded-lg transition-colors"
+                                                        >
+                                                            <User className="w-3.5 h-3.5" />
+                                                            Quick View
+                                                        </button>
+                                                        <button className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-gray-700 hover:bg-orange-50 hover:text-[#f47c20] rounded-lg transition-colors">
+                                                            <BadgeCheck className="w-3.5 h-3.5" />
+                                                            View Pass
+                                                        </button>
+                                                        <div className="my-1 border-t border-gray-50" />
+                                                        <button className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                                                            <Shield className="w-3.5 h-3.5" />
+                                                            Deactivate
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDeleteStudent(student.id, student.full_name)}
+                                                            className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-100 rounded-lg transition-colors mt-0.5"
+                                                        >
+                                                            <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                                                            Delete Record
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))
+                        )}
                     </tbody>
                 </table>
 
                 {/* Pagination */}
                 <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100">
                     <div className="flex items-center gap-2 text-sm text-gray-500 font-medium">
-                        Row per page:
+                        Showing {students.length} students per page
                         <button className="flex items-center gap-1 px-2 py-1 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
-                            {rowsPerPage}
+                            10
                             <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
                         </button>
                     </div>

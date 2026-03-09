@@ -34,7 +34,7 @@ const getRoleBadge = (role) => {
     return roleMap[role] || 'bg-gray-100 text-gray-700';
 };
 
-const AdminManagement = () => {
+const AdminManagement = ({ onNavigate }) => {
     const [admins, setAdmins] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showAddModal, setShowAddModal] = useState(false);
@@ -263,7 +263,10 @@ const AdminManagement = () => {
                     <p className="text-sm text-white/60 font-medium leading-relaxed mb-5">
                         Last system-wide security audit was completed 2 days ago. No unusual administrative activity detected.
                     </p>
-                    <button className="w-full bg-white/10 hover:bg-white/20 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors border border-white/10">
+                    <button
+                        onClick={() => onNavigate('audit-logs')}
+                        className="w-full bg-white/10 hover:bg-white/20 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors border border-white/10"
+                    >
                         View Audit Logs
                     </button>
                 </div>

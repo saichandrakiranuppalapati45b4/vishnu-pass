@@ -1,15 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Bell, Users, Shield, UserPlus, BarChart2, Settings, LogOut, Plus } from 'lucide-react';
+import { Search, Bell, Users, Shield, UserPlus, BarChart2, Settings, LogOut, Plus, RotateCcw } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import DashboardContent from './DashboardContent';
 import StudentManagement from './StudentManagement';
 import GuardManagement from './GuardManagement';
 import Reports from './Reports';
 import AdminManagement from './AdminManagement';
-import SettingsPage from './SettingsPage';
+import StudentProfile from './StudentProfile';
 import RegisterStudent from './RegisterStudent';
 import ChangePassword from './ChangePassword';
 import Notifications from './Notifications';
+import SettingsPage from './SettingsPage';
+import FlowOptimization from './FlowOptimization';
+import AuditLogs from './AuditLogs';
 
 const navItems = [
     { key: 'dashboard', label: 'Dashboard', icon: 'grid' },
@@ -36,12 +39,14 @@ const NavIcon = ({ type, className }) => {
         case 'user-plus': return <UserPlus className={`w-[18px] h-[18px] ${className}`} />;
         case 'bar-chart': return <BarChart2 className={`w-[18px] h-[18px] ${className}`} />;
         case 'settings': return <Settings className={`w-[18px] h-[18px] ${className}`} />;
+        case 'history': return <RotateCcw className={`w-[18px] h-[18px] ${className}`} />;
         default: return null;
     }
 };
 
 const Dashboard = ({ onLogout, branding, onBrandingUpdate }) => {
     const [activePage, setActivePage] = useState('dashboard');
+    const [selectedStudentId, setSelectedStudentId] = useState(null);
     const [userEmail, setUserEmail] = useState('admin@vishnu.edu');
 
     useEffect(() => {
@@ -62,24 +67,38 @@ const Dashboard = ({ onLogout, branding, onBrandingUpdate }) => {
     const renderContent = () => {
         switch (activePage) {
             case 'students':
-                return <StudentManagement onNavigate={setActivePage} />;
+                return <StudentManagement onNavigate={(page, id) => {
+                    if (id) setSelectedStudentId(id);
+                    setActivePage(page);
+                }} />;
             case 'guards':
                 return <GuardManagement />;
             case 'reports':
                 return <Reports />;
             case 'admin':
-                return <AdminManagement />;
+                return <AdminManagement onNavigate={setActivePage} />;
             case 'settings':
                 return <SettingsPage onNavigate={setActivePage} branding={branding} onBrandingUpdate={handleBrandingUpdate} />;
             case 'register-student':
                 return <RegisterStudent onCancel={() => setActivePage('students')} />;
+            case 'student-profile':
+                return <StudentProfile studentId={selectedStudentId} onBack={() => setActivePage('students')} />;
             case 'change-password':
                 return <ChangePassword onBack={() => setActivePage('settings')} />;
+            case 'audit-logs':
+                return <AuditLogs onBack={() => setActivePage('admin')} />;
             case 'notifications':
                 return <Notifications />;
+            case 'flow-optimization':
+                return <FlowOptimization onBack={() => setActivePage('dashboard')} />;
+            case 'audit-logs':
+                return <AuditLogs />;
             case 'dashboard':
             default:
-                return <DashboardContent onNavigate={setActivePage} />;
+                return <DashboardContent onNavigate={(page, id) => {
+                    if (id) setSelectedStudentId(id);
+                    setActivePage(page);
+                }} />;
         }
     };
 

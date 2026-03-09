@@ -16,7 +16,7 @@ const LoginScreen = ({ onLogin, branding }) => {
 
         try {
             // Sign in with Supabase Auth
-            const { data, error: authError } = await supabase.auth.signInWithPassword({
+            const { error: authError } = await supabase.auth.signInWithPassword({
                 email: email.trim(),
                 password: password,
             });
@@ -27,22 +27,36 @@ const LoginScreen = ({ onLogin, branding }) => {
                 return;
             }
 
-            // Verify the user is an admin
-            const { data: adminData, error: adminError } = await supabase
+            // Verify the user is an admin or student
+            const { data: adminData } = await supabase
                 .from('admins')
                 .select('*')
                 .eq('email', email.trim())
                 .single();
 
-            if (adminError || !adminData) {
-                setError('Access denied. You are not an admin.');
-                await supabase.auth.signOut();
+            if (adminData) {
+                onLogin('admin', adminData);
                 setLoading(false);
                 return;
             }
 
-            onLogin();
-        } catch (err) {
+            // If not admin, check for student
+            const { data: studentData } = await supabase
+                .from('students')
+                .select('*, departments(name)')
+                .eq('email', email.trim())
+                .single();
+
+            if (studentData) {
+                onLogin('student', studentData);
+                setLoading(false);
+                return;
+            }
+
+            // If neither, access denied
+            setError('Access denied. No account found for this user.');
+            await supabase.auth.signOut();
+        } catch {
             setError('Something went wrong. Please try again.');
         }
 
@@ -187,13 +201,16 @@ const LoginScreen = ({ onLogin, branding }) => {
                             {/* Submit Button */}
                             <button
                                 type="submit"
-                                className="w-full mt-2 bg-brand-orange hover:bg-[#e06d1c] text-white font-semibold py-3.5 rounded-xl shadow-[0_4px_14px_rgba(244,124,32,0.4)] transition-colors flex items-center justify-center gap-2 text-[15px]"
+                                disabled={loading}
+                                className={`w-full mt-2 bg-brand-orange hover:bg-[#e06d1c] text-white font-semibold py-3.5 rounded-xl shadow-[0_4px_14px_rgba(244,124,32,0.4)] transition-colors flex items-center justify-center gap-2 text-[15px] ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
                             >
-                                Sign In
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                                    <polyline points="12 5 19 12 12 19"></polyline>
-                                </svg>
+                                {loading ? 'Signing In...' : 'Sign In'}
+                                {!loading && (
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                                        <polyline points="12 5 19 12 12 19"></polyline>
+                                    </svg>
+                                )}
                             </button>
                         </form>
 

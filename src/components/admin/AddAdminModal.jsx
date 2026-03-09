@@ -1,7 +1,12 @@
 import React, { useState } from 'react';
+import { supabase } from '../../lib/supabase';
+import { logAuditAction } from '../../utils/auditLogger';
+import { Loader2 } from 'lucide-react';
 
 const AddAdminModal = ({ onClose }) => {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [error, setError] = useState(null);
     const roles = ["Super Admin", "Manager", "Editor"];
     const [formData, setFormData] = useState({
         fullName: '',
@@ -27,11 +32,62 @@ const AddAdminModal = ({ onClose }) => {
         }));
     };
 
-    const handleCreate = (e) => {
+    const handleCreate = async (e) => {
         e.preventDefault();
-        // Here we would typically make an API call to save the new admin
-        console.log("Creating new admin:", formData);
-        onClose();
+        setError(null);
+
+        if (formData.password !== formData.confirmPassword) {
+            setError("Passwords do not match");
+            return;
+        }
+
+        setIsSubmitting(true);
+
+        try {
+            // 1. Create User in Auth
+            const { data: authData, error: authError } = await supabase.auth.signUp({
+                email: formData.email,
+                password: formData.password,
+                options: {
+                    data: {
+                        full_name: formData.fullName,
+                        role: formData.role
+                    }
+                }
+            });
+
+            if (authError) throw authError;
+
+            // 2. Insert into admins table
+            const { error: dbError } = await supabase
+                .from('admins')
+                .insert({
+                    id: authData.user.id,
+                    email: formData.email,
+                    name: formData.fullName,
+                    role: formData.role
+                });
+
+            if (dbError) throw dbError;
+
+            // 3. Log the action
+            await logAuditAction({
+                action: 'Invited Admin',
+                resource: formData.email,
+                details: {
+                    name: formData.fullName,
+                    role: formData.role,
+                    permissions: formData.permissions
+                }
+            });
+
+            onClose();
+        } catch (err) {
+            console.error("Error creating admin:", err);
+            setError(err.message || "Failed to create admin account");
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (
@@ -45,6 +101,12 @@ const AddAdminModal = ({ onClose }) => {
 
                 <div className="p-8 overflow-y-auto flex-1 custom-scrollbar">
                     <form onSubmit={handleCreate}>
+                        {error && (
+                            <div className="mb-6 p-4 bg-rose-50 border border-rose-100 rounded-xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
+                                <AlertTriangle className="w-5 h-5 text-rose-500" />
+                                <p className="text-sm font-bold text-rose-600">{error}</p>
+                            </div>
+                        )}
                         {/* Name and Email */}
                         <div className="grid grid-cols-2 gap-6 mb-6">
                             <div>
@@ -245,9 +307,17 @@ const AddAdminModal = ({ onClose }) => {
                             </button>
                             <button
                                 type="submit"
-                                className="px-6 py-2.5 bg-[#f47c20] hover:bg-[#e06d1c] text-white rounded-xl text-sm font-bold transition-colors shadow-sm"
+                                disabled={isSubmitting}
+                                className="px-6 py-2.5 bg-[#f47c20] hover:bg-[#e06d1c] text-white rounded-xl text-sm font-bold transition-colors shadow-sm disabled:opacity-50 flex items-center gap-2"
                             >
-                                Create Admin Account
+                                {isSubmitting ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        Creating...
+                                    </>
+                                ) : (
+                                    'Create Admin Account'
+                                )}
                             </button>
                         </div>
                     </form>
