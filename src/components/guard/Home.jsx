@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, TrendingUp, RefreshCw, Clock, ShieldCheck, ShieldAlert, User, MoreHorizontal, AlertTriangle } from 'lucide-react';
+import { Bell, TrendingUp, RefreshCw, Clock, ShieldCheck, ShieldAlert, User, MoreHorizontal, AlertTriangle, CheckCircle2, Zap } from 'lucide-react';
 import { format } from 'date-fns';
 import { supabase } from '../../lib/supabase';
+import VerificationResult from '../student/VerificationResult';
 
 const GuardHome = ({ guardData }) => {
     const [stats, setStats] = useState({ totalScans: 0, activePasses: 0 });
     const [activities, setActivities] = useState([]);
     const [qrToken, setQrToken] = useState(crypto.randomUUID());
     const [seconds, setSeconds] = useState(30);
+    const [activeVerification, setActiveVerification] = useState(null);
 
     // QR Code timer and rotation
     useEffect(() => {
@@ -73,10 +75,26 @@ const GuardHome = ({ guardData }) => {
                     table: 'movement_logs',
                     filter: `access_point_id=eq.${guardData.gate_id}`
                 },
-                (payload) => {
+                async (payload) => {
                     // Update stats and activities instantly
                     setStats(prev => ({ ...prev, totalScans: prev.totalScans + 1 }));
                     setActivities(prev => [payload.new, ...prev].slice(0, 5));
+
+                    // Trigger Verification View if it's a student scan
+                    if (payload.new.student_id) {
+                        const { data: student } = await supabase
+                            .from('students')
+                            .select('*, departments(name)')
+                            .eq('student_id', payload.new.student_id)
+                            .single();
+
+                        if (student) {
+                            setActiveVerification({
+                                ...student,
+                                verifiedAt: format(new Date(payload.new.created_at), 'hh:mm a')
+                            });
+                        }
+                    }
                 }
             )
             .subscribe();
@@ -92,6 +110,18 @@ const GuardHome = ({ guardData }) => {
 
     return (
         <div className="flex flex-col min-h-screen bg-[#f8f9fb] pb-12">
+            {/* Verification Overlay */}
+            {activeVerification && (
+                <div className="fixed inset-0 z-[100] bg-white animate-in slide-in-from-bottom duration-500">
+                    <VerificationResult
+                        studentData={activeVerification}
+                        gateName={guardData?.guard_gates?.name}
+                        verifiedAt={activeVerification.verifiedAt}
+                        onNextScan={() => setActiveVerification(null)}
+                    />
+                </div>
+            )}
+
             {/* Header */}
             <header className="px-6 py-4 flex justify-between items-center bg-transparent">
                 <div className="flex items-center gap-3">
@@ -196,8 +226,6 @@ const GuardHome = ({ guardData }) => {
                     </button>
                 </div>
             </div>
-
-
 
             {/* Recent Activity Section */}
             <div className="mt-8 px-6 pb-20">

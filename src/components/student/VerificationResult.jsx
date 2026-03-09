@@ -3,113 +3,119 @@ import { ChevronLeft, CheckCircle2, GraduationCap, MapPin, Clock, Home, ArrowRig
 
 const VerificationResult = ({ studentData, gateName, verifiedAt, onNextScan }) => {
     return (
-        <div className="flex-1 flex flex-col bg-[#f8f9fb] animate-in fade-in duration-500">
+        <div className="flex-1 flex flex-col bg-[#f8f9fb] animate-in slide-in-from-bottom-4 duration-500 overflow-hidden font-sans">
             {/* Header */}
-            <div className="px-6 py-6 flex items-center justify-between border-b border-gray-100 bg-white/80 backdrop-blur-md sticky top-0 z-20">
-                <button onClick={onNextScan} className="w-10 h-10 flex items-center justify-center text-[#f47c20]">
-                    <ChevronLeft className="w-6 h-6" />
+            <div className="px-6 py-6 flex items-center justify-between bg-white border-b border-gray-100">
+                <button
+                    onClick={onNextScan}
+                    className="w-10 h-10 flex items-center justify-center text-[#f47c20] hover:bg-orange-50 rounded-full transition-colors"
+                >
+                    <ChevronLeft className="w-7 h-7" />
                 </button>
-                <h2 className="text-lg font-black text-[#1e293b] tracking-tight">Security Verification</h2>
-                <div className="w-10" /> {/* Spacer */}
+                <h2 className="text-xl font-bold text-[#1e293b] tracking-tight">Security Verification</h2>
+                <div className="w-10" />
             </div>
 
-            <div className="flex-1 overflow-y-auto pb-10 px-8">
-                {/* Student Profile */}
-                <div className="mt-8 flex flex-col items-center text-center">
+            <div className="flex-1 overflow-y-auto px-8 py-10">
+                {/* Student Profile Card */}
+                <div className="flex flex-col items-center text-center">
                     <div className="relative mb-6">
-                        <div className="w-36 h-36 rounded-[40px] overflow-hidden shadow-2xl shadow-blue-900/10 border-4 border-white">
+                        <div className="w-44 h-44 rounded-[40px] overflow-hidden shadow-2xl shadow-blue-900/10 border-[6px] border-white">
                             {studentData?.photo_url ? (
-                                <img src={studentData.photo_url} alt="Student" className="w-full h-full object-cover" />
+                                <img src={studentData.photo_url} alt="Profile" className="w-full h-full object-cover" />
                             ) : (
-                                <div className="w-full h-full bg-blue-50 flex items-center justify-center text-blue-500 font-bold text-4xl">
-                                    {studentData?.full_name?.[0] || 'S'}
+                                <div className="w-full h-full bg-blue-50 flex items-center justify-center text-blue-300 font-bold text-5xl">
+                                    {studentData?.full_name?.[0]}
                                 </div>
                             )}
                         </div>
-                        <div className="absolute -bottom-2 -right-2 bg-emerald-500 text-white p-2 rounded-2xl border-4 border-[#f8f9fb] shadow-lg">
-                            <CheckCircle2 className="w-6 h-6 fill-white text-emerald-500" />
+                        {/* Verified Badge */}
+                        <div className="absolute -bottom-2 -right-2 w-12 h-12 bg-[#10b981] rounded-full border-[4px] border-[#f8f9fb] flex items-center justify-center shadow-lg">
+                            <CheckCircle2 className="w-6 h-6 text-white fill-white/20" />
                         </div>
                     </div>
 
-                    <h1 className="text-3xl font-black text-[#0f172a] tracking-tight mb-2">
-                        {studentData?.full_name || 'Student Name'}
+                    <h1 className="text-4xl font-black text-[#1a2b4b] tracking-tight mb-2">
+                        {studentData?.full_name || 'Rahul Sharma'}
                     </h1>
-                    <p className="text-lg font-black text-[#f47c20] tracking-widest uppercase mb-1">
-                        ID: {studentData?.student_id || 'VP-0000-0000'}
+                    <p className="text-xl font-black text-[#f47c20] tracking-widest uppercase mb-2">
+                        ID: {studentData?.student_id || 'VP-2023-8842'}
                     </p>
-                    <p className="text-sm font-bold text-slate-400 capitalize">
-                        {studentData?.departments?.name || 'Academic Department'}
+                    <p className="text-lg font-bold text-slate-400">
+                        {studentData?.departments?.name || 'Computer Science Engineering'}
                     </p>
                 </div>
 
-                {/* Status Card */}
-                <div className="mt-8 bg-[#f0fff4] border border-emerald-100 rounded-[32px] p-6 text-center shadow-sm">
-                    <div className="flex items-center justify-center gap-2 mb-2">
-                        <CheckCircle2 className="w-6 h-6 text-emerald-500" />
-                        <span className="text-lg font-black text-emerald-600 tracking-tight uppercase">Valid Pass</span>
+                {/* Status Indicator Block */}
+                <div className="mt-10 bg-[#f0fff4] border border-[#d1fae5] rounded-[40px] p-8 text-center shadow-sm">
+                    <div className="flex items-center justify-center gap-3 mb-2">
+                        <div className="w-8 h-8 rounded-full bg-[#10b981] flex items-center justify-center">
+                            <CheckCircle2 className="w-5 h-5 text-white" />
+                        </div>
+                        <span className="text-2xl font-black text-[#065f46] tracking-tight uppercase">Valid Pass</span>
                     </div>
-                    <p className="text-xs font-bold text-emerald-500/70 mb-4 tracking-wide uppercase">
+                    <p className="text-sm font-bold text-[#10b981]/80 mb-6 uppercase tracking-wider">
                         Verified at {verifiedAt || '10:45 AM today'}
                     </p>
-                    <div className="inline-block bg-[#10b981] text-white px-8 py-2.5 rounded-2xl text-xs font-black tracking-widest uppercase shadow-lg shadow-emerald-500/20">
+                    <div className="inline-block bg-[#10b981] text-white px-10 py-3.5 rounded-2xl text-[13px] font-black tracking-[0.2em] uppercase shadow-xl shadow-emerald-500/30">
                         Green Status
                     </div>
                 </div>
 
-                {/* Details List */}
-                <div className="mt-10 space-y-6">
-                    <div className="flex items-center justify-between group">
-                        <div className="flex items-center gap-4 text-slate-400">
-                            <div className="w-10 h-10 rounded-2xl bg-white shadow-sm flex items-center justify-center text-[#f47c20] group-hover:scale-110 transition-transform">
-                                <GraduationCap className="w-5 h-5" />
+                {/* Details Section */}
+                <div className="mt-12 space-y-8 px-2">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-5">
+                            <div className="w-12 h-12 rounded-2xl bg-[#fff5ef] flex items-center justify-center text-[#f47c20]">
+                                <GraduationCap className="w-6 h-6" />
                             </div>
-                            <span className="text-xs font-black uppercase tracking-widest text-[#64748b]">Batch</span>
+                            <span className="text-sm font-black uppercase tracking-[0.2em] text-slate-400">Batch</span>
                         </div>
-                        <span className="text-sm font-black text-[#1e293b]">{studentData?.batch || studentData?.year_of_study || '2021-2025'}</span>
+                        <span className="text-lg font-black text-[#1e293b]">{studentData?.batch || '2021-2025'}</span>
                     </div>
 
-                    <div className="flex items-center justify-between group">
-                        <div className="flex items-center gap-4 text-slate-400">
-                            <div className="w-10 h-10 rounded-2xl bg-white shadow-sm flex items-center justify-center text-[#f47c20] group-hover:scale-110 transition-transform">
-                                <MapPin className="w-5 h-5" />
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-5">
+                            <div className="w-12 h-12 rounded-2xl bg-[#fff5ef] flex items-center justify-center text-[#f47c20]">
+                                <MapPin className="w-6 h-6" />
                             </div>
-                            <span className="text-xs font-black uppercase tracking-widest text-[#64748b]">Entry Point</span>
+                            <span className="text-sm font-black uppercase tracking-[0.2em] text-slate-400">Entry Point</span>
                         </div>
-                        <span className="text-sm font-black text-[#1e293b]">{gateName || 'Main Gate 1'}</span>
+                        <span className="text-lg font-black text-[#1e293b]">{gateName || 'Main Gate 1'}</span>
                     </div>
 
-                    <div className="flex items-center justify-between group">
-                        <div className="flex items-center gap-4 text-slate-400">
-                            <div className="w-10 h-10 rounded-2xl bg-white shadow-sm flex items-center justify-center text-[#f47c20] group-hover:scale-110 transition-transform">
-                                <Clock className="w-5 h-5" />
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-5">
+                            <div className="w-12 h-12 rounded-2xl bg-[#fff5ef] flex items-center justify-center text-[#f47c20]">
+                                <Clock className="w-6 h-6" />
                             </div>
-                            <span className="text-xs font-black uppercase tracking-widest text-[#64748b]">Validity</span>
+                            <span className="text-sm font-black uppercase tracking-[0.2em] text-slate-400">Validity</span>
                         </div>
-                        <span className="text-sm font-black text-[#1e293b]">Expires 06:00 PM</span>
+                        <span className="text-lg font-black text-[#1e293b]">Expires 06:00 PM</span>
                     </div>
 
-                    <div className="flex items-center justify-between group">
-                        <div className="flex items-center gap-4 text-slate-400">
-                            <div className="w-10 h-10 rounded-2xl bg-white shadow-sm flex items-center justify-center text-[#f47c20] group-hover:scale-110 transition-transform">
-                                <Home className="w-5 h-5" />
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-5">
+                            <div className="w-12 h-12 rounded-2xl bg-[#fff5ef] flex items-center justify-center text-[#f47c20]">
+                                <Home className="w-6 h-6" />
                             </div>
-                            <span className="text-xs font-black uppercase tracking-widest text-[#64748b]">Hostel</span>
+                            <span className="text-sm font-black uppercase tracking-[0.2em] text-slate-400">Hostel</span>
                         </div>
-                        <span className="text-sm font-black text-[#1e293b]">{studentData?.hostel_type || 'Main Campus'}</span>
+                        <span className="text-lg font-black text-[#1e293b]">{studentData?.hostel_type || 'Block B - Room 402'}</span>
                     </div>
                 </div>
 
-                {/* Actions */}
-                <div className="mt-10 space-y-4">
+                {/* Action Controls */}
+                <div className="mt-14 space-y-5">
                     <button
                         onClick={onNextScan}
-                        className="w-full py-5 bg-[#f47c20] text-white font-black rounded-3xl shadow-xl shadow-[#f47c20]/20 flex items-center justify-center gap-3 active:scale-[0.98] transition-all hover:brightness-110"
+                        className="w-full py-6 bg-[#f47c20] text-white font-black rounded-3xl shadow-2xl shadow-orange-500/30 flex items-center justify-center gap-4 active:scale-[0.97] transition-all hover:bg-[#e06d1c] text-lg"
                     >
-                        <ArrowRight className="w-5 h-5" />
+                        <Zap className="w-6 h-6 fill-white" />
                         Next Scan
                     </button>
                     <button
-                        className="w-full py-5 bg-[#fff7f0] text-[#f47c20] font-black rounded-3xl border border-[#f47c20]/10 hover:bg-[#fff0e5] transition-colors"
+                        className="w-full py-6 bg-[#fff5ec] text-[#f47c20] font-black rounded-3xl border-2 border-[#f47c20]/10 hover:bg-[#ffedda] transition-colors text-lg"
                     >
                         Manual Entry
                     </button>

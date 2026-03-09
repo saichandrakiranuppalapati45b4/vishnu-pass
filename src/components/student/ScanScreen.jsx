@@ -97,9 +97,15 @@ const ScanScreen = ({ studentData, onBack }) => {
                 <Scanner
                     onResult={handleScan}
                     onError={(error) => setErrorMessage(error?.message)}
+                    constraints={{
+                        aspectRatio: 1,
+                        facingMode: "environment",
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    }}
                     components={{ audio: false, torch: torchOn }}
                     styles={{
-                        container: { width: '100%', height: '100%' },
+                        container: { width: '100%', height: '100%', background: 'black' },
                         video: { objectFit: 'cover', width: '100%', height: '100%' }
                     }}
                 />
