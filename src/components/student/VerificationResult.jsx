@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronLeft, CheckCircle2, GraduationCap, MapPin, Clock, Home, ArrowRight } from 'lucide-react';
+import { ChevronLeft, CheckCircle2, GraduationCap, MapPin, Clock, Home, ArrowRight, Zap } from 'lucide-react';
 
 const VerificationResult = ({ studentData, gateName, verifiedAt, onNextScan }) => {
     return (
