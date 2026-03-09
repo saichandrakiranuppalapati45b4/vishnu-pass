@@ -1,60 +1,90 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, TrendingUp, RefreshCw, Clock, ShieldCheck, ShieldAlert, User, MoreHorizontal, AlertTriangle, Scan } from 'lucide-react';
+import { Bell, TrendingUp, RefreshCw, Clock, ShieldCheck, ShieldAlert, User, MoreHorizontal, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
+import { supabase } from '../../lib/supabase';
 
-const GuardHome = ({ guardData, onScan }) => {
-    const [currentTime, setCurrentTime] = useState(new Date());
-    const [seconds, setSeconds] = useState(24);
+const GuardHome = ({ guardData }) => {
+    const [stats, setStats] = useState({ totalScans: 0, activePasses: 0 });
+    const [activities, setActivities] = useState([]);
+    const [qrToken, setQrToken] = useState(crypto.randomUUID());
+    const [seconds, setSeconds] = useState(30);
 
+    // QR Code timer and rotation
     useEffect(() => {
         const timer = setInterval(() => {
-            setSeconds(prev => (prev > 0 ? prev - 1 : 24));
+            setSeconds(prev => {
+                if (prev <= 1) {
+                    setQrToken(crypto.randomUUID());
+                    return 30;
+                }
+                return prev - 1;
+            });
         }, 1000);
         return () => clearInterval(timer);
     }, []);
 
-    const recentActivity = [
-        {
-            id: 1,
-            name: "Arjun Sharma",
-            time: "2 mins ago",
-            gate: "Gate A",
-            type: "VIP Pass",
-            status: "VERIFIED",
-            statusColor: "bg-emerald-100 text-emerald-600",
-            icon: <div className="w-10 h-10 rounded-lg bg-emerald-900/80 flex items-center justify-center text-emerald-400"><User className="w-5 h-5" /></div>
-        },
-        {
-            id: 2,
-            name: "Priya Patel",
-            time: "15 mins ago",
-            gate: "Gate A",
-            type: "Verified",
-            status: "DAY PASS",
-            statusColor: "bg-blue-100 text-blue-600",
-            icon: <div className="w-10 h-10 rounded-lg overflow-hidden"><img src="https://i.pravatar.cc/100?u=priya" alt="Priya" className="w-full h-full object-cover" /></div>
-        },
-        {
-            id: 3,
-            name: "Rahul Mehta",
-            time: "42 mins ago",
-            gate: "Gate B",
-            type: "Verified",
-            status: "STAFF",
-            statusColor: "bg-orange-100 text-orange-600",
-            icon: <div className="w-10 h-10 rounded-lg overflow-hidden"><img src="https://i.pravatar.cc/100?u=rahul" alt="Rahul" className="w-full h-full object-cover" /></div>
-        },
-        {
-            id: 4,
-            name: "Unknown Entry",
-            time: "1 hr ago",
-            gate: "Expired Pass detected",
-            status: "DENIED",
-            statusColor: "bg-rose-100 text-rose-600",
-            icon: <div className="w-10 h-10 rounded-lg bg-rose-100 flex items-center justify-center text-rose-500"><AlertTriangle className="w-5 h-5" /></div>,
-            isError: true
-        }
-    ];
+    // Real-time data fetching and subscriptions
+    useEffect(() => {
+        if (!guardData?.gate_id) return;
+
+        const fetchData = async () => {
+            try {
+                // 1. Fetch Total Scans for this gate
+                const { count: scanCount } = await supabase
+                    .from('movement_logs')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('access_point_id', guardData.gate_id);
+
+                // 2. Fetch Active Pass holders (students with 'Active' status)
+                const { count: studentCount } = await supabase
+                    .from('students')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('status', 'Active');
+
+                setStats({
+                    totalScans: scanCount || 0,
+                    activePasses: studentCount || 0
+                });
+
+                // 3. Fetch Recent Activity
+                const { data: logs } = await supabase
+                    .from('movement_logs')
+                    .select('*')
+                    .eq('access_point_id', guardData.gate_id)
+                    .order('created_at', { ascending: false })
+                    .limit(5);
+
+                if (logs) setActivities(logs);
+
+            } catch (err) {
+                console.error("Error fetching guard home data:", err);
+            }
+        };
+
+        fetchData();
+
+        // Real-time subscription for movement_logs
+        const channel = supabase
+            .channel('guard_home_updates')
+            .on('postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'movement_logs',
+                    filter: `access_point_id=eq.${guardData.gate_id}`
+                },
+                (payload) => {
+                    // Update stats and activities instantly
+                    setStats(prev => ({ ...prev, totalScans: prev.totalScans + 1 }));
+                    setActivities(prev => [payload.new, ...prev].slice(0, 5));
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [guardData?.gate_id]);
 
     const initials = guardData?.full_name
         ? guardData.full_name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
@@ -96,10 +126,10 @@ const GuardHome = ({ guardData, onScan }) => {
                             <TrendingUp className="w-3 h-3" />
                         </div>
                     </div>
-                    <p className="text-2xl font-black text-gray-800">1,284</p>
+                    <p className="text-2xl font-black text-gray-800">{stats.totalScans.toLocaleString()}</p>
                     <div className="flex items-center gap-1 mt-1">
                         <TrendingUp className="w-2.5 h-2.5 text-emerald-500" />
-                        <span className="text-[10px] font-bold text-emerald-500">+12%</span>
+                        <span className="text-[10px] font-bold text-emerald-500">Live</span>
                     </div>
                 </div>
 
@@ -110,10 +140,10 @@ const GuardHome = ({ guardData, onScan }) => {
                             <TrendingUp className="w-3 h-3" />
                         </div>
                     </div>
-                    <p className="text-2xl font-black text-gray-800">450</p>
+                    <p className="text-2xl font-black text-gray-800">{stats.activePasses.toLocaleString()}</p>
                     <div className="flex items-center gap-1 mt-1">
-                        <TrendingUp className="w-2.5 h-2.5 text-emerald-500" />
-                        <span className="text-[10px] font-bold text-emerald-500">+5.2%</span>
+                        <ShieldCheck className="w-2.5 h-2.5 text-emerald-500" />
+                        <span className="text-[10px] font-bold text-emerald-500">Active Students</span>
                     </div>
                 </div>
             </div>
@@ -125,7 +155,7 @@ const GuardHome = ({ guardData, onScan }) => {
                     <div className="w-full max-w-[240px] mx-auto aspect-square bg-[#fff8f5] rounded-3xl border border-[#f47c20]/5 flex items-center justify-center p-8 mb-6 relative">
                         <div className="absolute inset-4 border border-[#f47c20]/10 rounded-2xl"></div>
                         <img
-                            src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=GUARD_SESSION_TOKEN_123"
+                            src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=GATE_${guardData?.gate_id}_${qrToken}`}
                             alt="QR Session"
                             className="w-full h-full object-contain relative z-10 opacity-80"
                         />
@@ -155,7 +185,10 @@ const GuardHome = ({ guardData, onScan }) => {
                     </p>
 
                     <button
-                        onClick={onScan}
+                        onClick={() => {
+                            setQrToken(crypto.randomUUID());
+                            setSeconds(30);
+                        }}
                         className="w-full py-4 bg-gradient-to-r from-[#f47c20] to-[#e06b12] text-white font-black rounded-2xl shadow-xl shadow-[#f47c20]/20 flex items-center justify-center gap-3 active:scale-[0.98] transition-all"
                     >
                         <RefreshCw className="w-5 h-5" />
@@ -164,21 +197,7 @@ const GuardHome = ({ guardData, onScan }) => {
                 </div>
             </div>
 
-            {/* Quick Actions / Scan Button */}
-            <div className="px-6 mt-6">
-                <button
-                    onClick={onScan}
-                    className="w-full py-6 bg-slate-900 text-white rounded-[32px] shadow-xl shadow-slate-900/10 flex items-center justify-center gap-4 group active:scale-[0.98] transition-all border border-slate-800"
-                >
-                    <div className="w-12 h-12 rounded-2xl bg-[#f47c20] flex items-center justify-center shadow-lg shadow-[#f47c20]/20 group-hover:scale-110 transition-transform">
-                        <Scan className="w-6 h-6" />
-                    </div>
-                    <div className="text-left">
-                        <p className="text-[10px] font-black text-[#f47c20] uppercase tracking-widest leading-none mb-1">Gate Entry</p>
-                        <p className="text-lg font-black tracking-tight leading-none">START SCANNER</p>
-                    </div>
-                </button>
-            </div>
+
 
             {/* Recent Activity Section */}
             <div className="mt-8 px-6 pb-20">
@@ -188,28 +207,36 @@ const GuardHome = ({ guardData, onScan }) => {
                 </div>
 
                 <div className="space-y-4">
-                    {recentActivity.map((activity) => (
-                        <div key={activity.id} className={`bg-white rounded-[28px] p-4 border border-white shadow-sm flex items-center justify-between group`}>
-                            <div className="flex items-center gap-4">
-                                {activity.icon}
-                                <div>
-                                    <h4 className="text-sm font-black text-gray-800 leading-none mb-1.5">{activity.name}</h4>
-                                    <p className="text-[10px] font-bold text-gray-400 uppercase">
-                                        <Clock className="w-3 h-3 inline mr-1 -mt-0.5" />
-                                        {activity.time} • <span className={activity.isError ? "text-rose-500" : ""}>{activity.gate}</span>
-                                    </p>
+                    {activities.length === 0 ? (
+                        <div className="py-8 text-center text-gray-400 font-bold text-xs uppercase tracking-widest bg-white rounded-[28px] border border-dashed border-gray-200">
+                            No recent scans at this gate
+                        </div>
+                    ) : (
+                        activities.map((activity) => (
+                            <div key={activity.id} className={`bg-white rounded-[28px] p-4 border border-white shadow-sm flex items-center justify-between group`}>
+                                <div className="flex items-center gap-4">
+                                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${activity.status === 'Success' ? 'bg-emerald-50 text-emerald-500' : 'bg-rose-50 text-rose-500'}`}>
+                                        <User className="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <h4 className="text-sm font-black text-gray-800 leading-none mb-1.5">{activity.user_name}</h4>
+                                        <p className="text-[10px] font-bold text-gray-400 uppercase">
+                                            <Clock className="w-3 h-3 inline mr-1 -mt-0.5" />
+                                            {format(new Date(activity.created_at), 'hh:mm a')} • {activity.student_id || 'GUEST'}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="flex flex-col items-end gap-1.5">
+                                    <span className={`text-[8px] font-black px-2.5 py-1 rounded-lg tracking-wider uppercase ${activity.status === 'Success' ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}`}>
+                                        {activity.status}
+                                    </span>
+                                    <span className="text-[10px] font-bold text-gray-400 tracking-tighter uppercase">
+                                        {activity.movement_type}
+                                    </span>
                                 </div>
                             </div>
-                            <div className="flex flex-col items-end gap-1.5">
-                                <span className={`text-[8px] font-black px-2.5 py-1 rounded-lg tracking-wider uppercase ${activity.statusColor}`}>
-                                    {activity.status}
-                                </span>
-                                <span className="text-[10px] font-bold text-gray-400 tracking-tighter">
-                                    {activity.type}
-                                </span>
-                            </div>
-                        </div>
-                    ))}
+                        ))
+                    )}
                 </div>
             </div>
         </div>

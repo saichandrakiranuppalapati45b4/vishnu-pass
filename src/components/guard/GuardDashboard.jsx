@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { Home, History, Users, User, LogOut, Scan } from 'lucide-react';
+import { Home, History, Users, User, LogOut } from 'lucide-react';
 import GuardHome from './Home';
-import GuardScanner from './Scanner';
 import GuardProfile from './Profile';
 import GuardHistory from './GuardHistory';
 import SecuritySettings from './SecuritySettings';
@@ -12,19 +11,17 @@ const GuardDashboard = ({ onLogout, guardData }) => {
     const renderContent = () => {
         switch (activeTab) {
             case 'home':
-                return <GuardHome guardData={guardData} onScan={() => setActiveTab('scan')} />;
+                return <GuardHome guardData={guardData} />;
             case 'history':
                 return <GuardHistory guardData={guardData} />;
             case 'roster':
                 return <div className="p-8 text-center text-gray-400">Shift Roster Coming Soon</div>;
-            case 'scan':
-                return <GuardScanner guardData={guardData} onBack={() => setActiveTab('home')} />;
             case 'profile':
                 return <GuardProfile guardData={guardData} onLogout={onLogout} onNavigate={(tab) => setActiveTab(tab)} />;
             case 'security':
                 return <SecuritySettings onBack={() => setActiveTab('profile')} />;
             default:
-                return <GuardHome guardData={guardData} onScan={() => setActiveTab('scan')} />;
+                return <GuardHome guardData={guardData} />;
         }
     };
 
@@ -53,13 +50,7 @@ const GuardDashboard = ({ onLogout, guardData }) => {
                     <span className="text-[10px] font-bold uppercase tracking-wider">History</span>
                 </button>
 
-                {/* Scan Button (Prominent) */}
-                <button
-                    onClick={() => setActiveTab('scan')}
-                    className={`flex flex-col items-center justify-center -mt-12 w-20 h-20 rounded-full border-8 border-[#f8f9fb] bg-[#f47c20] text-white shadow-xl shadow-[#f47c20]/30 transition-all active:scale-95 ${activeTab === 'scan' ? 'bg-[#e06d1c]' : ''}`}
-                >
-                    <Scan className="w-8 h-8" />
-                </button>
+
 
                 <button
                     onClick={() => setActiveTab('roster')}
