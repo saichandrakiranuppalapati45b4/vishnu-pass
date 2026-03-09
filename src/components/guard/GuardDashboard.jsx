@@ -13,7 +13,7 @@ const GuardDashboard = ({ onLogout, guardData }) => {
             case 'home':
                 return <GuardHome guardData={guardData} />;
             case 'history':
-                return <GuardHistory guardData={guardData} />;
+                return <GuardHistory guardData={guardData} onBack={() => setActiveTab('home')} />;
             case 'roster':
                 return <div className="p-8 text-center text-gray-400">Shift Roster Coming Soon</div>;
             case 'profile':

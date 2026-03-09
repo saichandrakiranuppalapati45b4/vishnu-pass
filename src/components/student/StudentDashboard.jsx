@@ -14,7 +14,7 @@ const StudentDashboard = ({ studentData, onLogout }) => {
             case 'home':
                 return <Home studentData={studentData} />;
             case 'scan':
-                return <ScanScreen studentData={studentData} />;
+                return <ScanScreen studentData={studentData} onBack={() => setActiveTab('home')} />;
             case 'logs':
                 return <EntryLogs studentData={studentData} />;
             case 'profile':
