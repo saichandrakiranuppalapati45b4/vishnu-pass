@@ -127,16 +127,17 @@ const GuardHome = ({ guardData }) => {
                         setPendingRequests(prev => prev.filter(req => req.id !== payload.new.id));
                     }
 
-                    // If it was completed at OUR gate, show verification
-                    if (newStatus === 'completed' && payload.new.gate_id === guardData.gate_id) {
-                        // Fetch the session first to ensure we have the student_id (Realtime UPDATEs might omit unchanged columns)
+                    // If it was completed, verify it belongs to our gate and show details
+                    if (newStatus === 'completed') {
+                        // Fetch the session first to ensure we have the student_id and gate_id
+                        // (Realtime UPDATEs omit unchanged columns!)
                         const { data: sessionInfo } = await supabase
                             .from('scan_sessions')
-                            .select('student_id')
+                            .select('student_id, gate_id')
                             .eq('id', payload.new.id)
                             .single();
 
-                        if (sessionInfo?.student_id) {
+                        if (sessionInfo?.gate_id === guardData.gate_id && sessionInfo?.student_id) {
                             const { data: student } = await supabase
                                 .from('students')
                                 .select('*, departments(name)')
