@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, Shield, Clock, Zap, Loader2, Fingerprint, Camera, ShieldCheck, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { Scanner } from '@yudiel/react-qr-scanner';
@@ -8,6 +8,17 @@ const ScanScreen = ({ studentData, onBack }) => {
     const [timeLeft, setTimeLeft] = useState(25);
     const [sessionId, setSessionId] = useState(null);
     const [error, setError] = useState(null);
+
+    const sessionIdRef = useRef(null);
+    const statusRef = useRef('idle');
+
+    useEffect(() => {
+        sessionIdRef.current = sessionId;
+    }, [sessionId]);
+
+    useEffect(() => {
+        statusRef.current = status;
+    }, [status]);
 
     // Countdown Timer logic
     useEffect(() => {
@@ -52,7 +63,7 @@ const ScanScreen = ({ studentData, onBack }) => {
                 },
                 (payload) => {
                     const newStatus = payload.new.status;
-                    if (newStatus === 'approved' && status === 'requesting') {
+                    if (newStatus === 'approved') {
                         setStatus('approved');
                     } else if (newStatus === 'expired') {
                         setStatus('expired');
@@ -64,7 +75,7 @@ const ScanScreen = ({ studentData, onBack }) => {
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [sessionId, status]);
+    }, [sessionId]);
 
     const handleRequestAccess = async () => {
         setError(null);
@@ -94,8 +105,16 @@ const ScanScreen = ({ studentData, onBack }) => {
     const handleScan = async (result) => {
         if (!result) return;
 
+        const currentStatus = statusRef.current;
+        const currentSessionId = sessionIdRef.current;
+
         // We allow scanning as long as we have requested access (status should be requesting or approved)
-        if (status === 'idle' || status === 'completed' || status === 'expired') {
+        if (currentStatus === 'idle' || currentStatus === 'completed' || currentStatus === 'expired') {
+            return;
+        }
+
+        if (!currentSessionId) {
+            console.error("Scan detected, but sessionId is missing!");
             return;
         }
 
@@ -129,7 +148,7 @@ const ScanScreen = ({ studentData, onBack }) => {
                     status: 'completed',
                     gate_id: scannedGateId
                 })
-                .eq('id', sessionId);
+                .eq('id', currentSessionId);
 
             if (updateError) throw updateError;
 
