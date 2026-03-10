@@ -185,7 +185,7 @@ const GuardHome = ({ guardData }) => {
                     <div className="w-full max-w-[260px] mx-auto aspect-square bg-[#fff8f6] rounded-[60px] flex items-center justify-center p-12 mb-8 relative border border-[#f47c20]/5">
                         <div className="w-full h-full bg-white rounded-[40px] p-4 shadow-sm flex items-center justify-center">
                             <img
-                                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=GATE_${guardData?.gate_id}_${qrToken}`}
+                                src={`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=GATE_${guardData?.gate_id}_${qrToken}`}
                                 alt="QR Session"
                                 className="w-full h-full object-contain"
                             />
