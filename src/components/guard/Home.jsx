@@ -129,26 +129,35 @@ const GuardHome = ({ guardData }) => {
 
                     // If it was completed at OUR gate, show verification
                     if (newStatus === 'completed' && payload.new.gate_id === guardData.gate_id) {
-                        const { data: student } = await supabase
-                            .from('students')
-                            .select('*, departments(name)')
-                            .eq('student_id', payload.new.student_id)
+                        // Fetch the session first to ensure we have the student_id (Realtime UPDATEs might omit unchanged columns)
+                        const { data: sessionInfo } = await supabase
+                            .from('scan_sessions')
+                            .select('student_id')
+                            .eq('id', payload.new.id)
                             .single();
 
-                        if (student) {
-                            setActiveVerification({
-                                ...student,
-                                verifiedAt: format(new Date(), 'hh:mm a')
-                            });
+                        if (sessionInfo?.student_id) {
+                            const { data: student } = await supabase
+                                .from('students')
+                                .select('*, departments(name)')
+                                .eq('student_id', sessionInfo.student_id)
+                                .single();
 
-                            // Log it in movement_logs
-                            await supabase.from('movement_logs').insert({
-                                user_name: student.full_name,
-                                student_id: student.student_id,
-                                access_point_id: guardData.gate_id,
-                                movement_type: 'AUTHORIZED',
-                                status: 'Success'
-                            });
+                            if (student) {
+                                setActiveVerification({
+                                    ...student,
+                                    verifiedAt: format(new Date(), 'hh:mm a')
+                                });
+
+                                // Log it in movement_logs
+                                await supabase.from('movement_logs').insert({
+                                    user_name: student.full_name,
+                                    student_id: student.student_id,
+                                    access_point_id: guardData.gate_id,
+                                    movement_type: 'AUTHORIZED',
+                                    status: 'Success'
+                                });
+                            }
                         }
                     }
                 }
