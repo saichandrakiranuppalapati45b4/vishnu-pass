@@ -40,47 +40,37 @@ const ScanScreen = ({ studentData, onBack }) => {
         setErrorMessage(null);
 
         try {
-            // 1. Parse Scan Value (Expected: GATE_uuid_token)
-            let gateId = null;
-            if (rawValue.startsWith('GATE_')) {
-                const parts = rawValue.split('_');
-                gateId = parts[1];
-            } else {
-                const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-                if (uuidRegex.test(rawValue)) {
-                    gateId = rawValue;
+            // 1. Parse Scan Value (Expected: https://vishnupass.com/scan/{session_id})
+            let sessionId = null;
+            try {
+                if (rawValue.startsWith('http')) {
+                    const url = new URL(rawValue);
+                    sessionId = url.pathname.split('/').pop();
+                } else {
+                    sessionId = rawValue;
                 }
+            } catch (e) {
+                sessionId = rawValue;
             }
 
-            if (!gateId) {
-                throw new Error("Invalid Gate QR code. Please scan the official Guard QR.");
+            if (!sessionId) {
+                throw new Error("Invalid QR code format.");
             }
 
-            // 2. Fetch Gate Name
-            const { data: gate, error: gateError } = await supabase
-                .from('guard_gates')
-                .select('name')
-                .eq('id', gateId)
-                .single();
+            // 2. Insert record into verification_requests
+            const { error: insertError } = await supabase
+                .from('verification_requests')
+                .insert([{
+                    student_id: studentData?.student_id,
+                    session_id: sessionId,
+                    timestamp: new Date().toISOString()
+                }]);
 
-            if (gateError || !gate) {
-                throw new Error("Gate not recognized.");
-            }
+            if (insertError) throw insertError;
 
-            // 3. Record Movement Log
-            const { error: logError } = await supabase.from('movement_logs').insert([{
-                user_name: studentData?.full_name,
-                student_id: studentData?.student_id,
-                access_point_id: gateId,
-                movement_type: 'AUTHORIZED',
-                status: 'Success'
-            }]);
-
-            if (logError) throw logError;
-
-            // 4. Set Success Data
+            // 3. Set Success UI (The guard will see the details via Realtime)
             setScanData({
-                gateName: gate.name,
+                gateName: "Verified Session",
                 verifiedAt: format(new Date(), 'hh:mm a')
             });
             setStatus('success');
