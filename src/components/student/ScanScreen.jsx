@@ -40,37 +40,47 @@ const ScanScreen = ({ studentData, onBack }) => {
         setErrorMessage(null);
 
         try {
-            // 1. Parse Scan Value (Expected: https://vishnupass.com/scan/{session_id})
-            let sessionId = null;
+            // 1. Parse Scan Value (Expected: https://vishnupass.com/scan/{gateId}_{session_id})
+            let extractedGateId = null;
             try {
+                let tokenString = rawValue;
                 if (rawValue.startsWith('http')) {
                     const url = new URL(rawValue);
-                    sessionId = url.pathname.split('/').pop();
+                    tokenString = url.pathname.split('/').pop();
+                }
+
+                // tokenString is "{gateId}_{qrToken}"
+                if (tokenString.includes('_')) {
+                    const parts = tokenString.split('_');
+                    // The gateId is everything before the last underscore, as UUIDs have hyphens
+                    extractedGateId = parts.slice(0, -1).join('_');
                 } else {
-                    sessionId = rawValue;
+                    extractedGateId = tokenString;
                 }
             } catch (e) {
-                sessionId = rawValue;
+                extractedGateId = rawValue;
             }
 
-            if (!sessionId) {
+            if (!extractedGateId) {
                 throw new Error("Invalid QR code format.");
             }
 
-            // 2. Insert record into verification_requests
+            // 2. Insert record into movement_logs
             const { error: insertError } = await supabase
-                .from('verification_requests')
+                .from('movement_logs')
                 .insert([{
                     student_id: studentData?.student_id,
-                    session_id: sessionId,
-                    timestamp: new Date().toISOString()
+                    user_name: studentData?.full_name,
+                    access_point_id: extractedGateId,
+                    movement_type: 'VERIFICATION',
+                    status: 'Success'
                 }]);
 
             if (insertError) throw insertError;
 
-            // 3. Set Success UI (The guard will see the details via Realtime)
+            // 3. Set Success UI
             setScanData({
-                gateName: "Verified Session",
+                gateName: "Verified Gate",
                 verifiedAt: format(new Date(), 'hh:mm a')
             });
             setStatus('success');

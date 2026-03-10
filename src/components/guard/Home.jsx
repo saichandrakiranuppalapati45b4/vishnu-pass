@@ -31,10 +31,11 @@ const GuardHome = ({ guardData }) => {
 
         const fetchData = async () => {
             try {
-                // 1. Fetch Total Scans from verification_requests for this gate's current session or overall
+                // 1. Fetch Total Scans from movement_logs for this gate
                 const { count: scanCount } = await supabase
-                    .from('verification_requests')
-                    .select('*', { count: 'exact', head: true });
+                    .from('movement_logs')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('access_point_id', guardData.gate_id);
 
                 // 2. Fetch Active Pass holders
                 const { count: studentCount } = await supabase
@@ -47,23 +48,16 @@ const GuardHome = ({ guardData }) => {
                     activePasses: studentCount || 0
                 });
 
-                // 3. Fetch Recent Activity from verification_requests joined with students
+                // 3. Fetch Recent Activity from movement_logs
                 const { data: requests } = await supabase
-                    .from('verification_requests')
-                    .select('*, students(full_name, student_id)')
-                    .order('timestamp', { ascending: false })
+                    .from('movement_logs')
+                    .select('*')
+                    .eq('access_point_id', guardData.gate_id)
+                    .order('created_at', { ascending: false })
                     .limit(5);
 
                 if (requests) {
-                    const mappedActivities = requests.map(r => ({
-                        id: r.id,
-                        user_name: r.students?.full_name,
-                        student_id: r.students?.student_id,
-                        created_at: r.timestamp,
-                        status: 'Success',
-                        movement_type: 'VERIFICATION'
-                    }));
-                    setActivities(mappedActivities);
+                    setActivities(requests);
                 }
 
             } catch (err) {
@@ -73,21 +67,21 @@ const GuardHome = ({ guardData }) => {
 
         fetchData();
 
-        // Real-time subscription for verification_requests
+        // Real-time subscription for movement_logs
         const channel = supabase
             .channel('guard_home_updates')
             .on('postgres_changes',
                 {
                     event: 'INSERT',
                     schema: 'public',
-                    table: 'verification_requests',
-                    filter: `session_id=eq.${qrToken}`
+                    table: 'movement_logs',
+                    filter: `access_point_id=eq.${guardData.gate_id}`
                 },
                 async (payload) => {
                     // Update stats instantly
                     setStats(prev => ({ ...prev, totalScans: prev.totalScans + 1 }));
 
-                    // Trigger Verification View if the IDs match
+                    // Trigger Verification View if it's a valid student
                     if (payload.new.student_id) {
                         const { data: student } = await supabase
                             .from('students')
@@ -102,14 +96,7 @@ const GuardHome = ({ guardData }) => {
                             });
 
                             // Add to activity list
-                            setActivities(prev => [{
-                                id: payload.new.id,
-                                user_name: student.full_name,
-                                student_id: student.student_id,
-                                created_at: payload.new.timestamp,
-                                status: 'Success',
-                                movement_type: 'VERIFICATION'
-                            }, ...prev].slice(0, 5));
+                            setActivities(prev => [payload.new, ...prev].slice(0, 5));
                         }
                     }
                 }
@@ -119,7 +106,7 @@ const GuardHome = ({ guardData }) => {
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [guardData?.gate_id, qrToken]);
+    }, [guardData?.gate_id]);
 
     const initials = guardData?.full_name
         ? guardData.full_name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
@@ -202,7 +189,7 @@ const GuardHome = ({ guardData }) => {
                     <div className="w-full max-w-[260px] mx-auto aspect-square bg-[#fff8f6] rounded-[60px] flex items-center justify-center p-12 mb-8 relative border border-[#f47c20]/5">
                         <div className="w-full h-full bg-white rounded-[40px] p-4 shadow-sm flex items-center justify-center">
                             <img
-                                src={`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=https://vishnupass.com/scan/${qrToken}`}
+                                src={`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=https://vishnupass.com/scan/${guardData?.gate_id}_${qrToken}`}
                                 alt="QR Session"
                                 className="w-full h-full object-contain"
                             />
