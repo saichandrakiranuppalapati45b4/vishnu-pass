@@ -12,12 +12,12 @@ const GuardDashboard = ({ onLogout, guardData }) => {
 
     const renderContent = () => {
         if (activeTab === 'scanner') {
-            return <GuardScanner guardData={guardData} onBack={() => setActiveTab('roster')} />;
+            return <GuardScanner guardData={guardData} onBack={() => setActiveTab('home')} />;
         }
 
         switch (activeTab) {
             case 'home':
-                return <GuardHome guardData={guardData} />;
+                return <GuardHome guardData={guardData} onScannerOpen={() => setActiveTab('scanner')} />;
             case 'history':
                 return <GuardHistory guardData={guardData} onBack={() => setActiveTab('home')} />;
             case 'roster':

@@ -1,29 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, TrendingUp, RefreshCw, Clock, ShieldCheck, ShieldAlert, User, MoreHorizontal, AlertTriangle, CheckCircle2, Zap } from 'lucide-react';
+import { Bell, TrendingUp, Clock, ShieldCheck, User, QrCode } from 'lucide-react';
 import { format } from 'date-fns';
 import { supabase } from '../../lib/supabase';
-import VerificationResult from '../student/VerificationResult';
 
-const GuardHome = ({ guardData }) => {
+const GuardHome = ({ guardData, onScannerOpen }) => {
     const [stats, setStats] = useState({ totalScans: 0, activePasses: 0 });
     const [activities, setActivities] = useState([]);
-    const [qrToken, setQrToken] = useState(crypto.randomUUID());
-    const [seconds, setSeconds] = useState(30);
-    const [activeVerification, setActiveVerification] = useState(null);
-
-    // QR Code timer and rotation
-    useEffect(() => {
-        const timer = setInterval(() => {
-            setSeconds(prev => {
-                if (prev <= 1) {
-                    setQrToken(crypto.randomUUID());
-                    return 30;
-                }
-                return prev - 1;
-            });
-        }, 1000);
-        return () => clearInterval(timer);
-    }, []);
 
     // Real-time data fetching and subscriptions
     useEffect(() => {
@@ -81,24 +63,8 @@ const GuardHome = ({ guardData }) => {
                     // Update stats instantly
                     setStats(prev => ({ ...prev, totalScans: prev.totalScans + 1 }));
 
-                    // Trigger Verification View if it's a valid student
-                    if (payload.new.student_id) {
-                        const { data: student } = await supabase
-                            .from('students')
-                            .select('*, departments(name)')
-                            .eq('student_id', payload.new.student_id)
-                            .single();
-
-                        if (student) {
-                            setActiveVerification({
-                                ...student,
-                                verifiedAt: format(new Date(), 'hh:mm a')
-                            });
-
-                            // Add to activity list
-                            setActivities(prev => [payload.new, ...prev].slice(0, 5));
-                        }
-                    }
+                    // Add to activity list
+                    setActivities(prev => [payload.new, ...prev].slice(0, 5));
                 }
             )
             .subscribe();
@@ -114,17 +80,6 @@ const GuardHome = ({ guardData }) => {
 
     return (
         <div className="flex flex-col min-h-screen bg-[#f8f9fb] pb-12">
-            {/* Verification Overlay */}
-            {activeVerification && (
-                <div className="fixed inset-0 z-[100] bg-white animate-in slide-in-from-bottom duration-500">
-                    <VerificationResult
-                        studentData={activeVerification}
-                        gateName={guardData?.guard_gates?.name}
-                        verifiedAt={activeVerification.verifiedAt}
-                        onNextScan={() => setActiveVerification(null)}
-                    />
-                </div>
-            )}
 
             {/* Header */}
             <header className="px-6 py-4 flex justify-between items-center bg-transparent">
@@ -182,54 +137,33 @@ const GuardHome = ({ guardData }) => {
                 </div>
             </div>
 
-            {/* Main ID Card Section */}
+            {/* Main Action Section */}
             <div className="px-6 mt-6">
                 <div className="bg-white rounded-[40px] p-8 shadow-[0_10px_40px_rgba(0,0,0,0.04)] border border-white relative overflow-hidden text-center">
-                    {/* QR Area - Very rounded peach card */}
-                    <div className="w-full max-w-[260px] mx-auto aspect-square bg-[#fff8f6] rounded-[60px] flex items-center justify-center p-12 mb-8 relative border border-[#f47c20]/5">
-                        <div className="w-full h-full bg-white rounded-[40px] p-4 shadow-sm flex items-center justify-center">
-                            <img
-                                src={`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=https://vishnupass.com/scan/${guardData?.gate_id}_${qrToken}`}
-                                alt="QR Session"
-                                className="w-full h-full object-contain"
-                            />
-                        </div>
-                    </div>
 
                     <h2 className="text-3xl font-black text-[#1a2b3c] tracking-tight mb-2 uppercase">{guardData?.full_name || 'Guard'}</h2>
                     <p className="text-sm font-bold text-[#b43e8f] tracking-widest mb-10 uppercase">ID: {guardData?.employee_id || 'VP-2024-4845'}</p>
 
-                    {/* Timer - Stylized Boxes */}
-                    <div className="flex justify-center gap-4 mb-6">
-                        <div className="flex flex-col items-center">
-                            <div className="w-16 h-20 rounded-2xl bg-[#f0f9ff]/50 border border-[#e0f2fe] flex items-center justify-center text-2xl font-black text-[#1a2b3c]">00</div>
-                            <span className="text-[10px] font-black text-gray-400 uppercase mt-3 tracking-widest">Hours</span>
-                        </div>
-                        <div className="flex flex-col items-center">
-                            <div className="w-16 h-20 rounded-2xl bg-[#f0f9ff]/50 border border-[#e0f2fe] flex items-center justify-center text-2xl font-black text-[#1a2b3c]">00</div>
-                            <span className="text-[10px] font-black text-gray-400 uppercase mt-3 tracking-widest">Mins</span>
-                        </div>
-                        <div className="flex flex-col items-center">
-                            <div className="w-16 h-20 rounded-2xl bg-[#fff8f6] border border-[#f47c20]/10 flex items-center justify-center text-2xl font-black text-[#f47c20]">
-                                {seconds.toString().padStart(2, '0')}
+                    {/* Scan Button Area */}
+                    <div className="w-full max-w-[260px] mx-auto aspect-square bg-[#fff8f6] rounded-[60px] flex items-center justify-center p-8 mb-8 relative border border-[#f47c20]/5 group cursor-pointer" onClick={onScannerOpen}>
+                        <div className="w-full h-full bg-white rounded-[40px] shadow-lg flex flex-col items-center justify-center gap-4 transition-transform group-hover:scale-105 active:scale-95 border-2 border-[#f47c20]/10 hover:border-[#f47c20]/30 shadow-[#f47c20]/5">
+                            <div className="w-20 h-20 rounded-full bg-[#f47c20]/10 flex items-center justify-center mb-2">
+                                <QrCode className="w-10 h-10 text-[#f47c20]" />
                             </div>
-                            <span className="text-[10px] font-black text-gray-400 uppercase mt-3 tracking-widest">Secs</span>
+                            <span className="text-[#f47c20] font-black tracking-[0.2em] text-sm uppercase">Scan Pass</span>
                         </div>
                     </div>
 
-                    <p className="text-center text-[12px] font-bold text-gray-400 mb-8 tracking-tight">
-                        Refreshes in <span className="text-[#f47c20] font-black">{seconds}s</span>
+                    <p className="text-center text-[11px] font-bold text-gray-400 mb-8 tracking-wide px-4">
+                        Tap the scanner above to verify incoming student digital passes.
                     </p>
 
                     <button
-                        onClick={() => {
-                            setQrToken(crypto.randomUUID());
-                            setSeconds(30);
-                        }}
-                        className="w-full py-4 bg-gradient-to-r from-[#f47c20] to-[#e06b12] text-white font-black rounded-2xl shadow-xl shadow-[#f47c20]/20 flex items-center justify-center gap-3 active:scale-[0.98] transition-all text-xs tracking-[0.2em] uppercase"
+                        onClick={onScannerOpen}
+                        className="w-full py-5 bg-gradient-to-r from-[#f47c20] to-[#e06b12] text-white font-black rounded-2xl shadow-xl shadow-[#f47c20]/20 flex items-center justify-center gap-3 active:scale-[0.98] transition-all text-xs tracking-[0.2em] uppercase"
                     >
-                        <RefreshCw className="w-5 h-5" />
-                        Refresh QR Code
+                        <QrCode className="w-5 h-5" />
+                        Open Scanner
                     </button>
                 </div>
             </div>

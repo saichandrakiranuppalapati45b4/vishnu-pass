@@ -2,50 +2,80 @@ import React, { useState } from 'react';
 import { Scanner } from '@yudiel/react-qr-scanner';
 import { ShieldCheck, ShieldAlert, X, Zap, Camera, User, Search, Loader2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import VerificationResult from '../student/VerificationResult';
+import { format } from 'date-fns';
+
 
 const GuardScanner = ({ guardData, onBack }) => {
     const [scanResult, setScanResult] = useState(null);
+    const [status, setStatus] = useState('idle'); // idle, processing, success, error
     const [isProcessing, setIsProcessing] = useState(false);
     const [error, setError] = useState(null);
     const [manualId, setManualId] = useState('');
 
     const handleScan = async (result) => {
-        if (!result || isProcessing) return;
+        if (!result || isProcessing || status === 'success') return;
 
         // More robust parsing for different library versions/formats
-        let studentId = '';
+        let rawValue = '';
         if (typeof result === 'string') {
-            studentId = result;
+            rawValue = result;
         } else if (Array.isArray(result) && result.length > 0) {
-            studentId = result[0].rawValue || result[0].text;
+            rawValue = result[0].rawValue || result[0].text;
         } else if (result.text) {
-            studentId = result.text;
+            rawValue = result.text;
         } else if (result.rawValue) {
-            studentId = result.rawValue;
+            rawValue = result.rawValue;
         }
 
-        if (!studentId) {
+        if (!rawValue) {
             console.error("Invalid scan result structure:", result);
             return;
         }
 
-        setIsProcessing(true);
+        setStatus('processing');
         setError(null);
 
         try {
+            // Expected format: https://vishnupass.com/verify/{student_id}_{qrToken}
+            let extractedStudentId = null;
+            try {
+                let tokenString = rawValue;
+                if (rawValue.startsWith('http')) {
+                    const url = new URL(rawValue);
+                    tokenString = url.pathname.split('/').pop();
+                }
+
+                // tokenString is "{studentId}_{qrToken}"
+                if (tokenString.includes('_')) {
+                    const parts = tokenString.split('_');
+                    // The student_id is everything before the last underscore
+                    extractedStudentId = parts.slice(0, -1).join('_');
+                } else {
+                    extractedStudentId = tokenString;
+                }
+            } catch (e) {
+                extractedStudentId = rawValue;
+            }
+
+            if (!extractedStudentId) {
+                throw new Error("Invalid QR code format.");
+            }
+
             // 1. Verify Student in Database
             const { data: student, error: fetchError } = await supabase
                 .from('students')
                 .select('*, departments(name)')
-                .eq('student_id', studentId)
+                .eq('student_id', extractedStudentId)
                 .single();
 
             if (fetchError || !student) {
                 setScanResult({
                     status: 'error',
                     message: 'Student record not found in system.',
-                    id: studentId
+                    id: extractedStudentId
                 });
+                setStatus('error');
                 return;
             }
 
@@ -65,12 +95,17 @@ const GuardScanner = ({ guardData, onBack }) => {
             // 3. Display Success
             setScanResult({
                 status: 'success',
-                student: student
+                student: {
+                    ...student,
+                    verifiedAt: format(new Date(), 'hh:mm a')
+                }
             });
+            setStatus('success');
 
         } catch (err) {
             console.error("Scan Error:", err);
             setError(err.message);
+            setStatus('error');
         } finally {
             setIsProcessing(false);
         }
@@ -78,9 +113,23 @@ const GuardScanner = ({ guardData, onBack }) => {
 
     const resetScanner = () => {
         setScanResult(null);
+        setStatus('idle');
         setError(null);
         setManualId('');
     };
+
+    if (scanResult?.status === 'success' && scanResult.student) {
+        return (
+            <div className="absolute inset-0 z-50 bg-white">
+                <VerificationResult
+                    studentData={scanResult.student}
+                    gateName={guardData?.guard_gates?.name}
+                    verifiedAt={scanResult.student.verifiedAt}
+                    onNextScan={resetScanner}
+                />
+            </div>
+        );
+    }
 
     return (
         <div className="flex flex-col min-h-full bg-slate-900 overflow-hidden relative">
@@ -151,56 +200,26 @@ const GuardScanner = ({ guardData, onBack }) => {
                         )}
                     </div>
                 ) : (
-                    /* Scan Result View */
-                    <div className={`w-full max-w-sm rounded-[40px] p-8 border ${scanResult.status === 'success' ? 'bg-emerald-500/10 border-emerald-500/20 shadow-emerald-500/10' : 'bg-rose-500/10 border-rose-500/20 shadow-rose-500/10'} backdrop-blur-md animate-in zoom-in-95 duration-300`}>
+                    /* Error View */
+                    <div className="w-full max-w-sm rounded-[40px] p-8 border bg-rose-500/10 border-rose-500/20 shadow-rose-500/10 backdrop-blur-md animate-in zoom-in-95 duration-300">
                         <div className="flex flex-col items-center text-center">
-                            <div className={`w-20 h-20 rounded-3xl flex items-center justify-center mb-6 ${scanResult.status === 'success' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30' : 'bg-rose-500 text-white shadow-lg shadow-rose-500/30'}`}>
-                                {scanResult.status === 'success' ? <ShieldCheck className="w-10 h-10" /> : <ShieldAlert className="w-10 h-10" />}
+                            <div className="w-20 h-20 rounded-3xl flex items-center justify-center mb-6 bg-rose-500 text-white shadow-lg shadow-rose-500/30">
+                                <ShieldAlert className="w-10 h-10" />
                             </div>
 
-                            <h3 className={`text-2xl font-black tracking-tight mb-2 ${scanResult.status === 'success' ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                {scanResult.status === 'success' ? 'AUTHORIZED' : 'ACCESS DENIED'}
+                            <h3 className="text-2xl font-black tracking-tight mb-2 text-rose-400">
+                                ACCESS DENIED
                             </h3>
 
-                            {scanResult.status === 'success' ? (
-                                <div className="space-y-4 w-full bg-white/5 rounded-3xl p-6 border border-white/5 mt-4">
-                                    <div className="flex items-center gap-4 text-left">
-                                        <div className="w-14 h-14 rounded-2xl overflow-hidden border-2 border-white/20">
-                                            {scanResult.student.photo_url ? (
-                                                <img src={scanResult.student.photo_url} alt="Student" className="w-full h-full object-cover" />
-                                            ) : (
-                                                <div className="w-full h-full bg-emerald-500/20 flex items-center justify-center text-emerald-400 font-bold">
-                                                    {scanResult.student.full_name[0]}
-                                                </div>
-                                            )}
-                                        </div>
-                                        <div>
-                                            <p className="text-white font-bold text-lg leading-tight">{scanResult.student.full_name}</p>
-                                            <p className="text-emerald-400/70 text-xs font-bold uppercase tracking-wider">{scanResult.student.student_id}</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center justify-between pt-4 border-t border-white/5">
-                                        <div className="bg-white/5 px-3 py-1.5 rounded-xl border border-white/10">
-                                            <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Department</p>
-                                            <p className="text-[10px] font-bold text-white uppercase">{scanResult.student.departments?.name || 'GENERIC'}</p>
-                                        </div>
-                                        <div className="bg-white/5 px-3 py-1.5 rounded-xl border border-white/10">
-                                            <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Year</p>
-                                            <p className="text-[10px] font-bold text-white uppercase">{scanResult.student.year_of_study || 'N/A'}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            ) : (
-                                <p className="text-rose-400/70 font-bold text-sm bg-rose-500/5 px-4 py-3 rounded-2xl border border-rose-500/10 mt-4 leading-relaxed">
-                                    {scanResult.message}
-                                </p>
-                            )}
+                            <p className="text-rose-400/70 font-bold text-sm bg-rose-500/5 px-4 py-3 rounded-2xl border border-rose-500/10 mt-4 leading-relaxed">
+                                {scanResult?.message || error || "Verification failed."}
+                            </p>
 
                             <button
                                 onClick={resetScanner}
-                                className="mt-8 w-full py-4 bg-white text-slate-900 font-black rounded-2xl shadow-xl shadow-white/5 hover:bg-slate-50 transition-all active:scale-95"
+                                className="mt-8 w-full py-4 bg-white text-slate-900 font-black rounded-2xl shadow-xl shadow-white/5 hover:bg-slate-50 transition-all active:scale-95 text-xs tracking-[0.2em] uppercase"
                             >
-                                NEXT SCAN
+                                Try Again
                             </button>
                         </div>
                     </div>

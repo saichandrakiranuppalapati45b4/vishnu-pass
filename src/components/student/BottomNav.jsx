@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, ScanLine, Clock, User } from 'lucide-react';
+import { Home, QrCode, Clock, User } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 
 const BottomNav = ({ activeTab, onTabChange }) => {
@@ -7,7 +7,7 @@ const BottomNav = ({ activeTab, onTabChange }) => {
 
     const tabs = [
         { id: 'home', icon: Home, label: t('nav.home').toUpperCase() },
-        { id: 'scan', icon: ScanLine, label: t('nav.scan').toUpperCase() },
+        { id: 'scan', icon: QrCode, label: t('nav.scan').toUpperCase() },
         { id: 'logs', icon: Clock, label: t('nav.logs').toUpperCase() },
         { id: 'profile', icon: User, label: t('nav.profile').toUpperCase() },
     ];
