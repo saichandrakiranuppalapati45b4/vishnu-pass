@@ -108,13 +108,15 @@ const ScanScreen = ({ studentData, onBack }) => {
             setStatus('processing_scan');
 
             // Expected format: https://vishnupass.com/gate/{gateId}_{timestamp_token}
+            // Or just: {gateId}_{timestamp_token}
             let scannedGateId = null;
             if (rawValue.includes('/gate/')) {
                 // Extract gate id, ignoring the token part
                 const dataPart = rawValue.split('/gate/').pop();
                 scannedGateId = dataPart.split('_')[0];
             } else {
-                scannedGateId = rawValue;
+                // In case it's just the raw format like "gate-main_token"
+                scannedGateId = rawValue.split('_')[0];
             }
 
             if (!scannedGateId) {
@@ -205,8 +207,8 @@ const ScanScreen = ({ studentData, onBack }) => {
 
                             {/* Status Indicator */}
                             <div className={`flex items-center gap-2 mb-4 px-4 py-2 rounded-xl border ${status === 'approved' || status === 'processing_scan'
-                                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                                    : 'bg-amber-500/10 text-amber-400 border-amber-500/20 animate-pulse'
+                                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                : 'bg-amber-500/10 text-amber-400 border-amber-500/20 animate-pulse'
                                 }`}>
                                 {status === 'approved' || status === 'processing_scan' ? (
                                     <>
