@@ -136,11 +136,13 @@ const ScanScreen = ({ studentData, onBack }) => {
             if (rawValue.includes('/gate/')) {
                 // Extract gate id, ignoring the token part
                 const dataPart = rawValue.split('/gate/').pop();
-                scannedGateId = dataPart.split('_')[0];
+                scannedGateId = dataPart.split('_')[0].trim();
             } else {
                 // In case it's just the raw format like "gate-main_token"
-                scannedGateId = rawValue.split('_')[0];
+                scannedGateId = rawValue.split('_')[0].trim();
             }
+
+            console.log("Extracted Gate ID:", scannedGateId);
 
             if (!scannedGateId) {
                 throw new Error("Invalid Gate QR");

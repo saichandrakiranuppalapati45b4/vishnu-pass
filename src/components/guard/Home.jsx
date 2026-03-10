@@ -129,22 +129,34 @@ const GuardHome = ({ guardData }) => {
 
                     // If it was completed, verify it belongs to our gate and show details
                     if (newStatus === 'completed') {
+                        console.log("Session completed! Verifying gate...", payload.new.id);
                         // Fetch the session first to ensure we have the student_id and gate_id
-                        // (Realtime UPDATEs omit unchanged columns!)
-                        const { data: sessionInfo } = await supabase
+                        const { data: sessionInfo, error: fetchErr } = await supabase
                             .from('scan_sessions')
                             .select('student_id, gate_id')
                             .eq('id', payload.new.id)
                             .single();
 
-                        if (sessionInfo?.gate_id === guardData.gate_id && sessionInfo?.student_id) {
-                            const { data: student } = await supabase
+                        if (fetchErr) {
+                            console.error("Error fetching session info:", fetchErr);
+                            return;
+                        }
+
+                        console.log("Session Gate ID:", sessionInfo?.gate_id, "Guard Gate ID:", guardData?.gate_id);
+
+                        // Normalize IDs to string for comparison to prevent type mismatch
+                        if (String(sessionInfo?.gate_id) === String(guardData?.gate_id) && sessionInfo?.student_id) {
+                            console.log("Gate match! Fetching student details for:", sessionInfo.student_id);
+                            const { data: student, error: studentErr } = await supabase
                                 .from('students')
                                 .select('*, departments(name)')
                                 .eq('student_id', sessionInfo.student_id)
                                 .single();
 
+                            if (studentErr) console.error("Error fetching student:", studentErr);
+
                             if (student) {
+                                console.log("Student details found! Showing verification UI.");
                                 setActiveVerification({
                                     ...student,
                                     verifiedAt: format(new Date(), 'hh:mm a')
