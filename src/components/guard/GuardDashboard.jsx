@@ -5,23 +5,18 @@ import GuardProfile from './Profile';
 import GuardHistory from './GuardHistory';
 import SecuritySettings from './SecuritySettings';
 import GuardRoster from './Roster';
-import GuardScanner from './Scanner';
 
 const GuardDashboard = ({ onLogout, guardData }) => {
     const [activeTab, setActiveTab] = useState('home');
 
     const renderContent = () => {
-        if (activeTab === 'scanner') {
-            return <GuardScanner guardData={guardData} onBack={() => setActiveTab('home')} />;
-        }
-
         switch (activeTab) {
             case 'home':
-                return <GuardHome guardData={guardData} onScannerOpen={() => setActiveTab('scanner')} />;
+                return <GuardHome guardData={guardData} />;
             case 'history':
                 return <GuardHistory guardData={guardData} onBack={() => setActiveTab('home')} />;
             case 'roster':
-                return <GuardRoster onScannerOpen={() => setActiveTab('scanner')} onBack={() => setActiveTab('home')} />;
+                return <GuardRoster onBack={() => setActiveTab('home')} />;
             case 'profile':
                 return <GuardProfile guardData={guardData} onLogout={onLogout} onNavigate={(tab) => setActiveTab(tab)} />;
             case 'security':

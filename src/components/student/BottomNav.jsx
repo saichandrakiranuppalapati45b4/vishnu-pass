@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, QrCode, Clock, User } from 'lucide-react';
+import { Home, QrCode, Clock, User, Scan } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 
 const BottomNav = ({ activeTab, onTabChange }) => {

@@ -1,24 +1,145 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, Shield, RefreshCw } from 'lucide-react';
-import { format } from 'date-fns';
+import { ChevronLeft, Shield, Clock, Zap, Loader2, Fingerprint, Camera, ShieldCheck, X } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
+import { Scanner } from '@yudiel/react-qr-scanner';
 
-const QrScreen = ({ studentData, onBack }) => {
-    const [qrToken, setQrToken] = useState(crypto.randomUUID());
-    const [seconds, setSeconds] = useState(30);
+const ScanScreen = ({ studentData, onBack }) => {
+    const [status, setStatus] = useState('idle'); // idle -> requesting (camera open) -> approved (can scan) -> completed
+    const [timeLeft, setTimeLeft] = useState(25);
+    const [sessionId, setSessionId] = useState(null);
+    const [error, setError] = useState(null);
 
-    // QR Code timer and rotation
+    // Countdown Timer logic
     useEffect(() => {
-        const timer = setInterval(() => {
-            setSeconds(prev => {
-                if (prev <= 1) {
-                    setQrToken(crypto.randomUUID());
-                    return 30;
-                }
-                return prev - 1;
-            });
-        }, 1000);
+        let timer;
+        if (status === 'requesting' || status === 'approved') {
+            timer = setInterval(() => {
+                setTimeLeft(prev => {
+                    if (prev <= 1) {
+                        setStatus('expired');
+                        return 0;
+                    }
+                    return prev - 1;
+                });
+            }, 1000);
+        }
         return () => clearInterval(timer);
-    }, []);
+    }, [status]);
+
+    // Cleanup session on expire
+    useEffect(() => {
+        if (status === 'expired' && sessionId) {
+            supabase
+                .from('scan_sessions')
+                .update({ status: 'expired' })
+                .eq('id', sessionId)
+                .then();
+        }
+    }, [status, sessionId]);
+
+    // Realtime subscription for Guard Approval
+    useEffect(() => {
+        if (!sessionId) return;
+
+        const channel = supabase
+            .channel(`session_${sessionId}`)
+            .on('postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'scan_sessions',
+                    filter: `id=eq.${sessionId}`
+                },
+                (payload) => {
+                    const newStatus = payload.new.status;
+                    if (newStatus === 'approved' && status === 'requesting') {
+                        setStatus('approved');
+                    } else if (newStatus === 'expired') {
+                        setStatus('expired');
+                    }
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [sessionId, status]);
+
+    const handleRequestAccess = async () => {
+        setError(null);
+        setStatus('requesting');
+        setTimeLeft(25);
+
+        try {
+            const { data, error: insertError } = await supabase
+                .from('scan_sessions')
+                .insert([{
+                    student_id: studentData.student_id,
+                    status: 'pending'
+                }])
+                .select()
+                .single();
+
+            if (insertError) throw insertError;
+
+            setSessionId(data.id);
+        } catch (err) {
+            console.error("Error creating request:", err);
+            setError("Failed to create request. Please try again.");
+            setStatus('idle');
+        }
+    };
+
+    const handleScan = async (result) => {
+        if (!result) return;
+
+        // Only process scan if the guard has approved
+        if (status !== 'approved') {
+            // We can optionally show a warning here if we want, but for now we just ignore the scan
+            return;
+        }
+
+        let rawValue = typeof result === 'string' ? result : (result[0]?.rawValue || result?.text || result?.rawValue);
+
+        if (!rawValue) return;
+
+        try {
+            setStatus('processing_scan');
+
+            // Expected format: https://vishnupass.com/gate/{gateId}_{timestamp_token}
+            let scannedGateId = null;
+            if (rawValue.includes('/gate/')) {
+                // Extract gate id, ignoring the token part
+                const dataPart = rawValue.split('/gate/').pop();
+                scannedGateId = dataPart.split('_')[0];
+            } else {
+                scannedGateId = rawValue;
+            }
+
+            if (!scannedGateId) {
+                throw new Error("Invalid Gate QR");
+            }
+
+            // Mark session as completed and associate with the gate
+            const { error: updateError } = await supabase
+                .from('scan_sessions')
+                .update({
+                    status: 'completed',
+                    gate_id: scannedGateId
+                })
+                .eq('id', sessionId);
+
+            if (updateError) throw updateError;
+
+            setStatus('completed');
+
+        } catch (err) {
+            console.error("Scan error:", err);
+            setError("Invalid Gate QR Code");
+            setStatus('approved');
+        }
+    };
 
     const initials = studentData?.full_name
         ? studentData.full_name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
@@ -35,7 +156,7 @@ const QrScreen = ({ studentData, onBack }) => {
                     <ChevronLeft className="w-6 h-6" />
                 </button>
                 <div className="px-8 py-3 rounded-full bg-[#f47c20]/20 border border-[#f47c20]/30 backdrop-blur-xl text-[#f47c20] font-black text-[12px] tracking-[0.2em] uppercase shadow-lg">
-                    Digital Pass
+                    {status === 'approved' ? 'Scanner Active' : 'Access Request'}
                 </div>
                 <div className="w-12 h-12 relative">
                     <div className="w-12 h-12 rounded-full bg-[#332a22]/80 flex items-center justify-center border border-white/5 overflow-hidden shadow-sm">
@@ -49,73 +170,156 @@ const QrScreen = ({ studentData, onBack }) => {
             </header>
 
             {/* Main Content Area */}
-            <div className="flex-1 flex flex-col items-center justify-center px-6 relative z-30 pb-20">
-
-                {/* ID Card Wrapper */}
+            <div className="flex-1 flex flex-col items-center justify-center px-6 relative z-30 pb-20 mt-4">
                 <div className="w-full bg-[#1e1a17]/95 rounded-[40px] p-8 shadow-2xl border border-white/5 relative overflow-hidden backdrop-blur-2xl">
-
-                    {/* Top Accent */}
                     <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-[#f47c20] to-[#e06b12]" />
 
-                    <div className="text-center mb-8 mt-2">
-                        <h2 className="text-2xl font-black text-white tracking-tight leading-tight">{studentData?.full_name || 'Vishnu Student'}</h2>
-                        <p className="text-sm font-bold text-[#f47c20] tracking-widest mt-1 uppercase">{studentData?.student_id || 'ID Pending'}</p>
-                    </div>
+                    {status === 'idle' || status === 'expired' ? (
+                        <div className="flex flex-col items-center text-center">
+                            <div className="w-24 h-24 rounded-full bg-[#f47c20]/10 flex items-center justify-center mb-6">
+                                <Fingerprint className="w-12 h-12 text-[#f47c20]" />
+                            </div>
+                            <h2 className="text-2xl font-black text-white tracking-tight leading-tight mb-2">
+                                Access Control
+                            </h2>
+                            <p className="text-sm font-bold text-gray-400 mb-8 leading-relaxed max-w-[240px]">
+                                Tap the button below to request gate access. The guard will approve to unlock your scanner.
+                            </p>
 
-                    {/* QR Code container */}
-                    <div className="w-full max-w-[260px] mx-auto aspect-square bg-white rounded-[40px] flex items-center justify-center p-6 mb-8 relative border-4 border-[#332a22] shadow-[0_0_40px_rgba(244,124,32,0.1)]">
-                        {/* Brackets */}
-                        <div className="absolute top-[-4px] left-[-4px] w-8 h-8 border-t-4 border-l-4 border-[#f47c20] rounded-tl-[40px]" />
-                        <div className="absolute top-[-4px] right-[-4px] w-8 h-8 border-t-4 border-r-4 border-[#f47c20] rounded-tr-[40px]" />
-                        <div className="absolute bottom-[-4px] left-[-4px] w-8 h-8 border-b-4 border-l-4 border-[#f47c20] rounded-bl-[40px]" />
-                        <div className="absolute bottom-[-4px] right-[-4px] w-8 h-8 border-b-4 border-r-4 border-[#f47c20] rounded-br-[40px]" />
+                            {status === 'expired' && (
+                                <p className="text-rose-400 font-bold text-xs mb-6 px-4 py-2 bg-rose-500/10 rounded-xl">
+                                    Request expired. Please try again.
+                                </p>
+                            )}
 
-                        <div className="w-full h-full bg-white flex items-center justify-center">
-                            <img
-                                src={`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=https://vishnupass.com/verify/${studentData?.student_id}_${qrToken}`}
-                                alt="Student Digital Pass QR"
-                                className="w-full h-full object-contain"
-                            />
+                            <button
+                                onClick={handleRequestAccess}
+                                className="w-full py-5 bg-gradient-to-r from-[#f47c20] to-[#e06b12] text-white font-black rounded-2xl shadow-xl shadow-[#f47c20]/20 flex items-center justify-center gap-3 active:scale-[0.98] transition-all text-sm tracking-[0.2em] uppercase"
+                            >
+                                <Zap className="w-5 h-5 fill-white" />
+                                Request Access
+                            </button>
                         </div>
-                    </div>
+                    ) : status === 'requesting' || status === 'approved' || status === 'processing_scan' ? (
+                        <div className="flex flex-col items-center text-center">
 
-                    {/* Meta Data */}
-                    <div className="flex justify-between items-center bg-[#332a22]/50 p-4 rounded-3xl border border-white/5 mb-6">
-                        <div>
-                            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Department</p>
-                            <p className="text-xs font-black text-white uppercase">{studentData?.departments?.name || 'Loading...'}</p>
-                        </div>
-                        <div className="text-right">
-                            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Valid Today</p>
-                            <p className="text-xs font-black text-emerald-400">{format(new Date(), 'MMM dd, yyyy')}</p>
-                        </div>
-                    </div>
+                            {/* Status Indicator */}
+                            <div className={`flex items-center gap-2 mb-4 px-4 py-2 rounded-xl border ${status === 'approved' || status === 'processing_scan'
+                                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                    : 'bg-amber-500/10 text-amber-400 border-amber-500/20 animate-pulse'
+                                }`}>
+                                {status === 'approved' || status === 'processing_scan' ? (
+                                    <>
+                                        <ShieldCheck className="w-4 h-4" />
+                                        <span className="text-xs font-black uppercase tracking-wider">Guard Approved - Ready</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        <span className="text-xs font-black uppercase tracking-wider">Waiting for Guard...</span>
+                                    </>
+                                )}
+                            </div>
 
-                    {/* Refresh Timer */}
-                    <div className="flex items-center justify-between text-white/60 text-[11px] font-bold px-2">
-                        <div className="flex items-center gap-2">
-                            <Shield className="w-4 h-4 text-emerald-500" />
-                            <span>Secure Dynamic Token</span>
+                            <div className="w-full aspect-square relative rounded-[32px] overflow-hidden border-2 border-[#f47c20]/30 shadow-2xl mb-6 bg-black">
+                                <div className={`absolute inset-0 border-4 transition-colors duration-300 z-30 pointer-events-none ${status === 'approved' ? 'border-emerald-500/50' : 'border-transparent'}`} />
+                                <div className="absolute top-6 left-6 w-8 h-8 border-t-4 border-l-4 border-[#f47c20] rounded-tl-2xl z-20" />
+                                <div className="absolute top-6 right-6 w-8 h-8 border-t-4 border-r-4 border-[#f47c20] rounded-tr-2xl z-20" />
+                                <div className="absolute bottom-6 left-6 w-8 h-8 border-b-4 border-l-4 border-[#f47c20] rounded-bl-2xl z-20" />
+                                <div className="absolute bottom-6 right-6 w-8 h-8 border-b-4 border-r-4 border-[#f47c20] rounded-br-2xl z-20" />
+                                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-[#f47c20] to-transparent z-20 animate-[scan_3s_ease-in-out_infinite]" />
+
+                                <Scanner
+                                    onResult={handleScan}
+                                    constraints={{
+                                        facingMode: "environment",
+                                        width: { min: 1280, ideal: 1920 },
+                                        height: { min: 720, ideal: 1080 },
+                                        frameRate: { ideal: 60 },
+                                        advanced: [
+                                            { focusMode: 'continuous' },
+                                            { whiteBalanceMode: 'continuous' }
+                                        ]
+                                    }}
+                                    components={{
+                                        tracker: false,
+                                        finder: false,
+                                        audio: true,
+                                        torch: true
+                                    }}
+                                    styles={{
+                                        container: { width: '100%', height: '100%', background: 'black' },
+                                        video: {
+                                            objectFit: 'cover',
+                                            width: '100%',
+                                            height: '100%',
+                                            opacity: status === 'requesting' ? 0.5 : 1 // Dim camera while waiting for approval
+                                        },
+                                    }}
+                                />
+
+                                {status === 'processing_scan' && (
+                                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-30 flex flex-col items-center justify-center text-white gap-4">
+                                        <Loader2 className="w-8 h-8 text-[#f47c20] animate-spin" />
+                                        <p className="text-xs font-bold tracking-widest uppercase">Verifying Gate...</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            <p className="text-xs font-bold text-gray-400 mb-4 leading-relaxed tracking-wide">
+                                {status === 'requesting'
+                                    ? "Camera active. Awaiting guard's signal."
+                                    : "Scan the Guard's Gate QR code now."}
+                            </p>
+
+                            <div className="text-[#f47c20] font-black text-xl flex items-center justify-between w-full px-4">
+                                <button
+                                    onClick={() => setStatus('idle')}
+                                    className="px-4 py-2 bg-white/5 text-gray-400 font-bold rounded-xl active:scale-[0.98] transition-all text-[10px] tracking-[0.1em] uppercase hover:bg-white/10"
+                                >
+                                    Cancel
+                                </button>
+                                <div className="flex items-center gap-2">
+                                    <Clock className="w-5 h-5" />
+                                    00:{timeLeft.toString().padStart(2, '0')}
+                                </div>
+                            </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                            <RefreshCw className={`w-3.5 h-3.5 ${seconds < 5 ? 'text-rose-500 animate-spin' : 'text-[#f47c20]'}`} />
-                            <span className={seconds < 5 ? 'text-rose-500' : 'text-[#f47c20]'}>00:{seconds.toString().padStart(2, '0')}</span>
+                    ) : ( // completed
+                        <div className="flex flex-col items-center text-center py-8">
+                            <div className="w-24 h-24 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-6">
+                                <ShieldCheck className="w-12 h-12 text-emerald-400" />
+                            </div>
+                            <h2 className="text-2xl font-black text-white tracking-tight leading-tight mb-2">
+                                Handshake Complete
+                            </h2>
+                            <p className="text-sm font-bold text-emerald-400/80 mb-8 leading-relaxed max-w-[240px]">
+                                Your digital pass is now active on the Guard's monitor. Verification successful.
+                            </p>
+
+                            <button
+                                onClick={onBack}
+                                className="w-full py-5 bg-white/5 text-white font-black rounded-2xl border border-white/10 hover:bg-white/10 active:scale-[0.98] transition-all text-sm tracking-[0.2em] uppercase"
+                            >
+                                Return to Dashboard
+                            </button>
                         </div>
-                    </div>
+                    )}
                 </div>
             </div>
 
-            {/* Optional simulated bottom navigation for visual balance */}
-            <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black to-transparent pointer-events-none z-10" />
-
             <style dangerouslySetInnerHTML={{
                 __html: `
-                .font-sans {
-                    font-family: 'Outfit', 'Inter', -apple-system, sans-serif;
+                .font-sans { font-family: 'Outfit', 'Inter', -apple-system, sans-serif; }
+                @keyframes scan {
+                    0%, 100% { top: 10%; opacity: 0.1; }
+                    50% { top: 90%; opacity: 0.8; }
                 }
+                [class*="tracker"], [class*="finder"], svg { pointer-events: none; }
+                section > div:nth-child(2), section > div:nth-child(3) { display: none !important; }
             ` }} />
         </div>
     );
 };
 
-export default QrScreen;
+export default ScanScreen;

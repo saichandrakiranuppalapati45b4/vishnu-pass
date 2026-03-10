@@ -1,11 +1,31 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, TrendingUp, Clock, ShieldCheck, User, QrCode } from 'lucide-react';
+import { Bell, TrendingUp, Clock, ShieldCheck, User, QrCode, CheckCircle2, Zap } from 'lucide-react';
 import { format } from 'date-fns';
 import { supabase } from '../../lib/supabase';
+import VerificationResult from '../student/VerificationResult';
 
-const GuardHome = ({ guardData, onScannerOpen }) => {
+const GuardHome = ({ guardData }) => {
     const [stats, setStats] = useState({ totalScans: 0, activePasses: 0 });
     const [activities, setActivities] = useState([]);
+    const [pendingRequests, setPendingRequests] = useState([]);
+    const [activeVerification, setActiveVerification] = useState(null);
+    const [qrToken, setQrToken] = useState(crypto.randomUUID());
+    const [qrTimeLeft, setQrTimeLeft] = useState(25);
+
+    // QR Code Refresh Timer
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setQrTimeLeft((prev) => {
+                if (prev <= 1) {
+                    setQrToken(crypto.randomUUID());
+                    return 25;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+
+        return () => clearInterval(timer);
+    }, []);
 
     // Real-time data fetching and subscriptions
     useEffect(() => {
@@ -42,6 +62,16 @@ const GuardHome = ({ guardData, onScannerOpen }) => {
                     setActivities(requests);
                 }
 
+                // 4. Fetch initial pending requests (optional, they clear fast)
+                const { data: pending } = await supabase
+                    .from('scan_sessions')
+                    .select('*, students(*, departments(name))')
+                    .eq('status', 'pending');
+
+                if (pending) {
+                    setPendingRequests(pending);
+                }
+
             } catch (err) {
                 console.error("Error fetching guard home data:", err);
             }
@@ -49,9 +79,8 @@ const GuardHome = ({ guardData, onScannerOpen }) => {
 
         fetchData();
 
-        // Real-time subscription for movement_logs
-        const channel = supabase
-            .channel('guard_home_updates')
+        // Subscriptions
+        const channels = supabase.channel('guard_home_updates')
             .on('postgres_changes',
                 {
                     event: 'INSERT',
@@ -59,20 +88,93 @@ const GuardHome = ({ guardData, onScannerOpen }) => {
                     table: 'movement_logs',
                     filter: `access_point_id=eq.${guardData.gate_id}`
                 },
-                async (payload) => {
-                    // Update stats instantly
+                (payload) => {
                     setStats(prev => ({ ...prev, totalScans: prev.totalScans + 1 }));
-
-                    // Add to activity list
                     setActivities(prev => [payload.new, ...prev].slice(0, 5));
+                }
+            )
+            .on('postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'scan_sessions',
+                    filter: "status=eq.pending"
+                },
+                async (payload) => {
+                    // Fetch nested student data manually since realtime doesn't include it
+                    const { data: student } = await supabase
+                        .from('students')
+                        .select('*, departments(name)')
+                        .eq('student_id', payload.new.student_id)
+                        .single();
+
+                    if (student) {
+                        setPendingRequests(prev => [{ ...payload.new, students: student }, ...prev]);
+                    }
+                }
+            )
+            .on('postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'scan_sessions'
+                },
+                async (payload) => {
+                    const newStatus = payload.new.status;
+
+                    // Remove from pending if status changed
+                    if (newStatus !== 'pending') {
+                        setPendingRequests(prev => prev.filter(req => req.id !== payload.new.id));
+                    }
+
+                    // If it was completed at OUR gate, show verification
+                    if (newStatus === 'completed' && payload.new.gate_id === guardData.gate_id) {
+                        const { data: student } = await supabase
+                            .from('students')
+                            .select('*, departments(name)')
+                            .eq('student_id', payload.new.student_id)
+                            .single();
+
+                        if (student) {
+                            setActiveVerification({
+                                ...student,
+                                verifiedAt: format(new Date(), 'hh:mm a')
+                            });
+
+                            // Log it in movement_logs
+                            await supabase.from('movement_logs').insert({
+                                user_name: student.full_name,
+                                student_id: student.student_id,
+                                access_point_id: guardData.gate_id,
+                                movement_type: 'AUTHORIZED',
+                                status: 'Success'
+                            });
+                        }
+                    }
                 }
             )
             .subscribe();
 
         return () => {
-            supabase.removeChannel(channel);
+            supabase.removeChannel(channels);
         };
     }, [guardData?.gate_id]);
+
+    const handleApprove = async (sessionId) => {
+        try {
+            await supabase
+                .from('scan_sessions')
+                .update({
+                    status: 'approved',
+                    gate_id: guardData.gate_id
+                })
+                .eq('id', sessionId);
+
+            setPendingRequests(prev => prev.filter(req => req.id !== sessionId));
+        } catch (err) {
+            console.error("Error approving request:", err);
+        }
+    };
 
     const initials = guardData?.full_name
         ? guardData.full_name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
@@ -80,6 +182,17 @@ const GuardHome = ({ guardData, onScannerOpen }) => {
 
     return (
         <div className="flex flex-col min-h-screen bg-[#f8f9fb] pb-12">
+            {/* Verification Overlay */}
+            {activeVerification && (
+                <div className="fixed inset-0 z-[100] bg-white animate-in slide-in-from-bottom duration-500">
+                    <VerificationResult
+                        studentData={activeVerification}
+                        gateName={guardData?.guard_gates?.name}
+                        verifiedAt={activeVerification.verifiedAt}
+                        onNextScan={() => setActiveVerification(null)}
+                    />
+                </div>
+            )}
 
             {/* Header */}
             <header className="px-6 py-4 flex justify-between items-center bg-transparent">
@@ -142,31 +255,70 @@ const GuardHome = ({ guardData, onScannerOpen }) => {
                 <div className="bg-white rounded-[40px] p-8 shadow-[0_10px_40px_rgba(0,0,0,0.04)] border border-white relative overflow-hidden text-center">
 
                     <h2 className="text-3xl font-black text-[#1a2b3c] tracking-tight mb-2 uppercase">{guardData?.full_name || 'Guard'}</h2>
-                    <p className="text-sm font-bold text-[#b43e8f] tracking-widest mb-10 uppercase">ID: {guardData?.employee_id || 'VP-2024-4845'}</p>
+                    <p className="text-sm font-bold text-[#b43e8f] tracking-widest mb-8 uppercase">ID: {guardData?.employee_id || 'VP-2024-4845'}</p>
 
-                    {/* Scan Button Area */}
-                    <div className="w-full max-w-[260px] mx-auto aspect-square bg-[#fff8f6] rounded-[60px] flex items-center justify-center p-8 mb-8 relative border border-[#f47c20]/5 group cursor-pointer" onClick={onScannerOpen}>
-                        <div className="w-full h-full bg-white rounded-[40px] shadow-lg flex flex-col items-center justify-center gap-4 transition-transform group-hover:scale-105 active:scale-95 border-2 border-[#f47c20]/10 hover:border-[#f47c20]/30 shadow-[#f47c20]/5">
-                            <div className="w-20 h-20 rounded-full bg-[#f47c20]/10 flex items-center justify-center mb-2">
-                                <QrCode className="w-10 h-10 text-[#f47c20]" />
+                    {/* QR Area - Very rounded peach card */}
+                    <div className="w-full max-w-[260px] mx-auto relative group cursor-pointer">
+                        <div className="aspect-square bg-[#fff8f6] rounded-[60px] flex items-center justify-center p-1 relative border border-[#f47c20]/5">
+                            <div className="w-full h-full bg-white rounded-[40px] shadow-lg flex flex-col items-center justify-center gap-4 transition-transform group-hover:scale-105 active:scale-95 border-2 border-[#f47c20]/10 shadow-[#f47c20]/5 p-2">
+                                <img
+                                    src={`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=https://vishnupass.com/gate/${guardData?.gate_id}_${qrToken}`}
+                                    alt="Gate QR"
+                                    className="w-full h-full object-contain"
+                                />
                             </div>
-                            <span className="text-[#f47c20] font-black tracking-[0.2em] text-sm uppercase">Scan Pass</span>
+                        </div>
+
+                        {/* Progress ring/timer container */}
+                        <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 py-1.5 px-4 bg-white rounded-full shadow-md border border-gray-100 flex items-center gap-2 max-w-fit mx-auto transition-transform group-hover:scale-105">
+                            <Clock className="w-3 h-3 text-[#f47c20]" />
+                            <span className="text-[10px] font-black tracking-widest text-gray-600">
+                                REFRESH IN <span className="text-[#f47c20]">{qrTimeLeft}S</span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Pending Requests Queue */}
+            {pendingRequests.length > 0 && (
+                <div className="mt-8 px-6 animate-in slide-in-from-bottom duration-300">
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2">
+                            <h3 className="text-base font-black text-[#f47c20] tracking-tight">Access Requests</h3>
+                            <span className="bg-rose-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse">{pendingRequests.length}</span>
                         </div>
                     </div>
 
-                    <p className="text-center text-[11px] font-bold text-gray-400 mb-8 tracking-wide px-4">
-                        Tap the scanner above to verify incoming student digital passes.
-                    </p>
-
-                    <button
-                        onClick={onScannerOpen}
-                        className="w-full py-5 bg-gradient-to-r from-[#f47c20] to-[#e06b12] text-white font-black rounded-2xl shadow-xl shadow-[#f47c20]/20 flex items-center justify-center gap-3 active:scale-[0.98] transition-all text-xs tracking-[0.2em] uppercase"
-                    >
-                        <QrCode className="w-5 h-5" />
-                        Open Scanner
-                    </button>
+                    <div className="space-y-3">
+                        {pendingRequests.map(req => (
+                            <div key={req.id} className="bg-white rounded-[24px] p-3 pl-4 border-2 border-[#f47c20]/20 shadow-[0_4px_20px_rgba(244,124,32,0.1)] flex items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-[#fff8f6] shadow-sm">
+                                        {req.students?.photo_url ? (
+                                            <img src={req.students.photo_url} alt="Profile" className="w-full h-full object-cover" />
+                                        ) : (
+                                            <div className="w-full h-full bg-slate-100 flex items-center justify-center text-slate-400 font-bold">
+                                                <User className="w-6 h-6" />
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <h4 className="text-sm font-black text-gray-800 leading-none mb-1">{req.students?.full_name}</h4>
+                                        <p className="text-[10px] font-bold text-[#f47c20] uppercase tracking-widest">{req.students?.student_id}</p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => handleApprove(req.id)}
+                                    className="h-12 px-6 bg-gradient-to-r from-[#f47c20] to-[#e06b12] text-white rounded-2xl flex items-center justify-center shadow-lg shadow-[#f47c20]/20 active:scale-95 transition-transform"
+                                >
+                                    <CheckCircle2 className="w-5 h-5" />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
                 </div>
-            </div>
+            )}
 
             {/* Recent Activity Section */}
             <div className="mt-8 px-6 pb-20">
