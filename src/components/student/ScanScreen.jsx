@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Scanner } from '@yudiel/react-qr-scanner';
-import { ChevronLeft, Zap, Loader2, X, Shield, CheckCircle2 } from 'lucide-react';
+import { ChevronLeft, Zap, Loader2, X, Shield, CheckCircle2, Flashlight } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import VerificationResult from './VerificationResult';
 import { format } from 'date-fns';
@@ -123,49 +123,46 @@ const ScanScreen = ({ studentData, onBack }) => {
                 <header className="px-6 py-10 flex justify-between items-center relative z-20">
                     <button
                         onClick={onBack}
-                        className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-xl border border-white/10 flex items-center justify-center text-white active:scale-90 transition-transform"
+                        className="w-12 h-12 rounded-full bg-[#332a22]/80 backdrop-blur-xl flex items-center justify-center text-white active:scale-90 transition-transform shadow-lg"
                     >
                         <ChevronLeft className="w-6 h-6" />
                     </button>
-                    <div className="px-6 py-3 rounded-2xl bg-white/10 backdrop-blur-xl border border-white/10 text-white font-black text-[10px] tracking-[0.2em] uppercase">
+                    <div className="px-8 py-3 rounded-full bg-[#332a22]/80 backdrop-blur-xl text-white font-black text-[12px] tracking-[0.2em] uppercase shadow-lg">
                         Open Scanner
                     </div>
                     <button
                         onClick={() => setTorchOn(!torchOn)}
-                        className={`w-12 h-12 rounded-full border backdrop-blur-xl flex items-center justify-center transition-all ${torchOn
-                            ? 'bg-[#f47c20] border-[#f47c20] text-white shadow-lg shadow-[#f47c20]/40'
-                            : 'bg-white/10 border-white/10 text-white'
+                        className={`w-12 h-12 rounded-full backdrop-blur-xl flex items-center justify-center transition-all shadow-lg ${torchOn
+                            ? 'bg-[#f47c20] text-white'
+                            : 'bg-[#332a22]/80 text-white'
                             }`}
                     >
-                        <Zap className={`w-5 h-5 ${torchOn ? 'fill-white' : ''}`} />
+                        <Flashlight className={`w-5 h-5 ${torchOn ? 'fill-white' : ''}`} />
                     </button>
                 </header>
 
                 {/* Instruction - High Visibility Overlay */}
-                <div className="px-8 mt-2 mb-4 relative z-20 text-center">
-                    <div className="inline-block px-8 py-5 rounded-[32px] bg-black/40 backdrop-blur-2xl border border-white/10 shadow-3xl">
-                        <p className="text-white/90 text-[13px] font-bold tracking-tight">
-                            Position the Gate's QR code within the frame
+                <div className="px-8 mt-4 mb-4 relative z-20 text-center">
+                    <div className="inline-block px-10 py-5 rounded-[40px] bg-[#332a22]/60 backdrop-blur-2xl border border-white/5 shadow-2xl">
+                        <p className="text-white/90 text-[14px] font-medium tracking-tight">
+                            Position the student's QR code within the frame
                         </p>
                     </div>
                 </div>
 
                 {/* Scanner Frame - Centered Focus Area */}
-                <div className="flex-1 flex items-center justify-center px-10 relative z-30 mb-32">
+                <div className="flex-1 flex items-center justify-center px-10 relative z-30 mb-20">
                     <div className="w-full max-w-[280px] aspect-square relative">
                         {/* Brackets */}
-                        <div className="absolute top-0 left-0 w-20 h-20 border-l-[8px] border-t-[8px] border-[#f47c20] rounded-tl-[48px] z-20 shadow-[-8px_-8px_20px_rgba(244,124,32,0.3)]" />
-                        <div className="absolute top-0 right-0 w-20 h-20 border-r-[8px] border-t-[8px] border-[#f47c20] rounded-tr-[48px] z-20 shadow-[8px_-8px_20px_rgba(244,124,32,0.3)]" />
-                        <div className="absolute bottom-0 left-0 w-20 h-20 border-l-[8px] border-b-[8px] border-[#f47c20] rounded-bl-[48px] z-20 shadow-[-8px_8px_20px_rgba(244,124,32,0.3)]" />
-                        <div className="absolute bottom-0 right-0 w-20 h-20 border-r-[8px] border-b-[8px] border-[#f47c20] rounded-br-[48px] z-20 shadow-[8px_8px_20px_rgba(244,124,32,0.3)]" />
+                        <div className="absolute top-0 left-0 w-16 h-16 border-l-[6px] border-t-[6px] border-[#f47c20] rounded-tl-[32px] z-20" />
+                        <div className="absolute top-0 right-0 w-16 h-16 border-r-[6px] border-t-[6px] border-[#f47c20] rounded-tr-[32px] z-20" />
+                        <div className="absolute bottom-0 left-0 w-16 h-16 border-l-[6px] border-b-[6px] border-[#f47c20] rounded-bl-[32px] z-20" />
+                        <div className="absolute bottom-0 right-0 w-16 h-16 border-r-[6px] border-b-[6px] border-[#f47c20] rounded-br-[32px] z-20" />
 
                         {/* Animated Laser Scan Line */}
                         {status === 'idle' && (
-                            <div className="absolute top-0 left-6 right-6 h-[2px] bg-gradient-to-r from-transparent via-[#f47c20] to-transparent z-20 shadow-[0_0_20px_#f47c20,0_0_10px_#f47c20] animate-[scan_3s_ease-in-out_infinite]" />
+                            <div className="absolute top-1/2 left-0 right-0 h-[4px] bg-gradient-to-r from-transparent via-[#f47c20] to-transparent z-20 shadow-[0_0_25px_#f47c20] animate-[scan_2.5s_ease-in-out_infinite] opacity-80" />
                         )}
-
-                        {/* Inner Glowing Guideline */}
-                        <div className="absolute inset-6 border border-white/5 rounded-[32px] z-10 opacity-30" />
                     </div>
                 </div>
 
@@ -203,37 +200,35 @@ const ScanScreen = ({ studentData, onBack }) => {
                 )}
 
                 {/* Recent Scan Overlay Group - Fixed at bottom */}
-                <div className="px-6 pb-12 mt-auto relative z-30">
+                <div className="px-6 pb-24 mt-auto relative z-30">
                     <div className="flex items-center justify-between mb-4 px-2">
-                        <h3 className="text-white/40 text-[10px] font-black uppercase tracking-[0.2em]">Recent Scan</h3>
-                        <div className="w-2 h-2 rounded-full bg-[#f47c20] animate-pulse" />
+                        <h3 className="text-white/60 text-[12px] font-black uppercase tracking-[0.2em]">Recent Scan</h3>
                     </div>
 
-                    <div className="bg-white/10 backdrop-blur-3xl border border-white/10 rounded-[40px] p-6 flex items-center justify-between shadow-3xl">
-                        <div className="flex items-center gap-5">
-                            <div className="w-16 h-16 rounded-[24px] overflow-hidden border-2 border-white/10 bg-[#f47c20]/10 flex items-center justify-center relative shadow-inner">
+                    <div className="bg-[#332a22]/80 backdrop-blur-3xl border border-white/5 rounded-[32px] p-5 flex items-center justify-between shadow-2xl">
+                        <div className="flex items-center gap-4">
+                            <div className="w-16 h-16 rounded-2xl overflow-hidden bg-orange-100 flex items-center justify-center relative shadow-sm">
                                 {studentData?.photo_url ? (
                                     <img src={studentData.photo_url} alt="" className="w-full h-full object-cover" />
                                 ) : (
-                                    <span className="text-3xl text-[#f47c20] font-black opacity-60">{studentData?.full_name?.[0]}</span>
+                                    <div className="w-full h-full bg-orange-200 flex items-center justify-center">
+                                        <Shield className="w-8 h-8 text-[#f47c20] opacity-40" />
+                                    </div>
                                 )}
                             </div>
                             <div>
-                                <h4 className="text-xl font-black text-white leading-none mb-2 tracking-tight">{studentData?.full_name}</h4>
-                                <div className="flex items-center gap-3">
-                                    <span className="px-3 py-1 rounded-full bg-white/5 text-white/40 text-[9px] font-black tracking-widest uppercase border border-white/5">
-                                        ID: {studentData?.student_id}
-                                    </span>
-                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-                                </div>
+                                <h4 className="text-lg font-bold text-white leading-tight mb-1">{studentData?.full_name}</h4>
+                                <p className="text-white/40 text-[12px] font-medium">
+                                    ID: {studentData?.student_id}
+                                </p>
                             </div>
                         </div>
 
-                        <div className="flex flex-col items-center gap-1">
-                            <div className="w-12 h-12 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-                                <CheckCircle2 className="w-6 h-6" />
+                        <div className="flex items-center bg-[#42bb70]/20 px-4 py-2 rounded-full border border-[#42bb70]/30 gap-2">
+                            <div className="w-5 h-5 rounded-full bg-[#42bb70] flex items-center justify-center">
+                                <CheckCircle2 className="w-3.5 h-3.5 text-white" />
                             </div>
-                            <span className="text-[10px] font-black text-emerald-400/80 uppercase tracking-widest italic">Verified</span>
+                            <span className="text-[10px] font-black text-[#42bb70] uppercase tracking-wider">Verified</span>
                         </div>
                     </div>
                 </div>
@@ -242,10 +237,10 @@ const ScanScreen = ({ studentData, onBack }) => {
             <style dangerouslySetInnerHTML={{
                 __html: `
                 @keyframes scan {
-                    0%, 100% { transform: translateY(0); opacity: 0; }
-                    10% { opacity: 1; }
-                    90% { opacity: 1; }
-                    100% { transform: translateY(280px); opacity: 0; }
+                    0%, 100% { transform: translateY(-140px); opacity: 0; }
+                    20% { opacity: 1; }
+                    80% { opacity: 1; }
+                    100% { transform: translateY(140px); opacity: 0; }
                 }
                 .font-sans {
                     font-family: 'Outfit', 'Inter', -apple-system, sans-serif;
