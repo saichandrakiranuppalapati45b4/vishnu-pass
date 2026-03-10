@@ -4,18 +4,24 @@ import GuardHome from './Home';
 import GuardProfile from './Profile';
 import GuardHistory from './GuardHistory';
 import SecuritySettings from './SecuritySettings';
+import GuardRoster from './Roster';
+import GuardScanner from './Scanner';
 
 const GuardDashboard = ({ onLogout, guardData }) => {
     const [activeTab, setActiveTab] = useState('home');
 
     const renderContent = () => {
+        if (activeTab === 'scanner') {
+            return <GuardScanner guardData={guardData} onBack={() => setActiveTab('roster')} />;
+        }
+
         switch (activeTab) {
             case 'home':
                 return <GuardHome guardData={guardData} />;
             case 'history':
                 return <GuardHistory guardData={guardData} onBack={() => setActiveTab('home')} />;
             case 'roster':
-                return <div className="p-8 text-center text-gray-400">Shift Roster Coming Soon</div>;
+                return <GuardRoster onScannerOpen={() => setActiveTab('scanner')} onBack={() => setActiveTab('home')} />;
             case 'profile':
                 return <GuardProfile guardData={guardData} onLogout={onLogout} onNavigate={(tab) => setActiveTab(tab)} />;
             case 'security':

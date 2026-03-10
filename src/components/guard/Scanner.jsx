@@ -3,7 +3,7 @@ import { Scanner } from '@yudiel/react-qr-scanner';
 import { ShieldCheck, ShieldAlert, X, Zap, Camera, User, Search, Loader2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
-const GuardScanner = ({ guardData }) => {
+const GuardScanner = ({ guardData, onBack }) => {
     const [scanResult, setScanResult] = useState(null);
     const [isProcessing, setIsProcessing] = useState(false);
     const [error, setError] = useState(null);
@@ -96,7 +96,7 @@ const GuardScanner = ({ guardData }) => {
                     </div>
                 </div>
                 <button
-                    onClick={resetScanner}
+                    onClick={onBack || resetScanner}
                     className="w-10 h-10 rounded-full bg-slate-800/50 flex items-center justify-center text-slate-400 hover:text-white transition-colors border border-slate-700/50"
                 >
                     <X className="w-5 h-5" />
