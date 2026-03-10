@@ -150,13 +150,16 @@ const ScanScreen = ({ studentData, onBack }) => {
                 })
                 .eq('id', currentSessionId);
 
-            if (updateError) throw updateError;
+            if (updateError) {
+                console.error("Supabase update error:", updateError);
+                throw updateError;
+            }
 
             setStatus('completed');
 
         } catch (err) {
-            console.error("Scan error:", err);
-            setError("Invalid Gate QR Code");
+            console.error("Scan error details:", err);
+            setError(err?.message || err?.details || "Failed to update session data");
             setStatus('approved');
         }
     };
@@ -228,6 +231,12 @@ const ScanScreen = ({ studentData, onBack }) => {
                                 <ShieldCheck className="w-4 h-4" />
                                 <span className="text-xs font-black uppercase tracking-wider">Scanner Ready - Point at Gate QR</span>
                             </div>
+
+                            {error && (
+                                <div className="mb-4 px-4 py-3 bg-red-500/10 border border-red-500/30 rounded-xl w-full">
+                                    <p className="text-xs font-bold text-red-400 break-words">{error}</p>
+                                </div>
+                            )}
 
                             <div className="w-full aspect-square relative rounded-[32px] overflow-hidden border-2 border-[#f47c20]/30 shadow-2xl mb-6 bg-black">
                                 <div className={`absolute inset-0 border-4 transition-colors duration-300 z-30 pointer-events-none border-emerald-500/50`} />
