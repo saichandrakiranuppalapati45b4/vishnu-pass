@@ -102,7 +102,8 @@ const ScanScreen = ({ studentData, onBack }) => {
                         facingMode: "environment",
                         width: { ideal: 1920 },
                         height: { ideal: 1080 },
-                        frameRate: { ideal: 30 }
+                        frameRate: { ideal: 60 },
+                        focusMode: 'continuous'
                     }}
                     components={{ audio: false, torch: torchOn }}
                     styles={{
@@ -110,8 +111,10 @@ const ScanScreen = ({ studentData, onBack }) => {
                         video: { objectFit: 'cover', width: '100%', height: '100%' }
                     }}
                 />
-                {/* Visual Scrim Overlay - provides contrast for white UI text */}
-                <div className="absolute inset-0 bg-[#1e1a17]/30 z-10" />
+                {/* Visual Scrim Overlay - Hole-punch design for maximum clarity in scanning area */}
+                <div className="absolute inset-0 z-10 pointer-events-none overflow-hidden">
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[120px] w-[280px] h-[280px] rounded-[48px] shadow-[0_0_0_9999px_rgba(0,0,0,0.4)] transition-all duration-500" />
+                </div>
             </div>
 
             {/* UI Overlays Layer */}
