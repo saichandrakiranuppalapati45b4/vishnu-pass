@@ -109,12 +109,14 @@ const ScanScreen = ({ studentData, onBack }) => {
                     onResult={handleScan}
                     onError={(error) => setErrorMessage(error?.message)}
                     constraints={{
-                        aspectRatio: 1,
                         facingMode: "environment",
-                        width: { ideal: 1920 },
-                        height: { ideal: 1080 },
+                        width: { min: 1280, ideal: 1920 },
+                        height: { min: 720, ideal: 1080 },
                         frameRate: { ideal: 60 },
-                        focusMode: 'continuous'
+                        advanced: [
+                            { focusMode: 'continuous' },
+                            { whiteBalanceMode: 'continuous' }
+                        ]
                     }}
                     components={{
                         tracker: false,
