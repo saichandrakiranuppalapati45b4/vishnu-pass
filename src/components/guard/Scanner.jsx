@@ -12,13 +12,27 @@ const GuardScanner = ({ guardData }) => {
     const handleScan = async (result) => {
         if (!result || isProcessing) return;
 
+        // More robust parsing for different library versions/formats
+        let studentId = '';
+        if (typeof result === 'string') {
+            studentId = result;
+        } else if (Array.isArray(result) && result.length > 0) {
+            studentId = result[0].rawValue || result[0].text;
+        } else if (result.text) {
+            studentId = result.text;
+        } else if (result.rawValue) {
+            studentId = result.rawValue;
+        }
+
+        if (!studentId) {
+            console.error("Invalid scan result structure:", result);
+            return;
+        }
+
         setIsProcessing(true);
         setError(null);
 
         try {
-            const studentId = typeof result === 'string' ? result : result?.text;
-            if (!studentId) throw new Error("Invalid QR Code");
-
             // 1. Verify Student in Database
             const { data: student, error: fetchError } = await supabase
                 .from('students')

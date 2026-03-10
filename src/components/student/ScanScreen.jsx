@@ -14,7 +14,18 @@ const ScanScreen = ({ studentData, onBack }) => {
     const handleScan = async (result) => {
         if (!result || status !== 'idle') return;
 
-        const rawValue = typeof result === 'string' ? result : result?.[0]?.rawValue;
+        // More robust parsing for different library versions/formats
+        let rawValue = '';
+        if (typeof result === 'string') {
+            rawValue = result;
+        } else if (Array.isArray(result) && result.length > 0) {
+            rawValue = result[0].rawValue || result[0].text;
+        } else if (result.text) {
+            rawValue = result.text;
+        } else if (result.rawValue) {
+            rawValue = result.rawValue;
+        }
+
         if (!rawValue) return;
 
         setStatus('processing');
@@ -34,7 +45,7 @@ const ScanScreen = ({ studentData, onBack }) => {
             }
 
             if (!gateId) {
-                throw new Error("Invalid Gate QR code.");
+                throw new Error("Invalid Gate QR code. Please scan the official Guard QR.");
             }
 
             // 2. Fetch Gate Name
