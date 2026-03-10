@@ -94,9 +94,8 @@ const ScanScreen = ({ studentData, onBack }) => {
     const handleScan = async (result) => {
         if (!result) return;
 
-        // Only process scan if the guard has approved
-        if (status !== 'approved') {
-            // We can optionally show a warning here if we want, but for now we just ignore the scan
+        // We allow scanning as long as we have requested access (status should be requesting or approved)
+        if (status === 'idle' || status === 'completed' || status === 'expired') {
             return;
         }
 
@@ -206,25 +205,13 @@ const ScanScreen = ({ studentData, onBack }) => {
                         <div className="flex flex-col items-center text-center">
 
                             {/* Status Indicator */}
-                            <div className={`flex items-center gap-2 mb-4 px-4 py-2 rounded-xl border ${status === 'approved' || status === 'processing_scan'
-                                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                                : 'bg-amber-500/10 text-amber-400 border-amber-500/20 animate-pulse'
-                                }`}>
-                                {status === 'approved' || status === 'processing_scan' ? (
-                                    <>
-                                        <ShieldCheck className="w-4 h-4" />
-                                        <span className="text-xs font-black uppercase tracking-wider">Guard Approved - Ready</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <Loader2 className="w-4 h-4 animate-spin" />
-                                        <span className="text-xs font-black uppercase tracking-wider">Waiting for Guard...</span>
-                                    </>
-                                )}
+                            <div className={`flex items-center gap-2 mb-4 px-4 py-2 rounded-xl border bg-emerald-500/10 text-emerald-400 border-emerald-500/20`}>
+                                <ShieldCheck className="w-4 h-4" />
+                                <span className="text-xs font-black uppercase tracking-wider">Scanner Ready - Point at Gate QR</span>
                             </div>
 
                             <div className="w-full aspect-square relative rounded-[32px] overflow-hidden border-2 border-[#f47c20]/30 shadow-2xl mb-6 bg-black">
-                                <div className={`absolute inset-0 border-4 transition-colors duration-300 z-30 pointer-events-none ${status === 'approved' ? 'border-emerald-500/50' : 'border-transparent'}`} />
+                                <div className={`absolute inset-0 border-4 transition-colors duration-300 z-30 pointer-events-none border-emerald-500/50`} />
                                 <div className="absolute top-6 left-6 w-8 h-8 border-t-4 border-l-4 border-[#f47c20] rounded-tl-2xl z-20" />
                                 <div className="absolute top-6 right-6 w-8 h-8 border-t-4 border-r-4 border-[#f47c20] rounded-tr-2xl z-20" />
                                 <div className="absolute bottom-6 left-6 w-8 h-8 border-b-4 border-l-4 border-[#f47c20] rounded-bl-2xl z-20" />
