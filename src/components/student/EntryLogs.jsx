@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { ChevronLeft, LogIn, LogOut, Save, Loader2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { format, isToday, isYesterday } from 'date-fns';
@@ -10,9 +10,9 @@ const EntryLogs = ({ studentData }) => {
 
     useEffect(() => {
         fetchLogs();
-    }, [studentData]);
+    }, [studentData, fetchLogs]);
 
-    const fetchLogs = async () => {
+    const fetchLogs = useCallback(async () => {
         try {
             setLoading(true);
             const { data, error } = await supabase
@@ -29,7 +29,7 @@ const EntryLogs = ({ studentData }) => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [studentData?.student_id]);
 
     // Determine if a log is entry or exit based on movement_type
     const isEntry = (log) => {
@@ -90,8 +90,8 @@ const EntryLogs = ({ studentData }) => {
                             key={tab.id}
                             onClick={() => setFilter(tab.id)}
                             className={`flex-1 py-2.5 text-sm font-bold rounded-lg transition-all duration-200 ${filter === tab.id
-                                    ? 'bg-white text-gray-900 shadow-sm'
-                                    : 'text-gray-400 hover:text-gray-600'
+                                ? 'bg-white text-gray-900 shadow-sm'
+                                : 'text-gray-400 hover:text-gray-600'
                                 }`}
                         >
                             {tab.label}

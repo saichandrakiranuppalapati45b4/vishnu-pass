@@ -38,7 +38,7 @@ const GuardHistory = ({ guardData, onBack }) => {
 
         const subscription = supabase
             .channel('history_updates')
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'movement_logs' }, async (payload) => {
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'movement_logs' }, async () => {
                 // To get the gate name for the new entry, we could do a small fetch or just use what we have
                 // For simplicity, we'll just re-fetch the list if a new record appears
                 fetchLogs();

@@ -1,43 +1,41 @@
 import React, { useState } from 'react';
 import { ChevronLeft, Bell, Mail, MessageSquare, DoorOpen, Ticket, AlertTriangle } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+
+const ToggleElement = ({ active, colorClass }) => (
+    <div className={`relative w-12 h-7 rounded-full transition-colors duration-300 flex-shrink-0 ${active ? colorClass : 'bg-gray-200'}`}>
+        <div className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow-[0_2px_4px_rgba(0,0,0,0.1)] transition-transform duration-300 ${active ? 'translate-x-[22px]' : 'translate-x-[2px]'}`} />
+    </div>
+);
 
 const NotificationSettings = ({ onBack }) => {
     const [settings, setSettings] = useState({
         push: true,
-        email: true,
-        sms: false,
+        email: false,
+        sms: true,
         gate: true,
         pass: true,
         security: true
     });
-    const [saving, setSaving] = useState(false);
-    const [message, setMessage] = useState(null);
 
-    const toggleSetting = (key) => {
-        setSettings(prev => ({ ...prev, [key]: !prev[key] }));
-    };
+    const [isSaving, setIsSaving] = useState(false);
+    const [showToast, setShowToast] = useState(false);
 
-    const handleSave = async () => {
-        setSaving(true);
-        setMessage(null);
-        // Simulate an API call delay
+    const handleSave = () => {
+        setIsSaving(true);
+        // Simulate API call
         setTimeout(() => {
-            setSaving(false);
-            setMessage({ type: 'success', text: 'Preferences saved successfully!' });
-
-            // Clear message after 3 seconds
-            setTimeout(() => {
-                setMessage(null);
-            }, 3000);
+            setIsSaving(false);
+            setShowToast(true);
+            setTimeout(() => setShowToast(false), 3000);
         }, 800);
     };
 
-    const ToggleElement = ({ active, colorClass }) => (
-        <div className={`relative w-12 h-7 rounded-full transition-colors duration-300 flex-shrink-0 ${active ? colorClass : 'bg-gray-200'}`}>
-            <div className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow-[0_2px_4px_rgba(0,0,0,0.1)] transition-transform duration-300 ${active ? 'translate-x-[22px]' : 'translate-x-[2px]'}`} />
-        </div>
-    );
+    const handleToggle = (setting) => {
+        setSettings(prev => ({
+            ...prev,
+            [setting]: !prev[setting]
+        }));
+    };
 
     return (
         <div className="flex-1 flex flex-col bg-[#f8f9fb] overflow-hidden">
@@ -58,10 +56,9 @@ const NotificationSettings = ({ onBack }) => {
             <div className="flex-1 overflow-y-auto px-5 pb-28">
 
                 {/* Status Message */}
-                {message && (
-                    <div className={`mb-4 px-4 py-3 rounded-xl text-sm font-bold animate-in fade-in slide-in-from-top-2 ${message.type === 'success' ? 'bg-green-50 text-green-600 border border-green-100' : 'bg-red-50 text-red-600 border border-red-100'
-                        }`}>
-                        {message.text}
+                {showToast && (
+                    <div className="mb-4 px-4 py-3 rounded-xl text-sm font-bold animate-in fade-in slide-in-from-top-2 bg-green-50 text-green-600 border border-green-100">
+                        Preferences saved successfully!
                     </div>
                 )}
 
@@ -71,7 +68,7 @@ const NotificationSettings = ({ onBack }) => {
 
                     {/* Push Notifications */}
                     <div
-                        onClick={() => toggleSetting('push')}
+                        onClick={() => handleToggle('push')}
                         className="flex items-center justify-between p-3 rounded-[16px] active:bg-gray-50 transition-colors cursor-pointer"
                     >
                         <div className="flex items-center gap-4">
@@ -90,7 +87,7 @@ const NotificationSettings = ({ onBack }) => {
 
                     {/* Email Alerts */}
                     <div
-                        onClick={() => toggleSetting('email')}
+                        onClick={() => handleToggle('email')}
                         className="flex items-center justify-between p-3 rounded-[16px] active:bg-gray-50 transition-colors cursor-pointer"
                     >
                         <div className="flex items-center gap-4">
@@ -109,7 +106,7 @@ const NotificationSettings = ({ onBack }) => {
 
                     {/* SMS Alerts */}
                     <div
-                        onClick={() => toggleSetting('sms')}
+                        onClick={() => handleToggle('sms')}
                         className="flex items-center justify-between p-3 rounded-[16px] active:bg-gray-50 transition-colors cursor-pointer"
                     >
                         <div className="flex items-center gap-4">
@@ -131,7 +128,7 @@ const NotificationSettings = ({ onBack }) => {
 
                     {/* Gate Entry/Exit */}
                     <div
-                        onClick={() => toggleSetting('gate')}
+                        onClick={() => handleToggle('gate')}
                         className="flex items-center justify-between p-3 rounded-[16px] active:bg-gray-50 transition-colors cursor-pointer"
                     >
                         <div className="flex items-center gap-4">
@@ -149,7 +146,7 @@ const NotificationSettings = ({ onBack }) => {
 
                     {/* New Pass Generated */}
                     <div
-                        onClick={() => toggleSetting('pass')}
+                        onClick={() => handleToggle('pass')}
                         className="flex items-center justify-between p-3 rounded-[16px] active:bg-gray-50 transition-colors cursor-pointer"
                     >
                         <div className="flex items-center gap-4">
@@ -167,7 +164,7 @@ const NotificationSettings = ({ onBack }) => {
 
                     {/* Security Alerts */}
                     <div
-                        onClick={() => toggleSetting('security')}
+                        onClick={() => handleToggle('security')}
                         className="flex items-center justify-between p-3 rounded-[16px] active:bg-gray-50 transition-colors cursor-pointer"
                     >
                         <div className="flex items-center gap-4">
@@ -185,10 +182,10 @@ const NotificationSettings = ({ onBack }) => {
                 {/* Save Button */}
                 <button
                     onClick={handleSave}
-                    disabled={saving}
+                    disabled={isSaving}
                     className="w-full py-[14px] mt-2 bg-[#f47c20] hover:bg-[#e06d1c] text-white font-bold rounded-[14px] text-[15px] transition-all active:scale-[0.98] shadow-lg shadow-orange-200/50 disabled:opacity-70 flex items-center justify-center"
                 >
-                    {saving ? 'Saving...' : 'Save Preferences'}
+                    {isSaving ? 'Saving...' : 'Save Preferences'}
                 </button>
             </div>
         </div>

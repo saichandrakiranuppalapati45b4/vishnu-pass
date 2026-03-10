@@ -252,7 +252,7 @@ const ScanScreen = ({ studentData, onBack }) => {
                                 <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-[#f47c20] to-transparent z-20 animate-[scan_3s_ease-in-out_infinite]" />
 
                                 <Scanner
-                                    onResult={handleScan}
+                                    onScan={handleScan}
                                     constraints={{
                                         facingMode: "environment",
                                         width: { min: 1280, ideal: 1920 },

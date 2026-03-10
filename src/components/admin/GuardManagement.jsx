@@ -60,7 +60,7 @@ const GuardManagement = () => {
     };
 
     // Filter guards based on activeTab
-    const filteredGuards = guards.filter((guard) => {
+    const filteredGuards = guards.filter(() => {
         if (activeTab === 'all') return true;
         if (activeTab === 'active') return true; // Hardcoded active for now
         return false;

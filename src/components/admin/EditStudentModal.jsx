@@ -55,22 +55,11 @@ const CustomSelect = ({ label, value, options, placeholder = 'Select', onChange 
     );
 };
 
-const genderOptions = [
-    { value: 'male', label: 'Male' },
-    { value: 'female', label: 'Female' },
-    { value: 'other', label: 'Other' },
-];
-
 const yearOptions = [
     { value: '1', label: '1st Year' },
     { value: '2', label: '2nd Year' },
     { value: '3', label: '3rd Year' },
     { value: '4', label: '4th Year' },
-];
-
-const hostelOptions = [
-    { value: 'dayscholar', label: 'Dayscholar' },
-    { value: 'hosteler', label: 'Hosteler' },
 ];
 
 const batchOptions = [
@@ -99,7 +88,6 @@ const EditStudentModal = ({ student, onClose, onUpdate }) => {
     });
 
     const [departments, setDepartments] = useState([]);
-    const [loading, setLoading] = useState(true);
     const [photoFile, setPhotoFile] = useState(null);
     const [photoPreview, setPhotoPreview] = useState(student.photo_url || null);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -116,7 +104,6 @@ const EditStudentModal = ({ student, onClose, onUpdate }) => {
             if (!error && data) {
                 setDepartments(data.map(d => ({ value: d.id, label: d.name })));
             }
-            setLoading(false);
         };
         fetchDepartments();
     }, []);

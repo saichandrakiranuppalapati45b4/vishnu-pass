@@ -3,22 +3,6 @@ import { ChevronLeft, CheckCircle2, ShieldCheck, Zap, Download, Scan, UserCircle
 import { format } from 'date-fns';
 
 const VerificationResult = ({ studentData, gateName, verifiedAt, onNextScan }) => {
-    const handleDownload = () => {
-        const passContent = `
-            VISHNU PASS
-            Name: ${studentData?.full_name}
-            ID: ${studentData?.student_id}
-            Status: VERIFIED
-            Date: ${verifiedAt || new Date().toLocaleTimeString()}
-        `;
-        const blob = new Blob([passContent], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `Pass_${studentData?.student_id || 'Student'}.txt`;
-        link.click();
-        URL.revokeObjectURL(url);
-    };
 
     return (
         <div className="flex-1 flex flex-col bg-[#f8f9fb] animate-in slide-in-from-bottom duration-500 overflow-y-auto font-sans min-h-screen pb-32">

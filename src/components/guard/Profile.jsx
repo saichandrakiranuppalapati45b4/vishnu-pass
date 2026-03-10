@@ -1,8 +1,7 @@
 import React from 'react';
-import { LogOut, User, Shield, Phone, MapPin, Clock, Mail, ChevronRight, Bell, ShieldCheck, Heart } from 'lucide-react';
-import { format } from 'date-fns';
+import { LogOut, Shield, Phone, Mail, ChevronRight, Bell, ShieldCheck, Heart } from 'lucide-react';
 
-const GuardProfile = ({ guardData, onLogout }) => {
+const GuardProfile = ({ guardData, onLogout, onNavigate }) => {
     const initials = guardData?.full_name
         ? guardData.full_name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
         : 'GP';
