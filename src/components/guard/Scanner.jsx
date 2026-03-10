@@ -114,12 +114,16 @@ const GuardScanner = ({ guardData }) => {
                                 focusMode: 'continuous'
                             }}
                             components={{
+                                tracker: false,
+                                finder: false,
                                 audio: true,
                                 torch: true
                             }}
                             styles={{
                                 container: { width: '100%', height: '100%', background: 'black' },
-                                video: { objectFit: 'cover', width: '100%', height: '100%' }
+                                video: { objectFit: 'cover', width: '100%', height: '100%' },
+                                finder: { display: 'none' },
+                                tracker: { display: 'none' }
                             }}
                         />
 
@@ -212,6 +216,13 @@ const GuardScanner = ({ guardData }) => {
                 @keyframes scan {
                     0%, 100% { top: 10%; opacity: 0.1; }
                     50% { top: 90%; opacity: 0.8; }
+                }
+                /* Hide any default scanner overlays from the library */
+                [class*="tracker"], [class*="finder"], svg {
+                    pointer-events: none;
+                }
+                section > div:nth-child(2), section > div:nth-child(3) {
+                    display: none !important;
                 }
             ` }} />
         </div>

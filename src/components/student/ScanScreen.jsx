@@ -105,16 +105,19 @@ const ScanScreen = ({ studentData, onBack }) => {
                         frameRate: { ideal: 60 },
                         focusMode: 'continuous'
                     }}
-                    components={{ audio: false, torch: torchOn }}
+                    components={{
+                        tracker: false,
+                        finder: false,
+                        audio: false,
+                        torch: torchOn
+                    }}
                     styles={{
                         container: { width: '100%', height: '100%', background: 'black' },
-                        video: { objectFit: 'cover', width: '100%', height: '100%' }
+                        video: { objectFit: 'cover', width: '100%', height: '100%' },
+                        finder: { display: 'none' },
+                        tracker: { display: 'none' }
                     }}
                 />
-                {/* Visual Scrim Overlay - Hole-punch design for maximum clarity in scanning area */}
-                <div className="absolute inset-0 z-10 pointer-events-none overflow-hidden">
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[120px] w-[280px] h-[280px] rounded-[48px] shadow-[0_0_0_9999px_rgba(0,0,0,0.4)] transition-all duration-500" />
-                </div>
             </div>
 
             {/* UI Overlays Layer */}
@@ -152,16 +155,20 @@ const ScanScreen = ({ studentData, onBack }) => {
 
                 {/* Scanner Frame - Centered Focus Area */}
                 <div className="flex-1 flex items-center justify-center px-10 relative z-30 mb-20">
-                    <div className="w-full max-w-[280px] aspect-square relative">
-                        {/* Brackets */}
-                        <div className="absolute top-0 left-0 w-16 h-16 border-l-[6px] border-t-[6px] border-[#f47c20] rounded-tl-[32px] z-20" />
-                        <div className="absolute top-0 right-0 w-16 h-16 border-r-[6px] border-t-[6px] border-[#f47c20] rounded-tr-[32px] z-20" />
-                        <div className="absolute bottom-0 left-0 w-16 h-16 border-l-[6px] border-b-[6px] border-[#f47c20] rounded-bl-[32px] z-20" />
-                        <div className="absolute bottom-0 right-0 w-16 h-16 border-r-[6px] border-b-[6px] border-[#f47c20] rounded-br-[32px] z-20" />
+                    <div className="w-full max-w-[280px] aspect-square relative flex items-center justify-center">
+                        {/* Hole-punch Scrim Overlay - Centered exactly with brackets */}
+                        <div className="absolute inset-0 z-0 pointer-events-none flex items-center justify-center">
+                            <div className="w-[280px] h-[280px] rounded-[32px] shadow-[0_0_0_9999px_rgba(0,0,0,0.4)]" />
+                        </div>
+                        {/* Brackets - Minimalist L-shapes */}
+                        <div className="absolute top-0 left-0 w-12 h-12 border-l-[4px] border-t-[4px] border-[#f47c20] rounded-tl-[32px] z-20" />
+                        <div className="absolute top-0 right-0 w-12 h-12 border-r-[4px] border-t-[4px] border-[#f47c20] rounded-tr-[32px] z-20" />
+                        <div className="absolute bottom-0 left-0 w-12 h-12 border-l-[4px] border-b-[4px] border-[#f47c20] rounded-bl-[32px] z-20" />
+                        <div className="absolute bottom-0 right-0 w-12 h-12 border-r-[4px] border-b-[4px] border-[#f47c20] rounded-br-[32px] z-20" />
 
-                        {/* Animated Laser Scan Line */}
+                        {/* Animated Laser Scan Line - Thin horizontal line */}
                         {status === 'idle' && (
-                            <div className="absolute top-1/2 left-0 right-0 h-[4px] bg-gradient-to-r from-transparent via-[#f47c20] to-transparent z-20 shadow-[0_0_25px_#f47c20] animate-[scan_2.5s_ease-in-out_infinite] opacity-80" />
+                            <div className="absolute top-1/2 left-0 right-0 h-[2.5px] bg-[#f47c20] z-20 shadow-[0_0_15px_#f47c20] animate-[scan_2.5s_ease-in-out_infinite] opacity-70" />
                         )}
                     </div>
                 </div>
@@ -247,6 +254,19 @@ const ScanScreen = ({ studentData, onBack }) => {
                 }
                 .shadow-3xl {
                     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+                }
+                /* Hide any default scanner overlays from the library */
+                [class*="tracker"], [class*="finder"], svg {
+                    pointer-events: none;
+                }
+                section > div:nth-child(2), section > div:nth-child(3) {
+                    display: none !important;
+                }
+                /* Broad catch-all for any red borders or outlines */
+                [style*="border-color: red"], [style*="border: red"], [style*="outline: red"] {
+                    display: none !important;
+                    border: none !important;
+                    outline: none !important;
                 }
             ` }} />
         </div>

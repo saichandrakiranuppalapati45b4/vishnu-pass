@@ -181,36 +181,39 @@ const GuardHome = ({ guardData }) => {
             {/* Main ID Card Section */}
             <div className="px-6 mt-6">
                 <div className="bg-white rounded-[40px] p-8 shadow-[0_10px_40px_rgba(0,0,0,0.04)] border border-white relative overflow-hidden text-center">
-                    {/* QR Area */}
-                    <div className="w-full max-w-[240px] mx-auto aspect-square bg-[#fff8f5] rounded-3xl border border-[#f47c20]/5 flex items-center justify-center p-8 mb-6 relative">
-                        <div className="absolute inset-4 border border-[#f47c20]/10 rounded-2xl"></div>
-                        <img
-                            src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=GATE_${guardData?.gate_id}_${qrToken}`}
-                            alt="QR Session"
-                            className="w-full h-full object-contain relative z-10 opacity-80"
-                        />
-                    </div>
-
-                    <h2 className="text-2xl font-black text-gray-800 tracking-tight mb-1">{guardData?.full_name || 'Vishnu Vardhan'}</h2>
-                    <p className="text-sm font-bold text-[#b43e8f] tracking-widest mb-8 uppercase">ID: {guardData?.employee_id || 'V21CS102'}</p>
-
-                    {/* Timer */}
-                    <div className="flex justify-center gap-3 mb-4">
-                        <div className="flex flex-col items-center">
-                            <div className="w-14 h-14 rounded-xl bg-blue-50/50 border border-blue-50 flex items-center justify-center text-xl font-black text-gray-800">00</div>
-                            <span className="text-[9px] font-bold text-gray-400 uppercase mt-2 tracking-widest">Hours</span>
-                        </div>
-                        <div className="flex flex-col items-center">
-                            <div className="w-14 h-14 rounded-xl bg-blue-50/50 border border-blue-50 flex items-center justify-center text-xl font-black text-gray-800">00</div>
-                            <span className="text-[9px] font-bold text-gray-400 uppercase mt-2 tracking-widest">Mins</span>
-                        </div>
-                        <div className="flex flex-col items-center">
-                            <div className="w-14 h-14 rounded-xl bg-[#fff5ef] border border-[#f47c20]/10 flex items-center justify-center text-xl font-black text-[#f47c20]">{seconds.toString().padStart(2, '0')}</div>
-                            <span className="text-[9px] font-bold text-gray-400 uppercase mt-2 tracking-widest">Secs</span>
+                    {/* QR Area - Very rounded peach card */}
+                    <div className="w-full max-w-[260px] mx-auto aspect-square bg-[#fff8f6] rounded-[60px] flex items-center justify-center p-12 mb-8 relative border border-[#f47c20]/5">
+                        <div className="w-full h-full bg-white rounded-[40px] p-4 shadow-sm flex items-center justify-center">
+                            <img
+                                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=GATE_${guardData?.gate_id}_${qrToken}`}
+                                alt="QR Session"
+                                className="w-full h-full object-contain"
+                            />
                         </div>
                     </div>
 
-                    <p className="text-center text-[11px] font-bold text-gray-400 mb-6 flex items-center justify-center gap-1.5">
+                    <h2 className="text-3xl font-black text-[#1a2b3c] tracking-tight mb-2 uppercase">{guardData?.full_name || 'Guard'}</h2>
+                    <p className="text-sm font-bold text-[#b43e8f] tracking-widest mb-10 uppercase">ID: {guardData?.employee_id || 'VP-2024-4845'}</p>
+
+                    {/* Timer - Stylized Boxes */}
+                    <div className="flex justify-center gap-4 mb-6">
+                        <div className="flex flex-col items-center">
+                            <div className="w-16 h-20 rounded-2xl bg-[#f0f9ff]/50 border border-[#e0f2fe] flex items-center justify-center text-2xl font-black text-[#1a2b3c]">00</div>
+                            <span className="text-[10px] font-black text-gray-400 uppercase mt-3 tracking-widest">Hours</span>
+                        </div>
+                        <div className="flex flex-col items-center">
+                            <div className="w-16 h-20 rounded-2xl bg-[#f0f9ff]/50 border border-[#e0f2fe] flex items-center justify-center text-2xl font-black text-[#1a2b3c]">00</div>
+                            <span className="text-[10px] font-black text-gray-400 uppercase mt-3 tracking-widest">Mins</span>
+                        </div>
+                        <div className="flex flex-col items-center">
+                            <div className="w-16 h-20 rounded-2xl bg-[#fff8f6] border border-[#f47c20]/10 flex items-center justify-center text-2xl font-black text-[#f47c20]">
+                                {seconds.toString().padStart(2, '0')}
+                            </div>
+                            <span className="text-[10px] font-black text-gray-400 uppercase mt-3 tracking-widest">Secs</span>
+                        </div>
+                    </div>
+
+                    <p className="text-center text-[12px] font-bold text-gray-400 mb-8 tracking-tight">
                         Refreshes in <span className="text-[#f47c20] font-black">{seconds}s</span>
                     </p>
 
@@ -219,7 +222,7 @@ const GuardHome = ({ guardData }) => {
                             setQrToken(crypto.randomUUID());
                             setSeconds(30);
                         }}
-                        className="w-full py-4 bg-gradient-to-r from-[#f47c20] to-[#e06b12] text-white font-black rounded-2xl shadow-xl shadow-[#f47c20]/20 flex items-center justify-center gap-3 active:scale-[0.98] transition-all"
+                        className="w-full py-4 bg-gradient-to-r from-[#f47c20] to-[#e06b12] text-white font-black rounded-2xl shadow-xl shadow-[#f47c20]/20 flex items-center justify-center gap-3 active:scale-[0.98] transition-all text-xs tracking-[0.2em] uppercase"
                     >
                         <RefreshCw className="w-5 h-5" />
                         Refresh QR Code
