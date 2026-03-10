@@ -110,17 +110,22 @@ const ScanScreen = ({ studentData, onBack }) => {
 
         // We allow scanning as long as we have requested access (status should be requesting or approved)
         if (currentStatus === 'idle' || currentStatus === 'completed' || currentStatus === 'expired') {
+            setError(`Scanner ignored scan because status is: ${currentStatus}`);
             return;
         }
 
         if (!currentSessionId) {
+            setError("Scan detected, but sessionId is missing!");
             console.error("Scan detected, but sessionId is missing!");
             return;
         }
 
         let rawValue = typeof result === 'string' ? result : (result[0]?.rawValue || result?.text || result?.rawValue);
 
-        if (!rawValue) return;
+        if (!rawValue) {
+            setError("Scanner read empty value from QR code.");
+            return;
+        }
 
         try {
             setStatus('processing_scan');
