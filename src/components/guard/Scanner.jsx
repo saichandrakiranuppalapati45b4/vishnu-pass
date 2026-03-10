@@ -105,13 +105,20 @@ const GuardScanner = ({ guardData }) => {
                         <Scanner
                             onResult={handleScan}
                             onError={(error) => console.log(error?.message)}
+                            constraints={{
+                                aspectRatio: 1,
+                                facingMode: "environment",
+                                width: { ideal: 1920 },
+                                height: { ideal: 1080 },
+                                frameRate: { ideal: 30 }
+                            }}
                             components={{
                                 audio: true,
                                 torch: true
                             }}
                             styles={{
-                                container: { width: '100%', height: '100%' },
-                                video: { objectFit: 'cover' }
+                                container: { width: '100%', height: '100%', background: 'black' },
+                                video: { objectFit: 'cover', width: '100%', height: '100%' }
                             }}
                         />
 

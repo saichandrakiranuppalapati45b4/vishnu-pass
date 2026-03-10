@@ -100,8 +100,9 @@ const ScanScreen = ({ studentData, onBack }) => {
                     constraints={{
                         aspectRatio: 1,
                         facingMode: "environment",
-                        width: { ideal: 1280 },
-                        height: { ideal: 720 }
+                        width: { ideal: 1920 },
+                        height: { ideal: 1080 },
+                        frameRate: { ideal: 30 }
                     }}
                     components={{ audio: false, torch: torchOn }}
                     styles={{
@@ -110,7 +111,7 @@ const ScanScreen = ({ studentData, onBack }) => {
                     }}
                 />
                 {/* Visual Scrim Overlay - provides contrast for white UI text */}
-                <div className="absolute inset-0 bg-[#1e1a17]/50 backdrop-blur-[1px] z-10" />
+                <div className="absolute inset-0 bg-[#1e1a17]/30 z-10" />
             </div>
 
             {/* UI Overlays Layer */}
@@ -147,7 +148,7 @@ const ScanScreen = ({ studentData, onBack }) => {
                 </div>
 
                 {/* Scanner Frame - Centered Focus Area */}
-                <div className="flex-1 flex items-center justify-center px-10 relative z-30 mb-20">
+                <div className="flex-1 flex items-center justify-center px-10 relative z-30 mb-32">
                     <div className="w-full max-w-[280px] aspect-square relative">
                         {/* Brackets */}
                         <div className="absolute top-0 left-0 w-20 h-20 border-l-[8px] border-t-[8px] border-[#f47c20] rounded-tl-[48px] z-20 shadow-[-8px_-8px_20px_rgba(244,124,32,0.3)]" />
