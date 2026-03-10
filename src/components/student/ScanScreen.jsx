@@ -14,19 +14,27 @@ const ScanScreen = ({ studentData, onBack }) => {
     const handleScan = async (result) => {
         if (!result || status !== 'idle') return;
 
+        // Diagnostic logging
+        console.log('Scan Result:', result);
+
         // More robust parsing for different library versions/formats
         let rawValue = '';
         if (typeof result === 'string') {
             rawValue = result;
         } else if (Array.isArray(result) && result.length > 0) {
-            rawValue = result[0].rawValue || result[0].text;
-        } else if (result.text) {
+            rawValue = result[0].rawValue || result[0].text || result[0].value;
+        } else if (result?.text) {
             rawValue = result.text;
-        } else if (result.rawValue) {
+        } else if (result?.rawValue) {
             rawValue = result.rawValue;
+        } else if (result?.value) {
+            rawValue = result.value;
         }
 
-        if (!rawValue) return;
+        if (!rawValue) {
+            console.log('Could not extract rawValue from result');
+            return;
+        }
 
         setStatus('processing');
         setErrorMessage(null);
@@ -106,22 +114,22 @@ const ScanScreen = ({ studentData, onBack }) => {
             {/* Camera Background Layer */}
             <div className="absolute inset-0 z-0 h-full w-full">
                 <Scanner
+                    scanDelay={500}
                     onResult={handleScan}
-                    onError={(error) => setErrorMessage(error?.message)}
+                    onError={(error) => {
+                        console.error('Scanner Error:', error);
+                        setErrorMessage(error?.message || 'Camera access error');
+                        setStatus('error');
+                    }}
                     constraints={{
                         facingMode: "environment",
-                        width: { min: 1280, ideal: 1920 },
-                        height: { min: 720, ideal: 1080 },
-                        frameRate: { ideal: 60 },
-                        advanced: [
-                            { focusMode: 'continuous' },
-                            { whiteBalanceMode: 'continuous' }
-                        ]
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
                     }}
                     components={{
                         tracker: false,
                         finder: false,
-                        audio: false,
+                        audio: true,
                         torch: torchOn
                     }}
                     styles={{
@@ -161,7 +169,7 @@ const ScanScreen = ({ studentData, onBack }) => {
                 <div className="px-8 mt-4 mb-4 relative z-20 text-center">
                     <div className="inline-block px-10 py-5 rounded-[40px] bg-[#332a22]/60 backdrop-blur-2xl border border-white/5 shadow-2xl">
                         <p className="text-white/90 text-[14px] font-medium tracking-tight">
-                            Position the student's QR code within the frame
+                            Position the Guard's QR code within the frame
                         </p>
                     </div>
                 </div>
