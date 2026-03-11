@@ -129,40 +129,52 @@ const GuardHome = ({ guardData }) => {
 
                     // If it was completed, verify it belongs to our gate and show details
                     if (newStatus === 'completed') {
-                        console.log("Session completed! Verifying gate...", payload.new.id);
-                        // Fetch the session first to ensure we have the student_id and gate_id
-                        const { data: sessionInfo, error: fetchErr } = await supabase
-                            .from('scan_sessions')
-                            .select('student_id, gate_id')
-                            .eq('id', payload.new.id)
-                            .single();
+                        const sessionId = payload.new.id;
+                        console.log(`[GUARD] Session ${sessionId} completed. Processing...`);
 
-                        if (fetchErr) {
-                            console.error("Error fetching session info:", fetchErr);
-                            return;
+                        // Try to get IDs directly from payload first (may be present if modified)
+                        let studentId = payload.new.student_id;
+                        let sessionGateId = payload.new.gate_id;
+
+                        // Fetch fresh data if needed (Realtime payload might be partial)
+                        if (!studentId || !sessionGateId) {
+                            console.log(`[GUARD] Partial payload, fetching full session ${sessionId}...`);
+                            const { data: sessionInfo } = await supabase
+                                .from('scan_sessions')
+                                .select('student_id, gate_id')
+                                .eq('id', sessionId)
+                                .single();
+
+                            studentId = sessionInfo?.student_id;
+                            sessionGateId = sessionInfo?.gate_id;
                         }
 
-                        console.log("Session Gate ID:", sessionInfo?.gate_id, "Guard Gate ID:", guardData?.gate_id);
+                        console.log(`[GUARD] Matching IDs - SessionGate: ${sessionGateId}, GuardGate: ${guardData?.gate_id}`);
 
-                        // Normalize IDs to string for comparison to prevent type mismatch
-                        if (String(sessionInfo?.gate_id) === String(guardData?.gate_id) && sessionInfo?.student_id) {
-                            console.log("Gate match! Fetching student details for:", sessionInfo.student_id);
+                        // Normalize and compare
+                        const isMatch = String(sessionGateId).toLowerCase().trim() === String(guardData?.gate_id).toLowerCase().trim();
+
+                        if (isMatch && studentId) {
+                            console.log(`[GUARD] Match found! Fetching student ${studentId}...`);
                             const { data: student, error: studentErr } = await supabase
                                 .from('students')
                                 .select('*, departments(name)')
-                                .eq('student_id', sessionInfo.student_id)
+                                .eq('student_id', studentId)
                                 .single();
 
-                            if (studentErr) console.error("Error fetching student:", studentErr);
+                            if (studentErr) {
+                                console.error("[GUARD] Student fetch error:", studentErr);
+                                return;
+                            }
 
                             if (student) {
-                                console.log("Student details found! Showing verification UI.");
+                                console.log("[GUARD] Displaying verification for:", student.full_name);
                                 setActiveVerification({
                                     ...student,
                                     verifiedAt: format(new Date(), 'hh:mm a')
                                 });
 
-                                // Log it in movement_logs
+                                // Log it in movement_logs (Moved inside the student check)
                                 await supabase.from('movement_logs').insert({
                                     user_name: student.full_name,
                                     student_id: student.student_id,
@@ -170,7 +182,11 @@ const GuardHome = ({ guardData }) => {
                                     movement_type: 'AUTHORIZED',
                                     status: 'Success'
                                 });
+                            } else {
+                                console.warn("[GUARD] Student not found in database:", studentId);
                             }
+                        } else {
+                            console.log("[GUARD] Gate ID mismatch or missing student data. Match:", isMatch, "Student:", studentId);
                         }
                     }
                 }
