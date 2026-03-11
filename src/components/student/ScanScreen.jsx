@@ -163,7 +163,17 @@ const ScanScreen = ({ studentData, onBack }) => {
                 throw updateError;
             }
 
-            console.log("[STUDENT] Session updated successfully. Handshake complete.");
+            console.log("[STUDENT] Session updated successfully. Broadcasting signal...");
+
+            // NEW: Send a high-speed broadcast signal directly to the guard's channel
+            const channelName = `gate_monitor_${scannedGateId}`;
+            await supabase.channel(channelName).send({
+                type: 'broadcast',
+                event: 'SCAN_COMPLETED',
+                payload: { sessionId: currentSessionId }
+            });
+
+            console.log(`[STUDENT] Signal sent to ${channelName}. Handshake complete.`);
             setStatus('completed');
 
         } catch (err) {

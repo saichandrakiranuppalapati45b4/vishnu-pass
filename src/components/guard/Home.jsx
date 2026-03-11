@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, TrendingUp, Clock, ShieldCheck, User, QrCode, CheckCircle2, Zap } from 'lucide-react';
+import { Bell, TrendingUp, Clock, ShieldCheck, User, QrCode, CheckCircle2, Zap, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
 import { supabase } from '../../lib/supabase';
 import VerificationResult from '../student/VerificationResult';
@@ -11,6 +11,7 @@ const GuardHome = ({ guardData }) => {
     const [activeVerification, setActiveVerification] = useState(null);
     const [qrToken, setQrToken] = useState(crypto.randomUUID());
     const [qrTimeLeft, setQrTimeLeft] = useState(25);
+    const [connectionStatus, setConnectionStatus] = useState('connecting'); // connecting, safe, error
 
     // QR Code Refresh Timer
     useEffect(() => {
@@ -26,6 +27,56 @@ const GuardHome = ({ guardData }) => {
 
         return () => clearInterval(timer);
     }, []);
+
+    // Reusable session processing logic
+    const processSessionUpdate = async (sessionId, source = 'Realtime') => {
+        console.log(`[GUARD] [${source}] Processing session ${sessionId}...`);
+        
+        try {
+            // ALWAYS fetch fresh session data
+            const { data: sessionInfo, error: sessionErr } = await supabase
+                .from('scan_sessions')
+                .select('student_id, gate_id')
+                .eq('id', sessionId)
+                .single();
+
+            if (sessionErr || !sessionInfo) {
+                console.error(`[GUARD] [${source}] Failed to fetch session info:`, sessionErr);
+                return;
+            }
+
+            const sessionGate = String(sessionInfo.gate_id).toLowerCase().trim();
+            const guardGate = String(guardData.gate_id).toLowerCase().trim();
+
+            if (sessionGate === guardGate && sessionInfo.student_id) {
+                console.log(`[GUARD] [${source}] Gate match! Fetching student ${sessionInfo.student_id}...`);
+                const { data: student } = await supabase
+                    .from('students')
+                    .select('*, departments(name)')
+                    .eq('student_id', sessionInfo.student_id)
+                    .single();
+
+                if (student) {
+                    console.log(`[GUARD] [${source}] Verification SUCCESS for:`, student.full_name);
+                    setActiveVerification({
+                        ...student,
+                        verifiedAt: format(new Date(), 'hh:mm a')
+                    });
+
+                    // Log it in movement_logs
+                    await supabase.from('movement_logs').insert({
+                        user_name: student.full_name,
+                        student_id: student.student_id,
+                        access_point_id: guardData.gate_id,
+                        movement_type: 'AUTHORIZED',
+                        status: 'Success'
+                    });
+                }
+            }
+        } catch (err) {
+            console.error(`[GUARD] [${source}] Error processing session:`, err);
+        }
+    };
 
     // Real-time data fetching and subscriptions
     useEffect(() => {
@@ -58,19 +109,15 @@ const GuardHome = ({ guardData }) => {
                     .order('created_at', { ascending: false })
                     .limit(5);
 
-                if (requests) {
-                    setActivities(requests);
-                }
+                if (requests) setActivities(requests);
 
-                // 4. Fetch initial pending requests (optional, they clear fast)
+                // 4. Fetch initial pending requests
                 const { data: pending } = await supabase
                     .from('scan_sessions')
                     .select('*, students(*, departments(name))')
                     .eq('status', 'pending');
 
-                if (pending) {
-                    setPendingRequests(pending);
-                }
+                if (pending) setPendingRequests(pending);
 
             } catch (err) {
                 console.error("Error fetching guard home data:", err);
@@ -79,131 +126,74 @@ const GuardHome = ({ guardData }) => {
 
         fetchData();
 
-        // Subscriptions - Use a unique channel for this gate to avoid interference
+        // Subscriptions - Use a unique channel for this gate
         const channelName = `gate_monitor_${guardData.gate_id}`;
-        console.log(`[GUARD] Initializing real-time channel: ${channelName}`);
-
         const channel = supabase.channel(channelName)
-            .on('postgres_changes',
-                {
-                    event: 'INSERT',
-                    schema: 'public',
-                    table: 'movement_logs',
-                    filter: `access_point_id=eq.${guardData.gate_id}`
-                },
+            .on('postgres_changes', 
+                { event: 'INSERT', schema: 'public', table: 'movement_logs', filter: `access_point_id=eq.${guardData.gate_id}` },
                 (payload) => {
-                    console.log("[GUARD] New movement log received");
                     setStats(prev => ({ ...prev, totalScans: prev.totalScans + 1 }));
                     setActivities(prev => [payload.new, ...prev].slice(0, 5));
                 }
             )
             .on('postgres_changes',
-                {
-                    event: 'INSERT',
-                    schema: 'public',
-                    table: 'scan_sessions',
-                    filter: "status=eq.pending"
-                },
+                { event: 'INSERT', schema: 'public', table: 'scan_sessions', filter: "status=eq.pending" },
                 async (payload) => {
-                    console.log("[GUARD] New pending request:", payload.new.id);
-                    // Fetch nested student data manually since realtime doesn't include it
                     const { data: student } = await supabase
                         .from('students')
                         .select('*, departments(name)')
                         .eq('student_id', payload.new.student_id)
                         .single();
-
                     if (student) {
                         setPendingRequests(prev => [{ ...payload.new, students: student }, ...prev]);
                     }
                 }
             )
             .on('postgres_changes',
-                {
-                    event: 'UPDATE',
-                    schema: 'public',
-                    table: 'scan_sessions'
-                },
+                { event: 'UPDATE', schema: 'public', table: 'scan_sessions' },
                 async (payload) => {
                     const newStatus = payload.new.status;
                     const sessionId = payload.new.id;
-                    console.log(`[GUARD] Session ${sessionId} update: ${newStatus}`);
-
-                    // Remove from pending if status changed
                     if (newStatus !== 'pending') {
                         setPendingRequests(prev => prev.filter(req => req.id !== sessionId));
                     }
-
-                    // If it was completed, verify it belongs to our gate and show details
                     if (newStatus === 'completed') {
-                        console.log(`[GUARD] Processing completed session ${sessionId}...`);
-
-                        // ALWAYS fetch fresh session data to get the latest student_id and gate_id
-                        // This bypasses payload issues and RLS partial data blocks
-                        const { data: sessionInfo, error: sessionErr } = await supabase
-                            .from('scan_sessions')
-                            .select('student_id, gate_id')
-                            .eq('id', sessionId)
-                            .single();
-
-                        if (sessionErr || !sessionInfo) {
-                            console.error("[GUARD] Failed to fetch session info for verification:", sessionErr);
-                            return;
-                        }
-
-                        console.log(`[GUARD] Matching: SessionGate(${sessionInfo.gate_id}) vs GuardGate(${guardData.gate_id})`);
-
-                        // Robust comparison normalization
-                        const sessionGate = String(sessionInfo.gate_id).toLowerCase().trim();
-                        const guardGate = String(guardData.gate_id).toLowerCase().trim();
-
-                        if (sessionGate === guardGate && sessionInfo.student_id) {
-                            console.log(`[GUARD] Gate MATCH! Fetching student: ${sessionInfo.student_id}`);
-                            const { data: student, error: studentErr } = await supabase
-                                .from('students')
-                                .select('*, departments(name)')
-                                .eq('student_id', sessionInfo.student_id)
-                                .single();
-
-                            if (studentErr) {
-                                console.error("[GUARD] Student fetch error:", studentErr);
-                                return;
-                            }
-
-                            if (student) {
-                                console.log("[GUARD] Verification SUCCESS for:", student.full_name);
-                                setActiveVerification({
-                                    ...student,
-                                    verifiedAt: format(new Date(), 'hh:mm a')
-                                });
-
-                                // Log it in movement_logs
-                                await supabase.from('movement_logs').insert({
-                                    user_name: student.full_name,
-                                    student_id: student.student_id,
-                                    access_point_id: guardData.gate_id,
-                                    movement_type: 'AUTHORIZED',
-                                    status: 'Success'
-                                });
-                            }
-                        } else {
-                            console.log("[GUARD] Gate mismatch or no student ID. Processing skipped.");
-                        }
+                        processSessionUpdate(sessionId, 'Realtime');
                     }
                 }
             )
+            // ADDED: Direct Broadcast Listener for instant signaling
+            .on('broadcast', { event: 'SCAN_COMPLETED' }, ({ payload }) => {
+                console.log("[GUARD] Broadcast signal received!", payload);
+                if (payload.sessionId) {
+                    processSessionUpdate(payload.sessionId, 'Broadcast');
+                }
+            })
             .subscribe((status) => {
                 console.log(`[GUARD] Real-time Status (${channelName}):`, status);
-                if (status === 'SUBSCRIPTION_ERROR') {
-                    console.error(`[GUARD] Subscription failed for ${channelName}. Check RLS or Realtime settings.`);
-                }
+                if (status === 'SUBSCRIBED') setConnectionStatus('safe');
+                else if (status === 'CLOSED') setConnectionStatus('connecting');
+                else setConnectionStatus('error');
             });
 
         return () => {
-            console.log(`[GUARD] Cleaning up channel: ${channelName}`);
             supabase.removeChannel(channel);
         };
     }, [guardData?.gate_id]);
+
+    const handleRefresh = async () => {
+        // Manually check for any completed sessions in the last minute that might have been missed
+        const { data: recentSessions } = await supabase
+            .from('scan_sessions')
+            .select('id, status')
+            .eq('gate_id', guardData.gate_id)
+            .eq('status', 'completed')
+            .gte('created_at', new Date(Date.now() - 60000).toISOString());
+
+        if (recentSessions && recentSessions.length > 0) {
+            recentSessions.forEach(session => processSessionUpdate(session.id, 'Manual Polling'));
+        }
+    };
 
     const handleApprove = async (sessionId) => {
         try {
@@ -250,9 +240,16 @@ const GuardHome = ({ guardData }) => {
                         )}
                     </div>
                     <div>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">
-                            {guardData?.guard_gates?.name || 'GATE A-12'}
-                        </p>
+                        <div className="flex items-center gap-2 mb-1">
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none">
+                                {guardData?.guard_gates?.name || 'GATE A-12'}
+                            </p>
+                            {/* Live Connection Indicator */}
+                            <div className={`w-1.5 h-1.5 rounded-full ${
+                                connectionStatus === 'safe' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' :
+                                connectionStatus === 'connecting' ? 'bg-amber-500 animate-pulse' : 'bg-rose-500'
+                            }`} title={`System Status: ${connectionStatus}`} />
+                        </div>
                         <h1 className="text-base font-black text-gray-800 leading-none">Security Officer</h1>
                     </div>
                 </div>
@@ -369,7 +366,16 @@ const GuardHome = ({ guardData }) => {
             <div className="mt-8 px-6 pb-20">
                 <div className="flex items-center justify-between mb-4">
                     <h3 className="text-base font-black text-gray-800 tracking-tight">Recent Activity</h3>
-                    <button className="text-xs font-bold text-[#f47c20]">View All</button>
+                    <div className="flex items-center gap-4">
+                        <button 
+                            onClick={handleRefresh}
+                            className="p-2 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-[#f47c20] transition-colors"
+                            title="Force Refresh Scans"
+                        >
+                            <RefreshCw className="w-4 h-4" />
+                        </button>
+                        <button className="text-xs font-bold text-[#f47c20]">View All</button>
+                    </div>
                 </div>
 
                 <div className="space-y-4">
