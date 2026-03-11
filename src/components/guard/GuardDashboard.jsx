@@ -32,15 +32,18 @@ const GuardDashboard = ({ onLogout, guardData }) => {
         }
     };
 
+    const isSubTab = ['security', 'notifications', 'language'].includes(activeTab);
+
     return (
         <div className="min-h-screen bg-[#f8f9fb] flex flex-col font-sans">
             {/* Main Content Area */}
-            <main className="flex-1 pb-24 overflow-y-auto">
+            <main className={`flex-1 ${isSubTab ? '' : 'pb-24'} overflow-y-auto`}>
                 {renderContent()}
             </main>
 
             {/* Bottom Navigation */}
-            <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-6 py-3 flex justify-around items-center z-50 shadow-[0_-4px_20px_rgba(0,0,0,0.03)]">
+            {!isSubTab && (
+                <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-6 py-3 flex justify-around items-center z-50 shadow-[0_-4px_20px_rgba(0,0,0,0.03)]">
                 <button
                     onClick={() => setActiveTab('home')}
                     className={`flex flex-col items-center gap-1 transition-all ${activeTab === 'home' ? 'text-[#f47c20]' : 'text-gray-400'}`}
@@ -75,6 +78,7 @@ const GuardDashboard = ({ onLogout, guardData }) => {
                     <span className="text-[10px] font-bold uppercase tracking-wider">Profile</span>
                 </button>
             </nav>
+            )}
         </div>
     );
 };
