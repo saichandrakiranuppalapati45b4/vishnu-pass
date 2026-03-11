@@ -16,7 +16,7 @@ const GuardDashboard = ({ onLogout, guardData }) => {
             case 'history':
                 return <GuardHistory guardData={guardData} onBack={() => setActiveTab('home')} />;
             case 'roster':
-                return <GuardRoster onBack={() => setActiveTab('home')} />;
+                return <GuardRoster guardData={guardData} onBack={() => setActiveTab('home')} />;
             case 'profile':
                 return <GuardProfile guardData={guardData} onLogout={onLogout} onNavigate={(tab) => setActiveTab(tab)} />;
             case 'security':

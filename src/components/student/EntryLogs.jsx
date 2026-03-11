@@ -8,17 +8,15 @@ const EntryLogs = ({ studentData }) => {
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('all'); // all, entries, exits
 
-    useEffect(() => {
-        fetchLogs();
-    }, [studentData, fetchLogs]);
-
     const fetchLogs = useCallback(async () => {
+        if (!studentData?.student_id) return;
+
         try {
             setLoading(true);
             const { data, error } = await supabase
                 .from('movement_logs')
                 .select('*, guard_gates(name)')
-                .eq('student_id', studentData?.student_id)
+                .eq('student_id', studentData.student_id)
                 .order('created_at', { ascending: false })
                 .limit(50);
 
@@ -30,6 +28,12 @@ const EntryLogs = ({ studentData }) => {
             setLoading(false);
         }
     }, [studentData?.student_id]);
+
+    useEffect(() => {
+        if (studentData?.student_id) {
+            fetchLogs();
+        }
+    }, [studentData?.student_id, fetchLogs]);
 
     // Determine if a log is entry or exit based on movement_type
     const isEntry = (log) => {

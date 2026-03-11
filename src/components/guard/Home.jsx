@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Bell, TrendingUp, Clock, ShieldCheck, User, QrCode, CheckCircle2, Zap, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
 import { supabase } from '../../lib/supabase';
@@ -28,8 +28,8 @@ const GuardHome = ({ guardData }) => {
         return () => clearInterval(timer);
     }, []);
 
-    // Reusable session processing logic
-    const processSessionUpdate = async (sessionId, source = 'Realtime') => {
+    // Reusable session processing logic - Wrapped in useCallback to fix lint warning
+    const processSessionUpdate = useCallback(async (sessionId, source = 'Realtime') => {
         console.log(`[GUARD] [${source}] Processing session ${sessionId}...`);
         
         try {
@@ -76,7 +76,7 @@ const GuardHome = ({ guardData }) => {
         } catch (err) {
             console.error(`[GUARD] [${source}] Error processing session:`, err);
         }
-    };
+    }, [guardData.gate_id]);
 
     // Real-time data fetching and subscriptions
     useEffect(() => {
@@ -205,7 +205,7 @@ const GuardHome = ({ guardData }) => {
             if (channel) supabase.removeChannel(channel);
             if (retryTimer) clearTimeout(retryTimer);
         };
-    }, [guardData?.gate_id]);
+    }, [guardData?.gate_id, processSessionUpdate]);
 
     const handleRefresh = async () => {
         console.log("[GUARD] Manual refresh triggered...");

@@ -24,7 +24,20 @@ const VerificationResult = ({ studentData, gateName, verifiedAt, onNextScan }) =
                 {/* Profile Section */}
                 <div className="flex flex-col items-center text-center">
                     <div className="relative mb-6">
-                        <div className="w-44 h-44 rounded-full overflow-hidden shadow-2xl shadow-slate-200 border-4 border-white">
+                        {/* Status Label Popup */}
+                        <div className={`absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] border-2 shadow-lg z-20 backdrop-blur-md ${
+                            String(studentData?.hostel_type).toLowerCase().includes('dayscholar') 
+                            ? 'bg-blue-500/10 border-blue-500/30 text-blue-600 shadow-blue-500/10' 
+                            : 'bg-rose-500/10 border-rose-500/30 text-rose-600 shadow-rose-500/10'
+                        }`}>
+                            {String(studentData?.hostel_type).toLowerCase().includes('dayscholar') ? 'Dayscholar' : 'Hosteller'}
+                        </div>
+
+                        <div className={`w-44 h-44 rounded-full overflow-hidden border-4 bg-white relative z-10 shadow-2xl transition-all duration-500 ${
+                            String(studentData?.hostel_type).toLowerCase().includes('dayscholar') 
+                            ? 'border-blue-100 shadow-blue-500/20 ring-4 ring-blue-500/10' 
+                            : 'border-rose-100 shadow-rose-500/20 ring-4 ring-rose-500/10'
+                        }`}>
                             {studentData?.photo_url ? (
                                 <img src={studentData.photo_url} alt="Profile" className="w-full h-full object-cover" />
                             ) : (
@@ -33,7 +46,7 @@ const VerificationResult = ({ studentData, gateName, verifiedAt, onNextScan }) =
                                 </div>
                             )}
                         </div>
-                        <div className="absolute bottom-2 right-2 w-10 h-10 bg-[#a6cc39] rounded-full flex items-center justify-center border-4 border-white shadow-lg">
+                        <div className="absolute bottom-2 right-2 w-10 h-10 bg-[#a6cc39] rounded-full flex items-center justify-center border-4 border-white shadow-lg z-20">
                             <CheckCircle2 className="w-5 h-5 text-white" />
                         </div>
                     </div>

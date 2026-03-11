@@ -1,30 +1,78 @@
-import React, { useState } from 'react';
-import { ChevronLeft, Search, SlidersHorizontal, CheckCircle2, Ban, Scan, Clock, User } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { ChevronLeft, Search, SlidersHorizontal, CheckCircle2, Ban, Scan, Clock, User, Loader2 } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
+import { formatDistanceToNow } from 'date-fns';
 
-const GuardRoster = ({ onScannerOpen, onBack }) => {
+const GuardRoster = ({ guardData, onScannerOpen, onBack }) => {
     const [searchQuery, setSearchQuery] = useState('');
-    const [activeFilter, setActiveFilter] = useState('Expected');
+    const [activeFilter, setActiveFilter] = useState('All Expected');
+    const [expectedStudents, setExpectedStudents] = useState([]);
+    const [loading, setLoading] = useState(true);
 
-    const expectedStudents = [
-        { id: '1', name: 'Arjun Sharma', studentId: 'VP-2024-0892', grad: 'Gr. 11-B', status: 'Pre-Authorized', type: 'success' },
-        { id: '2', name: 'Priya Patel', studentId: 'VP-2024-1104', grad: 'Gr. 10-A', status: 'Returning Late', type: 'warning' },
-        { id: '3', name: 'Rohan Das', studentId: 'VP-2024-0721', grad: 'Gr. 12-C', status: 'Guest Visit', type: 'info' },
-        { id: '4', name: 'Sneha Kapoor', studentId: 'VP-2024-0442', grad: 'Gr. 9-D', status: 'Restricted Entry', type: 'danger' },
-    ];
+    const fetchRoster = useCallback(async () => {
+        if (!guardData?.gate_id) return;
+
+        try {
+            const { data, error } = await supabase
+                .from('scan_sessions')
+                .select(`
+                    id, 
+                    student_id, 
+                    status, 
+                    created_at,
+                    students (
+                        full_name,
+                        photo_url,
+                        year_of_study,
+                        hostel_type,
+                        departments (name)
+                    )
+                `)
+                .eq('gate_id', guardData.gate_id)
+                .eq('status', 'pending')
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+            setExpectedStudents(data || []);
+        } catch (error) {
+            console.error('Error fetching roster:', error);
+        } finally {
+            setLoading(false);
+        }
+    }, [guardData?.gate_id]);
+
+    useEffect(() => {
+        fetchRoster();
+
+        const channel = supabase
+            .channel(`roster_live_${guardData?.gate_id}`)
+            .on('postgres_changes', {
+                event: '*',
+                schema: 'public',
+                table: 'scan_sessions',
+                filter: guardData?.gate_id ? `gate_id=eq.${guardData.gate_id}` : undefined
+            }, () => {
+                fetchRoster();
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [guardData?.gate_id, fetchRoster]);
 
     const visitors = [
         { id: 'v1', name: 'Delivery: Amazon', ref: 'AMZ-9882', vehicle: 'MH-...' },
     ];
 
-    const getStatusStyles = (type) => {
-        switch (type) {
-            case 'success': return 'bg-emerald-50 text-emerald-600';
-            case 'warning': return 'bg-orange-50 text-orange-600';
-            case 'info': return 'bg-blue-50 text-blue-600';
-            case 'danger': return 'bg-rose-50 text-rose-600 border border-rose-100/50';
-            default: return 'bg-gray-50 text-gray-600';
-        }
-    };
+    const filteredStudents = expectedStudents.filter(session => {
+        const student = session.students;
+        const matchesSearch =
+            student?.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            session.student_id?.toLowerCase().includes(searchQuery.toLowerCase());
+
+        return matchesSearch;
+    });
 
     return (
         <div className="flex-1 flex flex-col bg-[#fdfdfd] min-h-screen relative font-sans">
@@ -33,7 +81,7 @@ const GuardRoster = ({ onScannerOpen, onBack }) => {
                 <button onClick={onBack} className="w-10 h-10 flex items-center justify-center text-gray-800">
                     <ChevronLeft className="w-7 h-7" />
                 </button>
-                <h2 className="text-xl font-black text-gray-800 tracking-tight">Main Gate Roster</h2>
+                <h2 className="text-xl font-black text-gray-800 tracking-tight">{guardData?.guard_gates?.name || 'Gate'} Roster</h2>
                 <button className="w-10 h-10 bg-orange-50 rounded-xl flex items-center justify-center text-[#f47c20]">
                     <SlidersHorizontal className="w-5 h-5" />
                 </button>
@@ -61,8 +109,8 @@ const GuardRoster = ({ onScannerOpen, onBack }) => {
                             key={filter}
                             onClick={() => setActiveFilter(filter)}
                             className={`px-6 py-3 rounded-2xl text-[13px] font-black whitespace-nowrap transition-all flex items-center gap-2 ${activeFilter === filter
-                                    ? 'bg-[#f47c20] text-white shadow-lg shadow-orange-500/20'
-                                    : 'bg-[#e9ecef] text-gray-500'
+                                ? 'bg-[#f47c20] text-white shadow-lg shadow-orange-500/20'
+                                : 'bg-[#e9ecef] text-gray-500'
                                 }`}
                         >
                             {filter}
@@ -76,52 +124,69 @@ const GuardRoster = ({ onScannerOpen, onBack }) => {
                 {/* Currently Expected Section */}
                 <div>
                     <div className="flex items-center justify-between mb-5">
-                        <h3 className="text-[13px] font-black text-gray-900 tracking-[0.1em] uppercase">Currently Expected (12)</h3>
-                        <span className="text-[11px] font-bold text-orange-400">Updated 1m ago</span>
+                        <h3 className="text-[13px] font-black text-gray-900 tracking-[0.1em] uppercase">Currently Expected ({filteredStudents.length})</h3>
+                        <span className="text-[11px] font-bold text-orange-400">Live Updates Active</span>
                     </div>
 
                     <div className="space-y-4">
-                        {expectedStudents.map((student) => (
-                            <div
-                                key={student.id}
-                                className={`bg-white rounded-[32px] p-5 shadow-sm border ${student.type === 'danger' ? 'bg-[#fff5f5] border-rose-100' : 'border-gray-50'} flex items-center justify-between group active:scale-[0.98] transition-all`}
-                            >
-                                <div className="flex items-center gap-4">
-                                    <div className="relative">
-                                        <div className="w-16 h-16 rounded-full border-[3px] border-emerald-500 overflow-hidden bg-emerald-50 flex items-center justify-center p-0.5">
-                                            <div className="w-full h-full rounded-full overflow-hidden bg-white">
-                                                <User className="w-full h-full p-3 text-emerald-200" />
+                        {loading ? (
+                            <div className="flex flex-col items-center justify-center py-12 gap-3 bg-white rounded-[32px] border border-gray-50">
+                                <Loader2 className="w-8 h-8 text-[#f47c20] animate-spin" />
+                                <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">Scanning Gate...</p>
+                            </div>
+                        ) : filteredStudents.length === 0 ? (
+                            <div className="bg-white rounded-[32px] p-8 text-center border border-dashed border-gray-200">
+                                <Clock className="w-10 h-10 text-gray-200 mx-auto mb-3" />
+                                <p className="text-sm font-bold text-gray-400">No students waiting at the moment.</p>
+                            </div>
+                        ) : (
+                            filteredStudents.map((session) => {
+                                const student = session.students;
+                                return (
+                                    <div
+                                        key={session.id}
+                                        className={`bg-white rounded-[32px] p-5 shadow-sm border border-gray-50 flex items-center justify-between group active:scale-[0.98] transition-all`}
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <div className="relative">
+                                                <div className={`w-16 h-16 rounded-full border-[3px] ${student?.hostel_type === 'dayscholar' ? 'border-blue-400' : 'border-rose-400'} overflow-hidden bg-gray-50 flex items-center justify-center p-0.5 shadow-sm`}>
+                                                    <div className="w-full h-full rounded-full overflow-hidden bg-white">
+                                                        {student?.photo_url ? (
+                                                            <img src={student.photo_url} alt="" className="w-full h-full object-cover" />
+                                                        ) : (
+                                                            <User className="w-full h-full p-3 text-gray-200" />
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <div className={`absolute -top-1 -right-1 px-1.5 py-0.5 rounded-full text-[8px] font-black text-white uppercase tracking-tighter shadow-sm ${student?.hostel_type === 'dayscholar' ? 'bg-blue-500' : 'bg-rose-500'}`}>
+                                                    {student?.hostel_type === 'dayscholar' ? 'DAY' : 'HOSTEL'}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <h4 className="text-lg font-black text-gray-800 leading-none mb-1.5 tracking-tight group-hover:text-[#f47c20] transition-colors truncate max-w-[150px]">
+                                                    {student?.full_name || 'Anonymous Student'}
+                                                </h4>
+                                                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-tighter mb-2">
+                                                    ID: {session.student_id} • {student?.departments?.name || 'General'}
+                                                </p>
+                                                <span className={`text-[10px] font-black px-3 py-1 rounded-lg uppercase tracking-wider bg-orange-50 text-orange-600`}>
+                                                    Waiting Verification • {formatDistanceToNow(new Date(session.created_at), { addSuffix: true })}
+                                                </span>
                                             </div>
                                         </div>
-                                        <div className={`absolute bottom-0 right-0 w-5 h-5 rounded-full border-[3px] border-white flex items-center justify-center ${student.type === 'danger' ? 'bg-rose-500' : 'bg-emerald-500'
-                                            }`}>
-                                            {student.type === 'danger' ? <span className="text-[8px] text-white font-bold">!</span> : <div className="w-1.5 h-1.5 bg-white rounded-full"></div>}
-                                        </div>
+                                        <button className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg transition-all bg-[#f47c20] text-white shadow-orange-500/20 active:scale-95`}>
+                                            <CheckCircle2 className="w-6 h-6 border-white/20" />
+                                        </button>
                                     </div>
-                                    <div>
-                                        <h4 className="text-lg font-black text-gray-800 leading-none mb-1.5 tracking-tight group-hover:text-[#f47c20] transition-colors">{student.name}</h4>
-                                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-tighter mb-2">
-                                            ID: {studentIdExtract(student.studentId)} • {student.grad}
-                                        </p>
-                                        <span className={`text-[10px] font-black px-3 py-1 rounded-lg uppercase tracking-wider ${getStatusStyles(student.type)}`}>
-                                            {student.status}
-                                        </span>
-                                    </div>
-                                </div>
-                                <button className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg transition-all ${student.type === 'danger'
-                                        ? 'bg-[#e9ecef] text-gray-400 shadow-none'
-                                        : 'bg-[#f47c20] text-white shadow-orange-500/20 active:scale-95'
-                                    }`}>
-                                    {student.type === 'danger' ? <Ban className="w-6 h-6" /> : <CheckCircle2 className="w-6 h-6 border-white/20" />}
-                                </button>
-                            </div>
-                        ))}
+                                );
+                            })
+                        )}
                     </div>
                 </div>
 
                 {/* Authorized Visitors Section */}
                 <div>
-                    <h3 className="text-[13px] font-black text-gray-900 tracking-[0.1em] uppercase mb-5">Authorized Visitors (3)</h3>
+                    <h3 className="text-[13px] font-black text-gray-900 tracking-[0.1em] uppercase mb-5">Authorized Visitors ({visitors.length})</h3>
                     <div className="space-y-4">
                         {visitors.map((visitor) => (
                             <div key={visitor.id} className="bg-white rounded-[32px] p-5 border border-gray-50 shadow-sm flex items-center justify-between">
@@ -156,7 +221,5 @@ const GuardRoster = ({ onScannerOpen, onBack }) => {
         </div>
     );
 };
-
-const studentIdExtract = (id) => id;
 
 export default GuardRoster;
