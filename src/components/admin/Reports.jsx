@@ -63,8 +63,7 @@ const Reports = () => {
                 .from('movement_logs')
                 .select(`
                     *,
-                    guard_gates(name),
-                    students:student_id (full_name, photo_url)
+                    guard_gates(name)
                 `)
                 .order('created_at', { ascending: false });
 
@@ -372,9 +371,9 @@ const Reports = () => {
                                         ) : (
                                             <div
                                                 className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-                                                style={{ backgroundColor: stringToColor(log.user_name) }}
+                                                style={{ backgroundColor: stringToColor(log.user_name || 'U') }}
                                             >
-                                                {log.user_name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                                                {(log.user_name || 'U').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
                                             </div>
                                         )}
                                         <div>

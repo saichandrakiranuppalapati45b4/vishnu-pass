@@ -107,22 +107,7 @@ const VerificationResult = ({ studentData, gateName, verifiedAt, onNextScan }) =
                     </div>
                 </div>
 
-                {/* Actions */}
-                <div className="space-y-4 pt-4">
-                    <button
-                        onClick={onNextScan}
-                        className="w-full py-5 bg-[#f47c20] text-white font-black rounded-2xl shadow-xl shadow-orange-500/20 flex items-center justify-center gap-3 active:scale-[0.98] transition-all text-[15px] tracking-tight"
-                    >
-                        <Scan className="w-5 h-5" />
-                        Next Scan
-                    </button>
-                    <button
-                        className="w-full py-5 bg-[#e9eff5] text-[#1a2b3c] font-black rounded-2xl active:scale-[0.98] transition-all text-[15px] tracking-tight flex items-center justify-center gap-3"
-                    >
-                        <History className="w-5 h-5" />
-                        Manual Entry
-                    </button>
-                </div>
+
             </div>
 
             {/* Bottom Nav Simulation (Optional, depends on if it's rendered within dashboard) */}
