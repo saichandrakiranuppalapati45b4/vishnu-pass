@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Filter, Clock, User, ShieldCheck, ShieldAlert, MoreHorizontal, Loader2, ChevronLeft, CheckCircle2, XCircle, ChevronDown } from 'lucide-react';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { supabase } from '../../lib/supabase';
 import { format, isToday, isYesterday } from 'date-fns';
 
 const GuardHistory = ({ guardData, onBack }) => {
+    const { t } = useLanguage();
     const [logs, setLogs] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
@@ -85,7 +87,7 @@ const GuardHistory = ({ guardData, onBack }) => {
                 <button onClick={onBack} className="w-10 h-10 flex items-center justify-center text-gray-400 active:scale-90 transition-transform">
                     <ChevronLeft className="w-6 h-6 text-[#f47c20]" />
                 </button>
-                <h1 className="text-xl font-black text-gray-800 tracking-tight">Scan History</h1>
+                <h1 className="text-xl font-black text-gray-800 tracking-tight">{t('guard.history.title')}</h1>
                 <div className="relative group">
                     <button className="w-10 h-10 flex items-center justify-center text-gray-400">
                         <MoreHorizontal className="w-6 h-6" />
@@ -100,7 +102,7 @@ const GuardHistory = ({ guardData, onBack }) => {
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#f47c20] group-focus-within:text-[#f47c20] transition-colors" />
                     <input
                         type="text"
-                        placeholder="Search by name, ID, or gate..."
+                        placeholder={t('guard.history.searchPlaceholder')}
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className="w-full pl-12 pr-4 py-3.5 bg-[#f5f5f5]/80 border-transparent rounded-[20px] focus:bg-white focus:ring-2 focus:ring-[#f47c20]/10 focus:border-[#f47c20] text-sm font-bold text-gray-700 transition-all placeholder:text-gray-400"
@@ -114,7 +116,7 @@ const GuardHistory = ({ guardData, onBack }) => {
                         className={`px-6 py-2.5 rounded-2xl text-xs font-black tracking-wider uppercase flex items-center gap-2 whitespace-nowrap transition-all ${activeFilter === 'ALL' ? 'bg-[#f47c20] text-white shadow-lg shadow-[#f47c20]/20' : 'bg-[#fff5ef] text-[#f47c20]'
                             }`}
                     >
-                        All Scans <ChevronDown className="w-3.5 h-3.5" />
+                        {t('guard.history.allScans')} <ChevronDown className="w-3.5 h-3.5" />
                     </button>
                     <button
                         onClick={() => setActiveFilter('SUCCESS')}
@@ -122,7 +124,7 @@ const GuardHistory = ({ guardData, onBack }) => {
                             }`}
                     >
                         <CheckCircle2 className={`w-4 h-4 ${activeFilter === 'SUCCESS' ? 'text-emerald-500' : 'text-emerald-400'}`} />
-                        Verified
+                        {t('guard.history.verified')}
                     </button>
                     <button
                         onClick={() => setActiveFilter('DENIED')}
@@ -130,7 +132,7 @@ const GuardHistory = ({ guardData, onBack }) => {
                             }`}
                     >
                         <XCircle className={`w-4 h-4 ${activeFilter === 'DENIED' ? 'text-rose-500' : 'text-rose-400'}`} />
-                        Denied
+                        {t('guard.history.denied')}
                     </button>
                 </div>
             </div>
@@ -140,15 +142,15 @@ const GuardHistory = ({ guardData, onBack }) => {
                 {isLoading ? (
                     <div className="py-20 flex flex-col items-center justify-center text-gray-300">
                         <Loader2 className="w-10 h-10 animate-spin mb-4" />
-                        <span className="text-[10px] font-black uppercase tracking-widest">Updating Records</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest">{t('guard.history.updating')}</span>
                     </div>
                 ) : filteredLogs.length === 0 ? (
                     <div className="py-20 flex flex-col items-center justify-center text-center opacity-50">
                         <div className="w-20 h-20 bg-gray-100 rounded-[32px] flex items-center justify-center mb-4">
                             <Clock className="w-10 h-10" />
                         </div>
-                        <p className="text-sm font-black text-gray-600 uppercase tracking-tight">No Scan History</p>
-                        <p className="text-[10px] font-bold text-gray-400 max-w-[200px] mt-1">Try changing your filters or searching for something else</p>
+                        <p className="text-sm font-black text-gray-600 uppercase tracking-tight">{t('guard.history.noHistory')}</p>
+                        <p className="text-[10px] font-bold text-gray-400 max-w-[200px] mt-1">{t('guard.history.noHistoryDesc') || 'Try changing filters'}</p>
                     </div>
                 ) : (
                     Object.entries(groupedLogs).map(([title, dayLogs]) => (

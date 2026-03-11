@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Bell, TrendingUp, Clock, ShieldCheck, User, QrCode, CheckCircle2, Zap, RefreshCw } from 'lucide-react';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { format } from 'date-fns';
 import { supabase } from '../../lib/supabase';
 import VerificationResult from '../student/VerificationResult';
 
 const GuardHome = ({ guardData }) => {
+    const { t } = useLanguage();
     const [stats, setStats] = useState({ totalScans: 0, activePasses: 0 });
     const [activities, setActivities] = useState([]);
     const [pendingRequests, setPendingRequests] = useState([]);
@@ -292,7 +294,7 @@ const GuardHome = ({ guardData }) => {
                     <div>
                         <div className="flex items-center gap-2 mb-1">
                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none">
-                                {guardData?.guard_gates?.name || 'GATE A-12'}
+                                {t('guard.home.title')}
                             </p>
                             {/* Live Connection Indicator */}
                             <div className={`w-1.5 h-1.5 rounded-full ${
@@ -300,7 +302,7 @@ const GuardHome = ({ guardData }) => {
                                 connectionStatus === 'connecting' ? 'bg-amber-500 animate-pulse' : 'bg-rose-500'
                             }`} title={`System Status: ${connectionStatus}`} />
                         </div>
-                        <h1 className="text-base font-black text-gray-800 leading-none">Security Officer</h1>
+                        <h1 className="text-base font-black text-gray-800 leading-none">{t('guard.home.title')}</h1>
                     </div>
                 </div>
                 <div className="relative">
@@ -315,7 +317,7 @@ const GuardHome = ({ guardData }) => {
             <div className="px-6 grid grid-cols-2 gap-4 mt-2">
                 <div className="bg-white p-4 rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-white">
                     <div className="flex justify-between items-start mb-2">
-                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Total Scans</p>
+                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{t('guard.home.totalScans')}</p>
                         <div className="p-1 rounded bg-[#f47c20]/10 text-[#f47c20]">
                             <TrendingUp className="w-3 h-3" />
                         </div>
@@ -323,13 +325,13 @@ const GuardHome = ({ guardData }) => {
                     <p className="text-2xl font-black text-gray-800">{stats.totalScans.toLocaleString()}</p>
                     <div className="flex items-center gap-1 mt-1">
                         <TrendingUp className="w-2.5 h-2.5 text-emerald-500" />
-                        <span className="text-[10px] font-bold text-emerald-500">Live</span>
+                        <span className="text-[10px] font-bold text-emerald-500">{t('guard.home.live')}</span>
                     </div>
                 </div>
 
                 <div className="bg-white p-4 rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-white">
                     <div className="flex justify-between items-start mb-2">
-                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Active Passes</p>
+                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{t('guard.home.activePasses')}</p>
                         <div className="p-1 rounded bg-[#f47c20]/10 text-[#f47c20]">
                             <TrendingUp className="w-3 h-3" />
                         </div>
@@ -337,7 +339,7 @@ const GuardHome = ({ guardData }) => {
                     <p className="text-2xl font-black text-gray-800">{stats.activePasses.toLocaleString()}</p>
                     <div className="flex items-center gap-1 mt-1">
                         <ShieldCheck className="w-2.5 h-2.5 text-emerald-500" />
-                        <span className="text-[10px] font-bold text-emerald-500">Active Students</span>
+                        <span className="text-[10px] font-bold text-emerald-500">{t('guard.home.activeStudents')}</span>
                     </div>
                 </div>
             </div>
@@ -365,7 +367,7 @@ const GuardHome = ({ guardData }) => {
                         <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 py-1.5 px-4 bg-white rounded-full shadow-md border border-gray-100 flex items-center gap-2 max-w-fit mx-auto transition-transform group-hover:scale-105">
                             <Clock className="w-3 h-3 text-[#f47c20]" />
                             <span className="text-[10px] font-black tracking-widest text-gray-600">
-                                REFRESH IN <span className="text-[#f47c20]">{qrTimeLeft}S</span>
+                                {t('guard.home.refreshIn')} <span className="text-[#f47c20]">{qrTimeLeft}S</span>
                             </span>
                         </div>
                     </div>
@@ -377,7 +379,7 @@ const GuardHome = ({ guardData }) => {
                 <div className="mt-8 px-6 animate-in slide-in-from-bottom duration-300">
                     <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-2">
-                            <h3 className="text-base font-black text-[#f47c20] tracking-tight">Access Requests</h3>
+                            <h3 className="text-base font-black text-[#f47c20] tracking-tight">{t('guard.home.accessRequests')}</h3>
                             <span className="bg-rose-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse">{pendingRequests.length}</span>
                         </div>
                     </div>
@@ -415,7 +417,7 @@ const GuardHome = ({ guardData }) => {
             {/* Recent Activity Section */}
             <div className="mt-8 px-6 pb-20">
                 <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-base font-black text-gray-800 tracking-tight">Recent Activity</h3>
+                    <h3 className="text-base font-black text-gray-800 tracking-tight">{t('guard.home.recentActivity')}</h3>
                     <div className="flex items-center gap-4">
                         <button 
                             onClick={handleRefresh}
@@ -424,14 +426,14 @@ const GuardHome = ({ guardData }) => {
                         >
                             <RefreshCw className="w-4 h-4" />
                         </button>
-                        <button className="text-xs font-bold text-[#f47c20]">View All</button>
+                        <button className="text-xs font-bold text-[#f47c20]">{t('guard.home.viewAll')}</button>
                     </div>
                 </div>
 
                 <div className="space-y-4">
                     {activities.length === 0 ? (
                         <div className="py-8 text-center text-gray-400 font-bold text-xs uppercase tracking-widest bg-white rounded-[28px] border border-dashed border-gray-200">
-                            No recent scans at this gate
+                            {t('guard.home.noScans')}
                         </div>
                     ) : (
                         activities.map((activity) => (

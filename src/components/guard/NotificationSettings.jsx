@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { ArrowLeft, Bell, Mail, ShieldAlert, RefreshCw, ChevronRight } from 'lucide-react';
 
 const Toggle = ({ active, onClick }) => (
@@ -28,6 +29,7 @@ const SettingRow = ({ Icon, label, description, active, onToggle, bg }) => {
 };
 
 const NotificationSettings = ({ onBack }) => {
+    const { t } = useLanguage();
     const [settings, setSettings] = useState({
         push: true,
         email: false,
@@ -53,7 +55,7 @@ const NotificationSettings = ({ onBack }) => {
                 >
                     <ArrowLeft className="w-6 h-6" />
                 </button>
-                <h1 className="text-xl font-black text-[#1a2b3c] tracking-tight">Notification Settings</h1>
+                <h1 className="text-xl font-black text-[#1a2b3c] tracking-tight">{t('guard.notifications.title')}</h1>
                 <div className="w-10" /> {/* Spacer */}
             </header>
 
@@ -67,19 +69,19 @@ const NotificationSettings = ({ onBack }) => {
 
                 <div className="text-center max-w-[280px] mb-12">
                     <p className="text-[13px] font-bold text-[#475569] leading-relaxed">
-                        Stay informed about your security activities. Customize how and when you receive alerts from Vishnu Pass.
+                        {t('guard.notifications.subTitle')}
                     </p>
                 </div>
 
                 <div className="w-full space-y-10">
                     {/* General Alerts */}
                     <div>
-                        <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 px-2">General Alerts</h3>
+                        <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 px-2">{t('guard.notifications.general')}</h3>
                         <div className="bg-white rounded-[32px] overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-gray-50">
                             <SettingRow 
                                 Icon={Bell}
-                                label="Push Notifications"
-                                description="Receive instant alerts on your device"
+                                label={t('guard.notifications.push')}
+                                description={t('guard.notifications.pushDesc')}
                                 active={settings.push}
                                 onToggle={() => toggleSetting('push')}
                                 bg="bg-orange-50"
@@ -87,8 +89,8 @@ const NotificationSettings = ({ onBack }) => {
                             <div className="h-[1px] bg-gray-50 mx-5" />
                             <SettingRow 
                                 Icon={Mail}
-                                label="Email Alerts"
-                                description="Monthly security summaries"
+                                label={t('guard.notifications.email')}
+                                description={t('guard.notifications.emailDesc')}
                                 active={settings.email}
                                 onToggle={() => toggleSetting('email')}
                                 bg="bg-orange-50"
@@ -98,12 +100,12 @@ const NotificationSettings = ({ onBack }) => {
 
                     {/* Security Specific */}
                     <div>
-                        <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 px-2">Security Specific</h3>
+                        <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 px-2">{t('guard.notifications.security')}</h3>
                         <div className="bg-white rounded-[32px] overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-gray-50">
                             <SettingRow 
                                 Icon={ShieldAlert}
-                                label="Verification Success"
-                                description="Alerts after every successful login"
+                                label={t('guard.notifications.verification')}
+                                description={t('guard.notifications.verificationDesc')}
                                 active={settings.verification}
                                 onToggle={() => toggleSetting('verification')}
                                 bg="bg-orange-50"
@@ -111,8 +113,8 @@ const NotificationSettings = ({ onBack }) => {
                             <div className="h-[1px] bg-gray-50 mx-5" />
                             <SettingRow 
                                 Icon={RefreshCw}
-                                label="System Updates"
-                                description="New features and security patches"
+                                label={t('guard.notifications.updates')}
+                                description={t('guard.notifications.updatesDesc')}
                                 active={settings.updates}
                                 onToggle={() => toggleSetting('updates')}
                                 bg="bg-orange-50"

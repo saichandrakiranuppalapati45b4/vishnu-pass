@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { ArrowLeft, Key, Lock, Shield, Eye, EyeOff, Loader2, CheckCircle2, RotateCcw, Info } from 'lucide-react';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { supabase } from '../../lib/supabase';
 
 const SecuritySettings = ({ onBack }) => {
+    const { t } = useLanguage();
     const [passwords, setPasswords] = useState({
         current: '',
         new: '',
@@ -23,12 +25,12 @@ const SecuritySettings = ({ onBack }) => {
         setSuccess(false);
 
         if (passwords.new !== passwords.confirm) {
-            setError("New passwords do not match.");
+            setError(t('guard.security.matchError'));
             return;
         }
 
         if (passwords.new.length < 8) {
-            setError("Password must be at least 8 characters.");
+            setError(t('guard.security.lengthError'));
             return;
         }
 
@@ -61,7 +63,7 @@ const SecuritySettings = ({ onBack }) => {
                 >
                     <ArrowLeft className="w-6 h-6" />
                 </button>
-                <h1 className="text-xl font-black text-[#1a2b3c] tracking-tight">Change Password</h1>
+                <h1 className="text-xl font-black text-[#1a2b3c] tracking-tight">{t('guard.security.title')}</h1>
                 <div className="w-10" /> {/* Spacer */}
             </header>
 
@@ -75,7 +77,7 @@ const SecuritySettings = ({ onBack }) => {
 
                 <div className="text-center max-w-[280px] mb-12">
                     <p className="text-base font-bold text-[#475569] leading-relaxed">
-                        To keep your account secure, Vishnu Pass recommends updating your password regularly.
+                        {t('guard.security.description')}
                     </p>
                 </div>
 
@@ -89,14 +91,14 @@ const SecuritySettings = ({ onBack }) => {
                     )}
                     {success && (
                         <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-2xl text-emerald-600 text-xs font-bold animate-in fade-in slide-in-from-top-2">
-                            Password updated successfully!
+                            {t('guard.security.success')}
                         </div>
                     )}
 
                     <div className="space-y-6">
                         {/* Current Password */}
                         <div>
-                            <label className="block text-sm font-black text-[#1a2b3c] mb-3 pl-1">Current Password</label>
+                            <label className="block text-sm font-black text-[#1a2b3c] mb-3 pl-1">{t('guard.security.currentLabel')}</label>
                             <div className="relative group">
                                 <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#f47c20] transition-colors">
                                     <Key className="w-5 h-5" />
@@ -116,14 +118,14 @@ const SecuritySettings = ({ onBack }) => {
                                     {showPasswords.current ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                                 </button>
                                 <div className="absolute right-0 -bottom-6">
-                                    <button type="button" className="text-[11px] font-black text-[#f47c20] hover:underline">Forgot Password?</button>
+                                    <button type="button" className="text-[11px] font-black text-[#f47c20] hover:underline">{t('guard.security.forgot')}</button>
                                 </div>
                             </div>
                         </div>
 
                         {/* New Password */}
                         <div className="pt-2">
-                            <label className="block text-sm font-black text-[#1a2b3c] mb-3 pl-1">New Password</label>
+                            <label className="block text-sm font-black text-[#1a2b3c] mb-3 pl-1">{t('guard.security.newLabel')}</label>
                             <div className="relative group">
                                 <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#f47c20] transition-colors">
                                     <Lock className="w-5 h-5" />
@@ -148,7 +150,7 @@ const SecuritySettings = ({ onBack }) => {
 
                         {/* Confirm Password */}
                         <div>
-                            <label className="block text-sm font-black text-[#1a2b3c] mb-3 pl-1">Confirm New Password</label>
+                            <label className="block text-sm font-black text-[#1a2b3c] mb-3 pl-1">{t('guard.security.confirmLabel')}</label>
                             <div className="relative group">
                                 <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#f47c20] transition-colors">
                                     <Shield className="w-5 h-5" />
@@ -169,16 +171,16 @@ const SecuritySettings = ({ onBack }) => {
                     <div className="p-5 bg-[#f0f9f4] rounded-[24px] border border-[#e3f2e9] space-y-3">
                         <div className="flex items-center gap-2 text-[#166534]">
                             <Info className="w-4 h-4" />
-                            <span className="text-[11px] font-black uppercase tracking-wider">Security Guidelines</span>
+                            <span className="text-[11px] font-black uppercase tracking-wider">{t('guard.security.guidelines')}</span>
                         </div>
                         <ul className="space-y-2">
                             <li className="flex items-center gap-2 text-[11px] font-bold text-[#166534]">
                                 <CheckCircle2 className="w-3.5 h-3.5" />
-                                Minimum 8 characters
+                                {t('guard.security.minChars')}
                             </li>
                             <li className="flex items-center gap-2 text-[11px] font-bold text-[#166534]">
                                 <CheckCircle2 className="w-3.5 h-3.5" />
-                                Include a number and a symbol
+                                {t('guard.security.includeNumber')}
                             </li>
                         </ul>
                     </div>
@@ -192,7 +194,7 @@ const SecuritySettings = ({ onBack }) => {
                         {isSubmitting ? (
                             <Loader2 className="w-5 h-5 animate-spin" />
                         ) : (
-                            "Update Password"
+                            t('guard.security.update')
                         )}
                     </button>
                 </form>

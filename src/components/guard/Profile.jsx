@@ -3,7 +3,7 @@ import { LogOut, Shield, ChevronRight, Bell, Languages, CheckCircle2, LayoutDash
 import { useLanguage } from '../../contexts/LanguageContext';
 
 const GuardProfile = ({ guardData, onLogout, onNavigate }) => {
-    const { language } = useLanguage();
+    const { language, t } = useLanguage();
     
     const initials = guardData?.full_name
         ? guardData.full_name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
@@ -17,16 +17,16 @@ const GuardProfile = ({ guardData, onLogout, onNavigate }) => {
     };
 
     const menuItems = [
-        { icon: <Bell className="w-5 h-5 text-orange-500" />, label: 'Notifications', bg: 'bg-orange-50', tab: 'notifications' },
-        { icon: <Shield className="w-5 h-5 text-orange-500" />, label: 'Change Password', bg: 'bg-orange-50', tab: 'security' },
-        { icon: <Languages className="w-5 h-5 text-orange-500" />, label: 'Language Preference', value: languageMap[language] || 'English', bg: 'bg-orange-50', tab: 'language' },
+        { icon: <Bell className="w-5 h-5 text-orange-500" />, label: t('guard.profile.notifications'), bg: 'bg-orange-50', tab: 'notifications' },
+        { icon: <Shield className="w-5 h-5 text-orange-500" />, label: t('guard.profile.changePassword'), bg: 'bg-orange-50', tab: 'security' },
+        { icon: <Languages className="w-5 h-5 text-orange-500" />, label: t('guard.profile.language'), value: languageMap[language] || 'English', bg: 'bg-orange-50', tab: 'language' },
     ];
 
     return (
         <div className="flex flex-col min-h-screen bg-[#f8f9fb] pb-32">
             {/* Header */}
             <header className="px-6 py-5 flex items-center justify-center bg-white border-b border-gray-50 sticky top-0 z-50">
-                <h1 className="text-xl font-black text-[#1a2b3c] tracking-tight">Profile</h1>
+                <h1 className="text-xl font-black text-[#1a2b3c] tracking-tight">{t('guard.profile.title')}</h1>
             </header>
 
             <div className="px-6 py-8 flex flex-col items-center">
@@ -52,30 +52,30 @@ const GuardProfile = ({ guardData, onLogout, onNavigate }) => {
                 </h2>
                 <div className="px-4 py-1.5 bg-[#fff5ec] rounded-full mb-8">
                     <p className="text-[11px] font-black text-[#f47c20] tracking-widest">
-                        ID: {guardData?.employee_id || 'VP-9982'}
+                        {t('guard.profile.id')}: {guardData?.employee_id || 'VP-9982'}
                     </p>
                 </div>
 
                 {/* Status Cards */}
                 <div className="w-full grid grid-cols-2 gap-4 mb-4">
                     <div className="bg-white p-5 rounded-[24px] shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-gray-50 flex flex-col items-center text-center">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Assigned Gate</p>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">{t('guard.profile.assignedGate')}</p>
                         <p className="text-base font-black text-[#f47c20]">{guardData?.guard_gates?.name || 'Gate A-12'}</p>
                     </div>
                     <div className="bg-white p-5 rounded-[24px] shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-gray-50 flex flex-col items-center text-center">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Shift Status</p>
-                        <p className="text-base font-black text-emerald-500">Active</p>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">{t('guard.profile.shiftStatus')}</p>
+                        <p className="text-base font-black text-emerald-500">{t('guard.profile.active')}</p>
                     </div>
                 </div>
                 <p className="text-[11px] font-bold text-slate-400 mb-8">
-                    Current Shift: <span className="text-slate-500">Morning (06:00 - 14:00)</span>
+                    {t('guard.profile.currentShift')}: <span className="text-slate-500">Morning (06:00 - 14:00)</span>
                 </p>
 
                 {/* Settings Menu */}
                 <div className="w-full space-y-8">
                     {/* Account Settings */}
                     <div>
-                        <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 px-2">Account Settings</h3>
+                        <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 px-2">{t('guard.profile.accountSettings')}</h3>
                         <div className="bg-white rounded-[32px] overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-gray-50">
                             {menuItems.map((item, idx) => (
                                 <button 
@@ -104,7 +104,7 @@ const GuardProfile = ({ guardData, onLogout, onNavigate }) => {
                         className="w-full py-5 bg-rose-50 text-rose-500 font-black rounded-[24px] border border-rose-100/50 flex items-center justify-center gap-3 active:scale-[0.98] transition-all text-sm tracking-tight"
                     >
                         <LogOut className="w-5 h-5" />
-                        Sign Out
+                        {t('guard.profile.signOut')}
                     </button>
                 </div>
             </div>

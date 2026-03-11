@@ -32,7 +32,7 @@ const LanguageOption = ({ id, label, native, code, isActive, onClick }) => (
 );
 
 const LanguagePreference = ({ onBack }) => {
-    const { language: currentLang, setLanguage } = useLanguage();
+    const { language: currentLang, setLanguage, t } = useLanguage();
     const [selectedLang, setSelectedLang] = useState(currentLang);
     const [isSaving, setIsSaving] = useState(false);
 
@@ -63,14 +63,14 @@ const LanguagePreference = ({ onBack }) => {
                 >
                     <ArrowLeft className="w-6 h-6" />
                 </button>
-                <h1 className="text-xl font-black text-[#1a2b3c] tracking-tight">Language Preference</h1>
+                <h1 className="text-xl font-black text-[#1a2b3c] tracking-tight">{t('guard.language.title')}</h1>
                 <div className="w-10" /> {/* Spacer */}
             </header>
 
             <div className="px-6 pt-10 pb-6">
-                <h2 className="text-3xl font-black text-[#1a2f4c] mb-3">Select App Language</h2>
+                <h2 className="text-3xl font-black text-[#1a2f4c] mb-3">{t('guard.language.selectTitle')}</h2>
                 <p className="text-[14px] font-bold text-slate-400 leading-relaxed mb-8">
-                    Choose your preferred language for the Vishnu Pass interface. This will update all text across the application.
+                    {t('guard.language.description')}
                 </p>
 
                 {/* Language List */}
@@ -91,7 +91,7 @@ const LanguagePreference = ({ onBack }) => {
                         <Info className="w-5 h-5 text-white" />
                     </div>
                     <p className="text-[13px] font-bold text-[#1a2b3c] leading-relaxed opacity-80">
-                        The language change will be applied instantly across your dashboard, visitor management logs, and security alerts.
+                        {t('guard.language.info')}
                     </p>
                 </div>
             </div>
@@ -106,10 +106,10 @@ const LanguagePreference = ({ onBack }) => {
                     {isSaving ? (
                         <>
                             <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                            <span>Saving Changes...</span>
+                            <span>{t('guard.language.saving')}</span>
                         </>
                     ) : (
-                        'Save Changes'
+                        t('guard.language.save')
                     )}
                 </button>
             </div>

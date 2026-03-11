@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ChevronLeft, Search, SlidersHorizontal, CheckCircle2, Ban, Scan, Clock, User, Loader2 } from 'lucide-react';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { supabase } from '../../lib/supabase';
 import { formatDistanceToNow } from 'date-fns';
 
 const GuardRoster = ({ guardData, onScannerOpen, onBack }) => {
+    const { t } = useLanguage();
     const [searchQuery, setSearchQuery] = useState('');
     const [activeFilter, setActiveFilter] = useState('All Expected');
     const [expectedStudents, setExpectedStudents] = useState([]);
@@ -81,7 +83,7 @@ const GuardRoster = ({ guardData, onScannerOpen, onBack }) => {
                 <button onClick={onBack} className="w-10 h-10 flex items-center justify-center text-gray-800">
                     <ChevronLeft className="w-7 h-7" />
                 </button>
-                <h2 className="text-xl font-black text-gray-800 tracking-tight">{guardData?.guard_gates?.name || 'Gate'} Roster</h2>
+                <h2 className="text-xl font-black text-gray-800 tracking-tight">{t('guard.roster.title')}</h2>
                 <button className="w-10 h-10 bg-orange-50 rounded-xl flex items-center justify-center text-[#f47c20]">
                     <SlidersHorizontal className="w-5 h-5" />
                 </button>
@@ -95,7 +97,7 @@ const GuardRoster = ({ guardData, onScannerOpen, onBack }) => {
                     </div>
                     <input
                         type="text"
-                        placeholder="Search student name or ID"
+                        placeholder={t('guard.roster.searchPlaceholder')}
                         className="w-full bg-[#f1f3f5] border-none rounded-2xl py-4 pl-14 pr-6 text-sm font-bold text-gray-700 placeholder:text-gray-400 focus:ring-2 focus:ring-[#f47c20]/20 transition-all"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
@@ -104,7 +106,7 @@ const GuardRoster = ({ guardData, onScannerOpen, onBack }) => {
 
                 {/* Filter Chips */}
                 <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-                    {['All Expected', 'Authorized', 'Flagged'].map((filter) => (
+                    {['All', 'Hostellers', 'Dayscholars'].map((filter) => (
                         <button
                             key={filter}
                             onClick={() => setActiveFilter(filter)}
@@ -113,7 +115,7 @@ const GuardRoster = ({ guardData, onScannerOpen, onBack }) => {
                                 : 'bg-[#e9ecef] text-gray-500'
                                 }`}
                         >
-                            {filter}
+                            {t(`guard.roster.${filter.toLowerCase()}`)}
                             {filter !== 'Flagged' && (
                                 <ChevronLeft className={`w-4 h-4 rotate-[-90deg] opacity-50 ${activeFilter === filter ? 'text-white' : 'text-gray-400'}`} />
                             )}
@@ -124,15 +126,15 @@ const GuardRoster = ({ guardData, onScannerOpen, onBack }) => {
                 {/* Currently Expected Section */}
                 <div>
                     <div className="flex items-center justify-between mb-5">
-                        <h3 className="text-[13px] font-black text-gray-900 tracking-[0.1em] uppercase">Currently Expected ({filteredStudents.length})</h3>
-                        <span className="text-[11px] font-bold text-orange-400">Live Updates Active</span>
+                        <h3 className="text-[13px] font-black text-gray-900 tracking-[0.1em] uppercase">{t('guard.roster.title')} ({filteredStudents.length})</h3>
+                        <span className="text-[11px] font-bold text-orange-400">Live</span>
                     </div>
 
                     <div className="space-y-4">
                         {loading ? (
                             <div className="flex flex-col items-center justify-center py-12 gap-3 bg-white rounded-[32px] border border-gray-50">
                                 <Loader2 className="w-8 h-8 text-[#f47c20] animate-spin" />
-                                <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">Scanning Gate...</p>
+                                <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">{t('guard.roster.loading')}</p>
                             </div>
                         ) : filteredStudents.length === 0 ? (
                             <div className="bg-white rounded-[32px] p-8 text-center border border-dashed border-gray-200">
