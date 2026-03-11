@@ -269,7 +269,7 @@ const GuardHome = ({ guardData }) => {
         <div className="flex flex-col min-h-screen bg-[#f8f9fb] pb-12">
             {/* Verification Overlay */}
             {activeVerification && (
-                <div className="fixed inset-0 z-[100] bg-white animate-in slide-in-from-bottom duration-500">
+                <div className="fixed inset-0 z-[100] bg-white animate-in slide-in-from-bottom duration-500 overflow-hidden">
                     <VerificationResult
                         studentData={activeVerification}
                         gateName={guardData?.guard_gates?.name}

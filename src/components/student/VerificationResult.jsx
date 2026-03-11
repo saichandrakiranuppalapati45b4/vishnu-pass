@@ -5,7 +5,7 @@ import { format } from 'date-fns';
 const VerificationResult = ({ studentData, gateName, verifiedAt, onNextScan }) => {
 
     return (
-        <div className="flex-1 flex flex-col bg-[#f8f9fb] animate-in slide-in-from-bottom duration-500 overflow-y-auto font-sans min-h-screen pb-32">
+        <div className="flex flex-col bg-[#f8f9fb] animate-in slide-in-from-bottom duration-500 overflow-y-auto font-sans h-screen pb-32">
             {/* Header */}
             <div className="px-6 py-8 flex items-center bg-white justify-between sticky top-0 z-50">
                 <button
