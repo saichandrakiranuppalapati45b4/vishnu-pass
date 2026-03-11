@@ -167,14 +167,28 @@ const ScanScreen = ({ studentData, onBack }) => {
 
             // NEW: Send a high-speed broadcast signal directly to the guard's channel
             const channelName = `gate_monitor_${scannedGateId}`;
-            await supabase.channel(channelName).send({
-                type: 'broadcast',
-                event: 'SCAN_COMPLETED',
-                payload: { sessionId: currentSessionId }
+            const broadcastChannel = supabase.channel(channelName);
+            
+            // Subscribe first to ensure the channel is "warm"
+            broadcastChannel.subscribe(async (status) => {
+                if (status === 'SUBSCRIBED') {
+                    console.log(`[STUDENT] Channel ${channelName} ready. Sending signal...`);
+                    
+                    const resp = await broadcastChannel.send({
+                        type: 'broadcast',
+                        event: 'SCAN_COMPLETED',
+                        payload: { sessionId: currentSessionId }
+                    });
+                    
+                    console.log(`[STUDENT] Signal sent to ${channelName}. Response:`, resp);
+                    
+                    // Small delay to ensure the broadcast clears the network buffer before we move on
+                    setTimeout(() => {
+                        setStatus('completed');
+                        supabase.removeChannel(broadcastChannel);
+                    }, 500);
+                }
             });
-
-            console.log(`[STUDENT] Signal sent to ${channelName}. Handshake complete.`);
-            setStatus('completed');
 
         } catch (err) {
             console.error("Scan error details:", err);

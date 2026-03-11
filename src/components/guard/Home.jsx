@@ -82,6 +82,80 @@ const GuardHome = ({ guardData }) => {
     useEffect(() => {
         if (!guardData?.gate_id) return;
 
+        let retryTimer;
+        let channel;
+
+        const setupSubscription = () => {
+            const channelName = `gate_monitor_${guardData.gate_id}`;
+            console.log(`[GUARD] Initializing subscription: ${channelName}`);
+            
+            // Clean up old channel if it exists
+            if (channel) supabase.removeChannel(channel);
+
+            channel = supabase.channel(channelName)
+                .on('postgres_changes', 
+                    { event: 'INSERT', schema: 'public', table: 'movement_logs', filter: `access_point_id=eq.${guardData.gate_id}` },
+                    (payload) => {
+                        console.log("[GUARD] New movement log detected via Realtime");
+                        setStats(prev => ({ ...prev, totalScans: prev.totalScans + 1 }));
+                        setActivities(prev => [payload.new, ...prev].slice(0, 5));
+                    }
+                )
+                .on('postgres_changes',
+                    { event: 'INSERT', schema: 'public', table: 'scan_sessions', filter: "status=eq.pending" },
+                    async (payload) => {
+                        const { data: student } = await supabase
+                            .from('students')
+                            .select('*, departments(name)')
+                            .eq('student_id', payload.new.student_id)
+                            .single();
+                        if (student) {
+                            setPendingRequests(prev => [{ ...payload.new, students: student }, ...prev]);
+                        }
+                    }
+                )
+                .on('postgres_changes',
+                    { event: 'UPDATE', schema: 'public', table: 'scan_sessions' },
+                    async (payload) => {
+                        const newStatus = payload.new.status;
+                        const sessionId = payload.new.id;
+                        if (newStatus !== 'pending') {
+                            setPendingRequests(prev => prev.filter(req => req.id !== sessionId));
+                        }
+                        if (newStatus === 'completed') {
+                            processSessionUpdate(sessionId, 'Realtime');
+                        }
+                    }
+                )
+                .on('broadcast', { event: 'SCAN_COMPLETED' }, ({ payload }) => {
+                    console.log("[GUARD] Broadcast signal received!", payload);
+                    if (payload.sessionId) {
+                        processSessionUpdate(payload.sessionId, 'Broadcast');
+                    }
+                })
+                .subscribe((status, err) => {
+                    console.log(`[GUARD] Real-time Status (${channelName}):`, status, err || '');
+                    
+                    if (status === 'SUBSCRIBED') {
+                        setConnectionStatus('safe');
+                        if (retryTimer) clearTimeout(retryTimer);
+                    } else if (status === 'CHANNEL_ERROR' || status === 'CLOSED') {
+                        setConnectionStatus('connecting');
+                        console.warn(`[GUARD] Connection lost (${status}). Retrying in 5s...`);
+                        
+                        // Auto-retry logic
+                        clearTimeout(retryTimer);
+                        retryTimer = setTimeout(() => {
+                            console.log("[GUARD] Attempting reconnection...");
+                            setupSubscription();
+                        }, 5000);
+                    } else if (status === 'TIMED_OUT') {
+                        setConnectionStatus('error');
+                        setupSubscription(); // Immediate retry on timeout
+                    }
+                });
+        };
+
         const fetchData = async () => {
             try {
                 // 1. Fetch Total Scans from movement_logs for this gate
@@ -125,67 +199,43 @@ const GuardHome = ({ guardData }) => {
         };
 
         fetchData();
-
-        // Subscriptions - Use a unique channel for this gate
-        const channelName = `gate_monitor_${guardData.gate_id}`;
-        const channel = supabase.channel(channelName)
-            .on('postgres_changes', 
-                { event: 'INSERT', schema: 'public', table: 'movement_logs', filter: `access_point_id=eq.${guardData.gate_id}` },
-                (payload) => {
-                    setStats(prev => ({ ...prev, totalScans: prev.totalScans + 1 }));
-                    setActivities(prev => [payload.new, ...prev].slice(0, 5));
-                }
-            )
-            .on('postgres_changes',
-                { event: 'INSERT', schema: 'public', table: 'scan_sessions', filter: "status=eq.pending" },
-                async (payload) => {
-                    const { data: student } = await supabase
-                        .from('students')
-                        .select('*, departments(name)')
-                        .eq('student_id', payload.new.student_id)
-                        .single();
-                    if (student) {
-                        setPendingRequests(prev => [{ ...payload.new, students: student }, ...prev]);
-                    }
-                }
-            )
-            .on('postgres_changes',
-                { event: 'UPDATE', schema: 'public', table: 'scan_sessions' },
-                async (payload) => {
-                    const newStatus = payload.new.status;
-                    const sessionId = payload.new.id;
-                    if (newStatus !== 'pending') {
-                        setPendingRequests(prev => prev.filter(req => req.id !== sessionId));
-                    }
-                    if (newStatus === 'completed') {
-                        processSessionUpdate(sessionId, 'Realtime');
-                    }
-                }
-            )
-            // ADDED: Direct Broadcast Listener for instant signaling
-            .on('broadcast', { event: 'SCAN_COMPLETED' }, ({ payload }) => {
-                console.log("[GUARD] Broadcast signal received!", payload);
-                if (payload.sessionId) {
-                    processSessionUpdate(payload.sessionId, 'Broadcast');
-                }
-            })
-            .subscribe((status) => {
-                console.log(`[GUARD] Real-time Status (${channelName}):`, status);
-                if (status === 'SUBSCRIBED') setConnectionStatus('safe');
-                else if (status === 'CLOSED') setConnectionStatus('connecting');
-                else setConnectionStatus('error');
-            });
+        setupSubscription();
 
         return () => {
-            supabase.removeChannel(channel);
+            if (channel) supabase.removeChannel(channel);
+            if (retryTimer) clearTimeout(retryTimer);
         };
     }, [guardData?.gate_id]);
 
     const handleRefresh = async () => {
-        // Manually check for any completed sessions in the last minute that might have been missed
+        console.log("[GUARD] Manual refresh triggered...");
+        
+        // 1. Reset Connection (Force re-subscribe)
+        setConnectionStatus('connecting');
+        const channelName = `gate_monitor_${guardData.gate_id}`;
+        const oldChannel = supabase.getChannels().find(c => c.name === channelName);
+        if (oldChannel) supabase.removeChannel(oldChannel);
+        
+        // 2. Refresh basic data
+        const { count: scanCount } = await supabase
+            .from('movement_logs')
+            .select('*', { count: 'exact', head: true })
+            .eq('access_point_id', guardData.gate_id);
+        
+        if (scanCount !== null) setStats(prev => ({ ...prev, totalScans: scanCount }));
+
+        const { data: requests } = await supabase
+            .from('movement_logs')
+            .select('*')
+            .eq('access_point_id', guardData.gate_id)
+            .order('created_at', { ascending: false })
+            .limit(5);
+        if (requests) setActivities(requests);
+
+        // 3. Check for any missed sessions in last 1 minute
         const { data: recentSessions } = await supabase
             .from('scan_sessions')
-            .select('id, status')
+            .select('id')
             .eq('gate_id', guardData.gate_id)
             .eq('status', 'completed')
             .gte('created_at', new Date(Date.now() - 60000).toISOString());
