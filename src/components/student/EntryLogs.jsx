@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { ChevronLeft, LogIn, LogOut, Save, Loader2 } from 'lucide-react';
+import { ChevronLeft, LogIn, LogOut, Save, Loader2, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { format, isToday, isYesterday } from 'date-fns';
+import VerificationResult from './VerificationResult';
 
 const EntryLogs = ({ studentData }) => {
     const [logs, setLogs] = useState([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('all'); // all, entries, exits
+    const [selectedLog, setSelectedLog] = useState(null);
 
     const fetchLogs = useCallback(async () => {
         if (!studentData?.student_id) return;
@@ -131,7 +133,8 @@ const EntryLogs = ({ studentData }) => {
                                     return (
                                         <div
                                             key={log.id}
-                                            className="bg-white rounded-2xl p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)] border border-gray-50 flex items-center gap-4 active:scale-[0.99] transition-transform"
+                                            onClick={() => setSelectedLog(log)}
+                                            className="bg-white rounded-2xl p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)] border border-gray-50 flex items-center gap-4 active:scale-[0.98] transition-all cursor-pointer hover:border-orange-100"
                                         >
                                             {/* Icon */}
                                             <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${entry ? 'bg-orange-50' : 'bg-gray-100'
@@ -171,6 +174,18 @@ const EntryLogs = ({ studentData }) => {
                     ))
                 )}
             </div>
+
+            {/* Verification Overlay */}
+            {selectedLog && (
+                <div className="fixed inset-0 z-[100] bg-white animate-in slide-in-from-bottom duration-500 overflow-hidden">
+                    <VerificationResult
+                        studentData={studentData}
+                        gateName={selectedLog.guard_gates?.name}
+                        verifiedAt={format(new Date(selectedLog.created_at), 'hh:mm a')}
+                        onNextScan={() => setSelectedLog(null)}
+                    />
+                </div>
+            )}
         </div>
     );
 };
