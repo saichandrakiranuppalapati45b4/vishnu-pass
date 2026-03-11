@@ -149,6 +149,7 @@ const ScanScreen = ({ studentData, onBack }) => {
             }
 
             // Mark session as completed and associate with the gate
+            console.log(`[STUDENT] Updating session ${currentSessionId} with Gate: ${scannedGateId}`);
             const { error: updateError } = await supabase
                 .from('scan_sessions')
                 .update({
@@ -158,10 +159,11 @@ const ScanScreen = ({ studentData, onBack }) => {
                 .eq('id', currentSessionId);
 
             if (updateError) {
-                console.error("Supabase update error:", updateError);
+                console.error("[STUDENT] Supabase update error:", updateError);
                 throw updateError;
             }
 
+            console.log("[STUDENT] Session updated successfully. Handshake complete.");
             setStatus('completed');
 
         } catch (err) {

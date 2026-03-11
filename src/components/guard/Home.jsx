@@ -79,8 +79,11 @@ const GuardHome = ({ guardData }) => {
 
         fetchData();
 
-        // Subscriptions
-        const channels = supabase.channel('guard_home_updates')
+        // Subscriptions - Use a unique channel for this gate to avoid interference
+        const channelName = `gate_monitor_${guardData.gate_id}`;
+        console.log(`[GUARD] Initializing real-time channel: ${channelName}`);
+
+        const channel = supabase.channel(channelName)
             .on('postgres_changes',
                 {
                     event: 'INSERT',
@@ -89,6 +92,7 @@ const GuardHome = ({ guardData }) => {
                     filter: `access_point_id=eq.${guardData.gate_id}`
                 },
                 (payload) => {
+                    console.log("[GUARD] New movement log received");
                     setStats(prev => ({ ...prev, totalScans: prev.totalScans + 1 }));
                     setActivities(prev => [payload.new, ...prev].slice(0, 5));
                 }
@@ -101,6 +105,7 @@ const GuardHome = ({ guardData }) => {
                     filter: "status=eq.pending"
                 },
                 async (payload) => {
+                    console.log("[GUARD] New pending request:", payload.new.id);
                     // Fetch nested student data manually since realtime doesn't include it
                     const { data: student } = await supabase
                         .from('students')
@@ -121,45 +126,43 @@ const GuardHome = ({ guardData }) => {
                 },
                 async (payload) => {
                     const newStatus = payload.new.status;
+                    const sessionId = payload.new.id;
+                    console.log(`[GUARD] Session ${sessionId} update: ${newStatus}`);
 
                     // Remove from pending if status changed
                     if (newStatus !== 'pending') {
-                        setPendingRequests(prev => prev.filter(req => req.id !== payload.new.id));
+                        setPendingRequests(prev => prev.filter(req => req.id !== sessionId));
                     }
 
                     // If it was completed, verify it belongs to our gate and show details
                     if (newStatus === 'completed') {
-                        const sessionId = payload.new.id;
-                        console.log(`[GUARD] Session ${sessionId} completed. Processing...`);
+                        console.log(`[GUARD] Processing completed session ${sessionId}...`);
 
-                        // Try to get IDs directly from payload first (may be present if modified)
-                        let studentId = payload.new.student_id;
-                        let sessionGateId = payload.new.gate_id;
+                        // ALWAYS fetch fresh session data to get the latest student_id and gate_id
+                        // This bypasses payload issues and RLS partial data blocks
+                        const { data: sessionInfo, error: sessionErr } = await supabase
+                            .from('scan_sessions')
+                            .select('student_id, gate_id')
+                            .eq('id', sessionId)
+                            .single();
 
-                        // Fetch fresh data if needed (Realtime payload might be partial)
-                        if (!studentId || !sessionGateId) {
-                            console.log(`[GUARD] Partial payload, fetching full session ${sessionId}...`);
-                            const { data: sessionInfo } = await supabase
-                                .from('scan_sessions')
-                                .select('student_id, gate_id')
-                                .eq('id', sessionId)
-                                .single();
-
-                            studentId = sessionInfo?.student_id;
-                            sessionGateId = sessionInfo?.gate_id;
+                        if (sessionErr || !sessionInfo) {
+                            console.error("[GUARD] Failed to fetch session info for verification:", sessionErr);
+                            return;
                         }
 
-                        console.log(`[GUARD] Matching IDs - SessionGate: ${sessionGateId}, GuardGate: ${guardData?.gate_id}`);
+                        console.log(`[GUARD] Matching: SessionGate(${sessionInfo.gate_id}) vs GuardGate(${guardData.gate_id})`);
 
-                        // Normalize and compare
-                        const isMatch = String(sessionGateId).toLowerCase().trim() === String(guardData?.gate_id).toLowerCase().trim();
+                        // Robust comparison normalization
+                        const sessionGate = String(sessionInfo.gate_id).toLowerCase().trim();
+                        const guardGate = String(guardData.gate_id).toLowerCase().trim();
 
-                        if (isMatch && studentId) {
-                            console.log(`[GUARD] Match found! Fetching student ${studentId}...`);
+                        if (sessionGate === guardGate && sessionInfo.student_id) {
+                            console.log(`[GUARD] Gate MATCH! Fetching student: ${sessionInfo.student_id}`);
                             const { data: student, error: studentErr } = await supabase
                                 .from('students')
                                 .select('*, departments(name)')
-                                .eq('student_id', studentId)
+                                .eq('student_id', sessionInfo.student_id)
                                 .single();
 
                             if (studentErr) {
@@ -168,13 +171,13 @@ const GuardHome = ({ guardData }) => {
                             }
 
                             if (student) {
-                                console.log("[GUARD] Displaying verification for:", student.full_name);
+                                console.log("[GUARD] Verification SUCCESS for:", student.full_name);
                                 setActiveVerification({
                                     ...student,
                                     verifiedAt: format(new Date(), 'hh:mm a')
                                 });
 
-                                // Log it in movement_logs (Moved inside the student check)
+                                // Log it in movement_logs
                                 await supabase.from('movement_logs').insert({
                                     user_name: student.full_name,
                                     student_id: student.student_id,
@@ -182,19 +185,23 @@ const GuardHome = ({ guardData }) => {
                                     movement_type: 'AUTHORIZED',
                                     status: 'Success'
                                 });
-                            } else {
-                                console.warn("[GUARD] Student not found in database:", studentId);
                             }
                         } else {
-                            console.log("[GUARD] Gate ID mismatch or missing student data. Match:", isMatch, "Student:", studentId);
+                            console.log("[GUARD] Gate mismatch or no student ID. Processing skipped.");
                         }
                     }
                 }
             )
-            .subscribe();
+            .subscribe((status) => {
+                console.log(`[GUARD] Real-time Status (${channelName}):`, status);
+                if (status === 'SUBSCRIPTION_ERROR') {
+                    console.error(`[GUARD] Subscription failed for ${channelName}. Check RLS or Realtime settings.`);
+                }
+            });
 
         return () => {
-            supabase.removeChannel(channels);
+            console.log(`[GUARD] Cleaning up channel: ${channelName}`);
+            supabase.removeChannel(channel);
         };
     }, [guardData?.gate_id]);
 
