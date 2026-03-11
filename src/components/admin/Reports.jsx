@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { ChevronDown, TrendingUp, Clock, ArrowUpRight, Loader2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { formatDistanceToNow } from 'date-fns';
@@ -38,27 +38,15 @@ const Reports = () => {
     });
     const [trendData, setTrendData] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [dateRange, setDateRange] = useState(7); // default 7 days
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
-    useEffect(() => {
-        fetchInitialData();
+    const isInitialMount = useRef(true);
 
-        // Real-time subscription
-        const channel = supabase
-            .channel('reports_changes')
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'movement_logs' }, () => {
-                fetchInitialData(false); // Refresh data on new entry
-            })
-            .subscribe();
-
-        return () => {
-            supabase.removeChannel(channel);
-        };
-    }, []);
-
-    const fetchInitialData = async (showLoading = true) => {
+    const fetchInitialData = useCallback(async (showLoading = true) => {
         if (showLoading) setLoading(true);
         try {
-            // 1. Fetch all logs and try to join with students
+            // 1. Fetch all logs
             const { data: allLogs, error: statsError } = await supabase
                 .from('movement_logs')
                 .select(`
@@ -108,13 +96,23 @@ const Reports = () => {
                 guest: types['GUEST ACCESS']
             });
 
-            // 4. Trend Data (Last 7 days)
+            // 4. Trend Data (Dynamic based on dateRange)
             const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
-            const trend = Array(7).fill(0).map((_, i) => {
-                const date = new Date(now.getTime() - (6 - i) * 24 * 60 * 60 * 1000);
+            const trend = Array(dateRange).fill(0).map((_, i) => {
+                const date = new Date(now.getTime() - (dateRange - 1 - i) * 24 * 60 * 60 * 1000);
                 const count = allLogs.filter(l => new Date(l.created_at).toDateString() === date.toDateString()).length;
-                return { day: days[date.getDay()], count };
+                return { 
+                    day: dateRange > 3 ? days[date.getDay()] : formatDistanceToNow(date, { addSuffix: true }).replace('about ', ''), 
+                    count 
+                };
             });
+            
+            // For 1 day, we might want hourly data instead of just 1 point, 
+            // but keeping it simple to day-level for consistency unless specified
+            if (dateRange === 1) {
+               trend[0].day = 'Today';
+            }
+
             setTrendData(trend);
 
             // 5. Recent Logs
@@ -125,15 +123,42 @@ const Reports = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [dateRange]);
+
+    useEffect(() => {
+        // Run initial load with spinner, subsequent loads without spinner
+        if (isInitialMount.current) {
+            fetchInitialData(true);
+            isInitialMount.current = false;
+        } else {
+            fetchInitialData(false);
+        }
+
+        // Real-time subscription
+        const channel = supabase
+            .channel('reports_changes')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'movement_logs' }, () => {
+                fetchInitialData(false); // Refresh data on new entry
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [fetchInitialData]);
 
     // Calculate chart path based on dynamic trendData
     const maxVal = Math.max(...trendData.map(d => d.count), 10);
     const getChartPath = () => {
         if (trendData.length === 0) return '';
+        if (trendData.length === 1) {
+            // Flat line for 1 data point
+            return `M 30 ${160 - (trendData[0].count / maxVal) * 120} L 520 ${160 - (trendData[0].count / maxVal) * 120}`;
+        }
+        
         const width = 490;
         const height = 120;
-        const spacing = width / 6;
+        const spacing = width / (trendData.length - 1);
 
         let path = `M 30 ${160 - (trendData[0].count / maxVal) * height}`;
         trendData.slice(1).forEach((d, i) => {
@@ -220,12 +245,37 @@ const Reports = () => {
                     <div className="flex items-start justify-between mb-2">
                         <div>
                             <h3 className="font-bold text-gray-900 text-[15px] mb-1">Gate Activity Trends</h3>
-                            <p className="text-xs text-gray-400 font-medium">Activity volume for the last 7 days</p>
+                            <p className="text-xs text-gray-400 font-medium">Activity volume for the last {dateRange} days</p>
                         </div>
-                        <button className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors">
-                            Last 7 Days
-                            <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
-                        </button>
+                        <div className="relative">
+                            <button 
+                                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+                            >
+                                {dateRange === 1 ? 'Today' : `Last ${dateRange} Days`}
+                                <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                            </button>
+                            
+                            {/* Dropdown Menu */}
+                            {isDropdownOpen && (
+                                <div className="absolute top-full right-0 mt-2 w-36 bg-white border border-gray-100 rounded-xl shadow-lg shadow-gray-200/50 py-1 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
+                                    {[7, 5, 3, 2, 1].map((range) => (
+                                        <button
+                                            key={range}
+                                            onClick={() => {
+                                                setDateRange(range);
+                                                setIsDropdownOpen(false);
+                                            }}
+                                            className={`w-full text-left px-4 py-2 text-xs font-bold transition-colors ${
+                                                dateRange === range ? 'bg-orange-50 text-[#f47c20]' : 'text-gray-600 hover:bg-gray-50'
+                                            }`}
+                                        >
+                                            {range === 1 ? '1 Day (Today)' : `${range} Days`}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     {/* Chart SVG */}
@@ -245,9 +295,12 @@ const Reports = () => {
 
                             {/* Dynamic Dots at keys */}
                             {trendData.map((d, i) => {
+                                if (trendData.length === 1) {
+                                    return <circle key={i} cx={275} cy={160 - (d.count / maxVal) * 120} r="4" fill="#f47c20" />;
+                                }
                                 const width = 490;
                                 const height = 120;
-                                const spacing = width / 6;
+                                const spacing = width / (trendData.length - 1);
                                 return <circle key={i} cx={30 + i * spacing} cy={160 - (d.count / maxVal) * height} r="4" fill="#f47c20" />;
                             })}
 
@@ -261,9 +314,17 @@ const Reports = () => {
                         </svg>
                         {/* X-axis labels */}
                         <div className="flex justify-between px-4 mt-1">
-                            {trendData.map((d, i) => (
-                                <span key={i} className="text-[10px] font-bold text-gray-300 uppercase tracking-wider">{d.day}</span>
-                            ))}
+                            {trendData.length === 1 ? (
+                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mx-auto">
+                                    {trendData[0].day}
+                                </span>
+                            ) : (
+                                trendData.map((d, i) => (
+                                    <span key={i} className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                                        {d.day}
+                                    </span>
+                                ))
+                            )}
                         </div>
                     </div>
                 </div>

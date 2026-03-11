@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { ChevronLeft, Mail, Phone, MapPin, Clock, Calendar, Shield, CreditCard, Droplets } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
+import { supabase } from '../../lib/supabase';
+import VerificationResult from '../student/VerificationResult';
 
 // Helper function to generate a consistent color from a name
 const stringToColor = (name) => {
@@ -17,6 +19,82 @@ const stringToColor = (name) => {
 };
 
 const GuardProfile = ({ guard, onBack, onEdit }) => {
+    const [recentActivity, setRecentActivity] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [selectedLog, setSelectedLog] = useState(null);
+    const [loadingStudentData, setLoadingStudentData] = useState(false);
+
+    const handleLogClick = async (log) => {
+        if (log.movement_type === 'GUEST ACCESS' || !log.student_id) {
+            setSelectedLog({ ...log, studentData: { full_name: log.user_name || 'Guest', hostel_type: 'Guest' } });
+            return;
+        }
+
+        setLoadingStudentData(true);
+        setSelectedLog({ ...log, studentData: null });
+        try {
+            const { data: studentData, error } = await supabase
+                .from('students')
+                .select('*, departments(name)')
+                .eq('student_id', log.student_id)
+                .single();
+            
+            if (error) throw error;
+            setSelectedLog({ ...log, studentData });
+        } catch (error) {
+            console.error('Error fetching full student data:', error);
+            setSelectedLog({ ...log, studentData: { full_name: log.user_name || 'Student' } });
+        } finally {
+            setLoadingStudentData(false);
+        }
+    };
+
+    const fetchRecentActivity = useCallback(async (showLoading = true) => {
+        if (!guard?.gate_id) {
+            setLoading(false);
+            return;
+        }
+        if (showLoading) setLoading(true);
+        try {
+            const { data, error } = await supabase
+                .from('movement_logs')
+                .select('*, guard_gates(name)')
+                .eq('access_point_id', guard.gate_id)
+                .order('created_at', { ascending: false })
+                .limit(5);
+
+            if (error) throw error;
+            setRecentActivity(data || []);
+        } catch (error) {
+            console.error('Error fetching guard activity:', error);
+        } finally {
+            setLoading(false);
+        }
+    }, [guard?.gate_id]);
+
+    useEffect(() => {
+        if (!guard?.gate_id) {
+            setLoading(false);
+            return;
+        }
+
+        fetchRecentActivity();
+
+        const channel = supabase
+            .channel(`guard_activity_${guard.gate_id}`)
+            .on('postgres_changes', 
+                { event: 'INSERT', schema: 'public', table: 'movement_logs', filter: `access_point_id=eq.${guard.gate_id}` }, 
+                () => {
+                    fetchRecentActivity(false);
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [guard?.gate_id, fetchRecentActivity]);
+
     if (!guard) return null;
 
     const initials = guard.full_name
@@ -160,24 +238,89 @@ const GuardProfile = ({ guard, onBack, onEdit }) => {
 
                     {/* Right Column - Activity/Stats */}
                     <div className="lg:col-span-2 space-y-6">
-                        {/* Placeholder for Activity Logs */}
                         <div className="bg-white rounded-[24px] border border-gray-100 shadow-[0_2px_10px_rgba(0,0,0,0.02)] p-6 min-h-[400px]">
                             <div className="flex items-center justify-between mb-6">
                                 <h3 className="text-lg font-bold text-gray-900">Recent Activity</h3>
                                 <button className="text-sm font-semibold text-blue-600 hover:text-blue-700">View All Logs</button>
                             </div>
 
-                            <div className="flex flex-col items-center justify-center h-64 text-center">
-                                <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
-                                    <Clock className="w-8 h-8 text-gray-300" />
+                            {loading ? (
+                                <div className="flex justify-center items-center h-64">
+                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#f47c20]"></div>
                                 </div>
-                                <h4 className="text-base font-bold text-gray-900 mb-1">No Recent Activity</h4>
-                                <p className="text-sm text-gray-500 max-w-sm">Activity logs for this guard will appear here once they start scanning passes or recording incidents.</p>
-                            </div>
+                            ) : recentActivity.length > 0 ? (
+                                <div className="space-y-4">
+                                    {recentActivity.map((log) => (
+                                        <div 
+                                            key={log.id} 
+                                            onClick={() => handleLogClick(log)}
+                                            className="flex items-start gap-4 p-4 rounded-xl hover:bg-gray-50 border border-transparent hover:border-gray-100 transition-colors cursor-pointer active:scale-[0.98]"
+                                        >
+                                            <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0 font-bold text-sm">
+                                                {log.students?.full_name ? log.students.full_name.charAt(0).toUpperCase() : (log.user_name ? log.user_name.charAt(0).toUpperCase() : 'G')}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center justify-between gap-2 mb-1">
+                                                    <h4 className="font-semibold text-gray-900 truncate">
+                                                        {log.movement_type === 'GUEST ACCESS' ? (log.user_name || 'Guest') : (log.students?.full_name || log.user_name)}
+                                                    </h4>
+                                                    <span className="text-xs text-gray-400 whitespace-nowrap">
+                                                        {formatDistanceToNow(new Date(log.created_at), { addSuffix: true })}
+                                                    </span>
+                                                </div>
+                                                <div className="flex items-center gap-3 text-sm">
+                                                    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded border ${
+                                                        log.status === 'Success'
+                                                            ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
+                                                            : 'bg-red-50 text-red-600 border-red-100'
+                                                    }`}>
+                                                        <span className={`w-1 h-1 rounded-full ${log.status === 'Success' ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
+                                                        {log.movement_type === 'GUEST ACCESS' ? 'Guest' : (log.status === 'Success' ? 'Authorized' : 'Denied')}
+                                                    </span>
+                                                    <span className="text-gray-500 text-xs flex items-center gap-1">
+                                                        <MapPin className="w-3 h-3" />
+                                                        {log.guard_gates?.name || 'Gate'}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="flex flex-col items-center justify-center h-64 text-center">
+                                    <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+                                        <Clock className="w-8 h-8 text-gray-300" />
+                                    </div>
+                                    <h4 className="text-base font-bold text-gray-900 mb-1">No Recent Activity</h4>
+                                    <p className="text-sm text-gray-500 max-w-sm">Activity logs for this guard will appear here once they start scanning passes or recording incidents.</p>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
             </div>
+
+            {/* Verification Result Modal */}
+            {selectedLog && (
+                <div className="fixed inset-0 z-[100] flex justify-end bg-black/50 backdrop-blur-sm transition-opacity duration-300">
+                    <div className="w-[450px] bg-white h-full shadow-2xl animate-in slide-in-from-right overflow-hidden relative">
+                        {loadingStudentData ? (
+                            <div className="flex justify-center flex-col items-center h-full gap-4">
+                                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#f47c20]"></div>
+                                <p className="text-gray-500 font-medium">Loading pass details...</p>
+                            </div>
+                        ) : (
+                            <VerificationResult 
+                                studentData={selectedLog.studentData}
+                                gateName={selectedLog.guard_gates?.name}
+                                verifiedAt={format(new Date(selectedLog.created_at), 'hh:mm a')}
+                                onNextScan={() => setSelectedLog(null)}
+                                hideNavBar={true}
+                            />
+                        )}
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

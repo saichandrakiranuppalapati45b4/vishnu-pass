@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Bell, Users, Shield, UserPlus, BarChart2, Settings, LogOut, Plus, RotateCcw } from 'lucide-react';
+import { Search, Bell, Users, Shield, ShieldCheck, UserCheck, ShieldAlert, UserPlus, BarChart2, Settings, LogOut, Plus, RotateCcw } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import DashboardContent from './DashboardContent';
 import StudentManagement from './StudentManagement';
@@ -13,6 +13,9 @@ import Notifications from './Notifications';
 import SettingsPage from './SettingsPage';
 import FlowOptimization from './FlowOptimization';
 import AuditLogs from './AuditLogs';
+import AdminProfile from './AdminProfile';
+import Permissions from './Permissions';
+import StudentPermissions from './StudentPermissions';
 
 const navItems = [
     { key: 'dashboard', label: 'Dashboard', icon: 'grid' },
@@ -20,6 +23,8 @@ const navItems = [
     { key: 'guards', label: 'Guard Management', icon: 'shield' },
     { key: 'reports', label: 'Reports', icon: 'bar-chart' },
     { key: 'admin', label: 'Admin Management', icon: 'users' },
+    { key: 'permissions', label: 'Permissions', icon: 'shield-check' },
+    { key: 'student-permissions', label: 'Student Permission', icon: 'user-check' },
     { key: 'settings', label: 'Settings', icon: 'settings' },
 ];
 
@@ -36,6 +41,9 @@ const NavIcon = ({ type, className }) => {
             );
         case 'users': return <Users className={`w-[18px] h-[18px] ${className}`} />;
         case 'shield': return <Shield className={`w-[18px] h-[18px] ${className}`} />;
+        case 'shield-check': return <ShieldCheck className={`w-[18px] h-[18px] ${className}`} />;
+        case 'user-check': return <UserCheck className={`w-[18px] h-[18px] ${className}`} />;
+        case 'shield-alert': return <ShieldAlert className={`w-[18px] h-[18px] ${className}`} />;
         case 'user-plus': return <UserPlus className={`w-[18px] h-[18px] ${className}`} />;
         case 'bar-chart': return <BarChart2 className={`w-[18px] h-[18px] ${className}`} />;
         case 'settings': return <Settings className={`w-[18px] h-[18px] ${className}`} />;
@@ -47,6 +55,7 @@ const NavIcon = ({ type, className }) => {
 const Dashboard = ({ onLogout, branding, onBrandingUpdate }) => {
     const [activePage, setActivePage] = useState('dashboard');
     const [selectedStudentId, setSelectedStudentId] = useState(null);
+    const [selectedAdminId, setSelectedAdminId] = useState(null);
     const [userEmail, setUserEmail] = useState('admin@vishnu.edu');
 
     useEffect(() => {
@@ -76,7 +85,16 @@ const Dashboard = ({ onLogout, branding, onBrandingUpdate }) => {
             case 'reports':
                 return <Reports />;
             case 'admin':
-                return <AdminManagement onNavigate={setActivePage} />;
+                return <AdminManagement onNavigate={(page, id) => {
+                    if (id) setSelectedAdminId(id);
+                    setActivePage(page);
+                }} />;
+            case 'admin-profile':
+                return <AdminProfile adminId={selectedAdminId} onBack={() => setActivePage('admin')} />;
+            case 'permissions':
+                return <Permissions />;
+            case 'student-permissions':
+                return <StudentPermissions />;
             case 'settings':
                 return <SettingsPage onNavigate={setActivePage} branding={branding} onBrandingUpdate={handleBrandingUpdate} />;
             case 'register-student':

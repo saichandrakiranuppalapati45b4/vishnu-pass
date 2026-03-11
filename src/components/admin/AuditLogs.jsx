@@ -14,6 +14,9 @@ const ActionBadge = ({ action }) => {
     if (action.includes('Export')) colors = 'bg-blue-50 text-blue-600 border border-blue-100';
     if (action.includes('Revoked')) colors = 'bg-rose-50 text-rose-600 border border-rose-100';
     if (action.includes('Upload')) colors = 'bg-indigo-50 text-indigo-600 border border-indigo-100';
+    if (action.includes('Activated')) colors = 'bg-teal-50 text-teal-600 border border-teal-100';
+    if (action.includes('Deactivated')) colors = 'bg-orange-50 text-orange-600 border border-orange-100';
+    if (action.includes('Role')) colors = 'bg-purple-50 text-purple-600 border border-purple-100';
 
     return (
         <span className={`px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider ${colors}`}>
@@ -26,9 +29,10 @@ const AuditLogs = ({ onBack }) => {
     const [logs, setLogs] = useState([]);
     const [loading, setLoading] = useState(true);
     const [stats, setStats] = useState({
-        total: 1284,
-        registrations: 64,
-        changes: 12
+        globalTotal: 0,
+        total: 0,
+        registrations: 0,
+        changes: 0
     });
 
     useEffect(() => {
@@ -51,25 +55,35 @@ const AuditLogs = ({ onBack }) => {
             // Fetch Real-time Statistics
             const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
+            // 0. Total Lifetime Logs for Pagination
+            const { count: globalTotalLogs, error: globalCountErr } = await supabase
+                .from('audit_logs')
+                .select('*', { count: 'exact', head: true });
+            if (globalCountErr) console.error("Error fetching global count:", globalCountErr);
+
             // 1. Total Logs in last 24h
-            const { count: totalLogs } = await supabase
+            const { count: totalLogs, error: countErr1 } = await supabase
                 .from('audit_logs')
                 .select('*', { count: 'exact', head: true })
                 .gt('created_at', yesterday);
+            if (countErr1) console.error("Error fetching totalLogs:", countErr1);
 
             // 2. New Registrations (Any action containing 'Registered')
-            const { count: regCount } = await supabase
+            const { count: regCount, error: countErr2 } = await supabase
                 .from('audit_logs')
                 .select('*', { count: 'exact', head: true })
                 .ilike('action', '%Registered%');
+            if (countErr2) console.error("Error fetching regCount:", countErr2);
 
-            // 3. Config Changes (Any action containing 'Config')
-            const { count: configCount } = await supabase
+            // 3. Config Changes (Any action containing 'Config' or 'Role')
+            const { count: configCount, error: countErr3 } = await supabase
                 .from('audit_logs')
                 .select('*', { count: 'exact', head: true })
-                .ilike('action', '%Config%');
+                .or('action.ilike.%Config%,action.ilike.%Role%');
+            if (countErr3) console.error("Error fetching configCount:", countErr3);
 
             setStats({
+                globalTotal: globalTotalLogs || 0,
                 total: totalLogs || 0,
                 registrations: regCount || 0,
                 changes: configCount || 0
@@ -203,6 +217,21 @@ const AuditLogs = ({ onBack }) => {
                                     </td>
                                 </tr>
                             ))}
+                            {logs.length === 0 && (
+                                <tr>
+                                    <td colSpan="6" className="py-20 text-center">
+                                        <div className="flex flex-col items-center gap-3">
+                                            <div className="w-16 h-16 bg-gray-50 rounded-2xl flex items-center justify-center mb-2">
+                                                <FileText className="w-8 h-8 text-gray-200" />
+                                            </div>
+                                            <h4 className="text-lg font-black text-gray-900 italic">No Audit Trails Captured</h4>
+                                            <p className="text-sm text-gray-400 font-medium max-w-sm mx-auto">
+                                                Historical dummy data has been cleared. The system is now monitoring for live administrative activity.
+                                            </p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            )}
                         </tbody>
                     </table>
                 </div>
@@ -210,7 +239,7 @@ const AuditLogs = ({ onBack }) => {
                 {/* Pagination */}
                 <div className="mt-8 pt-8 border-t border-gray-50 flex items-center justify-between">
                     <p className="text-xs font-bold text-gray-400 italic">
-                        Showing 1 to {logs.length} of {stats.total} entries
+                        Showing {logs.length > 0 ? 1 : 0} to {logs.length} of {stats.globalTotal} entries
                     </p>
                     <div className="flex items-center gap-2">
                         <button className="w-10 h-10 flex items-center justify-center rounded-xl border border-gray-100 text-gray-400 transition-all hover:bg-gray-50">

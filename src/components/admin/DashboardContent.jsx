@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Shield, AlertTriangle, UserPlus, BarChart2, Zap, GraduationCap, FileText, CheckCircle2, Loader2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { formatDistanceToNow } from 'date-fns';
@@ -12,6 +12,33 @@ const DashboardContent = ({ onNavigate }) => {
     });
     const [recentActivity, setRecentActivity] = useState([]);
     const [loading, setLoading] = useState(true);
+
+    const fetchDashboardData = useCallback(async (showLoading = true) => {
+        if (showLoading) setLoading(true);
+        try {
+            // Fetch counts in parallel
+            const [studentsCount, guardsCount, alertsCount, activityLogs] = await Promise.all([
+                supabase.from('students').select('*', { count: 'exact', head: true }),
+                supabase.from('guards').select('*', { count: 'exact', head: true }),
+                supabase.from('movement_logs').select('*', { count: 'exact', head: true }).neq('status', 'Success'),
+                supabase.from('movement_logs').select('*, guard_gates(name)').order('created_at', { ascending: false }).limit(5)
+            ]);
+
+            setStats({
+                totalStudents: studentsCount.count || 0,
+                totalGuards: guardsCount.count || 0,
+                activePasses: 12, // Placeholder
+                recentAlerts: alertsCount.count || 0
+            });
+
+            setRecentActivity(activityLogs.data || []);
+
+        } catch (error) {
+            console.error('Error fetching dashboard data:', error);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
 
     useEffect(() => {
         fetchDashboardData();
@@ -30,34 +57,7 @@ const DashboardContent = ({ onNavigate }) => {
         return () => {
             supabase.removeChannel(channel);
         };
-    }, []);
-
-    const fetchDashboardData = async (showLoading = true) => {
-        if (showLoading) setLoading(true);
-        try {
-            // Fetch counts in parallel
-            const [studentsCount, guardsCount, alertsCount, activityLogs] = await Promise.all([
-                supabase.from('students').select('*', { count: 'exact', head: true }),
-                supabase.from('guards').select('*', { count: 'exact', head: true }),
-                supabase.from('movement_logs').select('*', { count: 'exact', head: true }).neq('status', 'Success'),
-                supabase.from('movement_logs').select('*, students(id, full_name, photo_url), guard_gates(name)').order('created_at', { ascending: false }).limit(5)
-            ]);
-
-            setStats({
-                totalStudents: studentsCount.count || 0,
-                totalGuards: guardsCount.count || 0,
-                activePasses: 12, // Placeholder
-                recentAlerts: alertsCount.count || 0
-            });
-
-            setRecentActivity(activityLogs.data || []);
-
-        } catch (error) {
-            console.error('Error fetching dashboard data:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
+    }, [fetchDashboardData]);
 
     if (loading) {
         return (
