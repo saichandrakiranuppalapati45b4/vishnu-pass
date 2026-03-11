@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Shield, Lock, Eye, EyeOff, Loader2, CheckCircle2, ChevronLeft } from 'lucide-react';
+import { ArrowLeft, Key, Lock, Shield, Eye, EyeOff, Loader2, CheckCircle2, RotateCcw, Info } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 const SecuritySettings = ({ onBack }) => {
@@ -27,8 +27,8 @@ const SecuritySettings = ({ onBack }) => {
             return;
         }
 
-        if (passwords.new.length < 6) {
-            setError("Password must be at least 6 characters.");
+        if (passwords.new.length < 8) {
+            setError("Password must be at least 8 characters.");
             return;
         }
 
@@ -52,138 +52,150 @@ const SecuritySettings = ({ onBack }) => {
     };
 
     return (
-        <div className="flex flex-col min-h-screen bg-[#f8f9fb]">
+        <div className="flex flex-col min-h-screen bg-[#fdfdfd] pb-10">
             {/* Header */}
-            <div className="bg-[#1e293b] px-6 pt-12 pb-24 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-[#f47c20]/10 rounded-full -mr-20 -mt-20 blur-3xl" />
-
-                <button
+            <header className="px-6 py-5 flex items-center justify-between bg-white border-b border-gray-50 sticky top-0 z-50">
+                <button 
                     onClick={onBack}
-                    className="flex items-center gap-2 text-white/60 font-bold text-xs uppercase tracking-widest mb-6 hover:text-white transition-colors relative z-10"
+                    className="w-10 h-10 rounded-xl flex items-center justify-center text-[#1a2b3c] active:scale-90 transition-transform"
                 >
-                    <ChevronLeft className="w-4 h-4" />
-                    Back to Profile
+                    <ArrowLeft className="w-6 h-6" />
                 </button>
+                <h1 className="text-xl font-black text-[#1a2b3c] tracking-tight">Change Password</h1>
+                <div className="w-10" /> {/* Spacer */}
+            </header>
 
-                <div className="relative z-10">
-                    <h2 className="text-2xl font-black text-white tracking-tight">Security & Privacy</h2>
-                    <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1">Manage your credentials</p>
-                </div>
-            </div>
-
-            {/* Content */}
-            <div className="px-6 -mt-12 relative z-20 pb-10">
-                <form onSubmit={handlePasswordChange} className="bg-white rounded-[40px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-50 p-8 space-y-6">
-                    <div className="flex items-center gap-4 mb-2">
-                        <div className="w-12 h-12 rounded-2xl bg-orange-50 flex items-center justify-center text-[#f47c20]">
-                            <Lock className="w-6 h-6" />
-                        </div>
-                        <div>
-                            <h3 className="text-lg font-black text-slate-800">Change Password</h3>
-                            <p className="text-xs text-slate-400 font-medium tracking-tight">Update your portal access key</p>
-                        </div>
+            <div className="px-6 pt-12 pb-8 flex flex-col items-center">
+                {/* Icon Section */}
+                <div className="w-24 h-24 rounded-full bg-[#fef5ec] flex items-center justify-center mb-8">
+                    <div className="w-16 h-16 rounded-full bg-[#ffebd8] flex items-center justify-center text-[#f47c20]">
+                        <RotateCcw className="w-8 h-8" />
                     </div>
+                </div>
 
+                <div className="text-center max-w-[280px] mb-12">
+                    <p className="text-base font-bold text-[#475569] leading-relaxed">
+                        To keep your account secure, Vishnu Pass recommends updating your password regularly.
+                    </p>
+                </div>
+
+                {/* Form Card */}
+                <form onSubmit={handlePasswordChange} className="w-full bg-white rounded-[32px] shadow-[0_8px_40px_rgba(0,0,0,0.04)] border border-gray-50 p-6 space-y-6">
+                    {/* Status Messages */}
                     {error && (
-                        <div className="p-4 bg-rose-50 border border-rose-100 rounded-2xl text-rose-600 text-xs font-bold flex items-center gap-3 animate-in fade-in zoom-in-95">
-                            <Shield className="w-4 h-4 opacity-50" />
+                        <div className="p-4 bg-rose-50 border border-rose-100 rounded-2xl text-rose-600 text-xs font-bold animate-in fade-in slide-in-from-top-2">
                             {error}
                         </div>
                     )}
-
                     {success && (
-                        <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-2xl text-emerald-600 text-xs font-bold flex items-center gap-3 animate-in fade-in zoom-in-95">
-                            <CheckCircle2 className="w-4 h-4 opacity-50" />
+                        <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-2xl text-emerald-600 text-xs font-bold animate-in fade-in slide-in-from-top-2">
                             Password updated successfully!
                         </div>
                     )}
 
-                    <div className="space-y-4">
-                        {/* Current Password - Optional check if we want, but Supabase auth manages this or we rely on session */}
-                        {/* <div>
-                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 pl-1">Current Password</label>
-                            <div className="relative">
+                    <div className="space-y-6">
+                        {/* Current Password */}
+                        <div>
+                            <label className="block text-sm font-black text-[#1a2b3c] mb-3 pl-1">Current Password</label>
+                            <div className="relative group">
+                                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#f47c20] transition-colors">
+                                    <Key className="w-5 h-5" />
+                                </div>
                                 <input
                                     type={showPasswords.current ? "text" : "password"}
                                     value={passwords.current}
                                     onChange={(e) => setPasswords({...passwords, current: e.target.value})}
-                                    className="w-full px-5 py-4 bg-slate-50 border border-transparent rounded-2xl focus:bg-white focus:border-[#f47c20]/30 outline-none text-sm font-bold transition-all"
+                                    className="w-full pl-12 pr-12 py-4 bg-[#f8f9fb] border border-transparent rounded-[20px] focus:bg-white focus:border-[#f47c20]/20 focus:ring-4 focus:ring-[#f47c20]/5 outline-none text-sm font-bold transition-all placeholder:text-slate-400"
                                     placeholder="••••••••"
                                 />
                                 <button 
                                     type="button"
                                     onClick={() => setShowPasswords({...showPasswords, current: !showPasswords.current})}
-                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500 transition-colors"
+                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
                                 >
                                     {showPasswords.current ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                                 </button>
+                                <div className="absolute right-0 -bottom-6">
+                                    <button type="button" className="text-[11px] font-black text-[#f47c20] hover:underline">Forgot Password?</button>
+                                </div>
                             </div>
-                        </div> */}
+                        </div>
 
-                        <div>
-                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 pl-1">New Password</label>
-                            <div className="relative">
+                        {/* New Password */}
+                        <div className="pt-2">
+                            <label className="block text-sm font-black text-[#1a2b3c] mb-3 pl-1">New Password</label>
+                            <div className="relative group">
+                                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#f47c20] transition-colors">
+                                    <Lock className="w-5 h-5" />
+                                </div>
                                 <input
                                     type={showPasswords.new ? "text" : "password"}
                                     value={passwords.new}
-                                    onChange={(e) => setPasswords({ ...passwords, new: e.target.value })}
-                                    className="w-full px-5 py-4 bg-slate-50 border border-transparent rounded-2xl focus:bg-white focus:border-[#f47c20]/30 outline-none text-sm font-bold transition-all"
+                                    onChange={(e) => setPasswords({...passwords, new: e.target.value})}
+                                    className="w-full pl-12 pr-12 py-4 bg-[#f8f9fb] border border-transparent rounded-[20px] focus:bg-white focus:border-[#f47c20]/20 focus:ring-4 focus:ring-[#f47c20]/5 outline-none text-sm font-bold transition-all placeholder:text-slate-400"
                                     placeholder="••••••••"
                                     required
                                 />
-                                <button
+                                <button 
                                     type="button"
-                                    onClick={() => setShowPasswords({ ...showPasswords, new: !showPasswords.new })}
-                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500 transition-colors"
+                                    onClick={() => setShowPasswords({...showPasswords, new: !showPasswords.new})}
+                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
                                 >
                                     {showPasswords.new ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                                 </button>
                             </div>
                         </div>
 
+                        {/* Confirm Password */}
                         <div>
-                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 pl-1">Confirm New Password</label>
-                            <div className="relative">
+                            <label className="block text-sm font-black text-[#1a2b3c] mb-3 pl-1">Confirm New Password</label>
+                            <div className="relative group">
+                                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#f47c20] transition-colors">
+                                    <Shield className="w-5 h-5" />
+                                </div>
                                 <input
                                     type={showPasswords.confirm ? "text" : "password"}
                                     value={passwords.confirm}
-                                    onChange={(e) => setPasswords({ ...passwords, confirm: e.target.value })}
-                                    className="w-full px-5 py-4 bg-slate-50 border border-transparent rounded-2xl focus:bg-white focus:border-[#f47c20]/30 outline-none text-sm font-bold transition-all"
+                                    onChange={(e) => setPasswords({...passwords, confirm: e.target.value})}
+                                    className="w-full pl-12 pr-4 py-4 bg-[#f8f9fb] border border-transparent rounded-[20px] focus:bg-white focus:border-[#f47c20]/20 focus:ring-4 focus:ring-[#f47c20]/5 outline-none text-sm font-bold transition-all placeholder:text-slate-400"
                                     placeholder="••••••••"
                                     required
                                 />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowPasswords({ ...showPasswords, confirm: !showPasswords.confirm })}
-                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500 transition-colors"
-                                >
-                                    {showPasswords.confirm ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                                </button>
                             </div>
                         </div>
                     </div>
 
+                    {/* Security Guidelines */}
+                    <div className="p-5 bg-[#f0f9f4] rounded-[24px] border border-[#e3f2e9] space-y-3">
+                        <div className="flex items-center gap-2 text-[#166534]">
+                            <Info className="w-4 h-4" />
+                            <span className="text-[11px] font-black uppercase tracking-wider">Security Guidelines</span>
+                        </div>
+                        <ul className="space-y-2">
+                            <li className="flex items-center gap-2 text-[11px] font-bold text-[#166534]">
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                Minimum 8 characters
+                            </li>
+                            <li className="flex items-center gap-2 text-[11px] font-bold text-[#166534]">
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                Include a number and a symbol
+                            </li>
+                        </ul>
+                    </div>
+
+                    {/* Submit Button */}
                     <button
                         type="submit"
                         disabled={isSubmitting}
-                        className="w-full py-5 bg-slate-900 text-white font-black rounded-[30px] flex items-center justify-center gap-3 shadow-xl shadow-slate-900/10 hover:bg-slate-800 transition-all active:scale-[0.98] disabled:opacity-70 disabled:active:scale-100"
+                        className="w-full py-5 bg-[#f47c20] text-white font-black rounded-[24px] shadow-xl shadow-orange-500/20 hover:bg-[#e06b12] transition-all active:scale-[0.98] disabled:opacity-70 disabled:active:scale-100 flex items-center justify-center gap-3"
                     >
-                        {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Lock className="w-5 h-5" />}
-                        {isSubmitting ? "UPDATING PASSWORD..." : "UPDATE ACCESS KEY"}
+                        {isSubmitting ? (
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                        ) : (
+                            "Update Password"
+                        )}
                     </button>
                 </form>
-
-                <div className="mt-8 p-6 bg-blue-50/50 rounded-[40px] border border-blue-50 flex items-start gap-4">
-                    <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600 shrink-0">
-                        <Shield className="w-5 h-5" />
-                    </div>
-                    <div>
-                        <p className="text-sm font-bold text-blue-900">Security Tip</p>
-                        <p className="text-[10px] text-blue-700 font-medium leading-relaxed mt-1">
-                            Use a strong password with at least 8 characters, including symbols and numbers. Avoid using common phrases or personal info like birthdays.
-                        </p>
-                    </div>
-                </div>
             </div>
         </div>
     );

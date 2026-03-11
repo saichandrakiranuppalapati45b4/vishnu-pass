@@ -5,6 +5,8 @@ import GuardProfile from './Profile';
 import GuardHistory from './GuardHistory';
 import SecuritySettings from './SecuritySettings';
 import GuardRoster from './Roster';
+import NotificationSettings from './NotificationSettings';
+import LanguagePreference from './LanguagePreference';
 
 const GuardDashboard = ({ onLogout, guardData }) => {
     const [activeTab, setActiveTab] = useState('home');
@@ -21,6 +23,10 @@ const GuardDashboard = ({ onLogout, guardData }) => {
                 return <GuardProfile guardData={guardData} onLogout={onLogout} onNavigate={(tab) => setActiveTab(tab)} />;
             case 'security':
                 return <SecuritySettings onBack={() => setActiveTab('profile')} />;
+            case 'notifications':
+                return <NotificationSettings onBack={() => setActiveTab('profile')} />;
+            case 'language':
+                return <LanguagePreference onBack={() => setActiveTab('profile')} />;
             default:
                 return <GuardHome guardData={guardData} />;
         }

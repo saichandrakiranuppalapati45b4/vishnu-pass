@@ -1,20 +1,32 @@
 import React from 'react';
-import { LogOut, Shield, ChevronRight, Bell, Settings, Languages, CircleHelp, Info, CheckCircle2, LayoutDashboard, History, UserCircle, User } from 'lucide-react';
+import { LogOut, Shield, ChevronRight, Bell, Languages, CheckCircle2, LayoutDashboard, History, UserCircle, User } from 'lucide-react';
+import { useLanguage } from '../../contexts/LanguageContext';
 
-const GuardProfile = ({ guardData, onLogout }) => {
+const GuardProfile = ({ guardData, onLogout, onNavigate }) => {
+    const { language } = useLanguage();
+    
     const initials = guardData?.full_name
         ? guardData.full_name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
         : 'GP';
 
+    const languageMap = {
+        en: 'English',
+        te: 'Telugu',
+        hi: 'Hindi',
+        ta: 'Tamil'
+    };
+
+    const menuItems = [
+        { icon: <Bell className="w-5 h-5 text-orange-500" />, label: 'Notifications', bg: 'bg-orange-50', tab: 'notifications' },
+        { icon: <Shield className="w-5 h-5 text-orange-500" />, label: 'Change Password', bg: 'bg-orange-50', tab: 'security' },
+        { icon: <Languages className="w-5 h-5 text-orange-500" />, label: 'Language Preference', value: languageMap[language] || 'English', bg: 'bg-orange-50', tab: 'language' },
+    ];
+
     return (
         <div className="flex flex-col min-h-screen bg-[#f8f9fb] pb-32">
             {/* Header */}
-            <header className="px-6 py-8 flex items-center justify-between bg-white border-b border-gray-50 sticky top-0 z-50">
-                <div className="w-10" /> {/* Spacer */}
+            <header className="px-6 py-5 flex items-center justify-center bg-white border-b border-gray-50 sticky top-0 z-50">
                 <h1 className="text-xl font-black text-[#1a2b3c] tracking-tight">Profile</h1>
-                <button className="w-10 h-10 rounded-xl bg-[#fff5ec] flex items-center justify-center text-[#f47c20] active:scale-90 transition-transform">
-                    <Settings className="w-5 h-5" />
-                </button>
             </header>
 
             <div className="px-6 py-8 flex flex-col items-center">
@@ -65,12 +77,12 @@ const GuardProfile = ({ guardData, onLogout }) => {
                     <div>
                         <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 px-2">Account Settings</h3>
                         <div className="bg-white rounded-[32px] overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-gray-50">
-                            {[
-                                { icon: <Bell className="w-5 h-5 text-orange-500" />, label: 'Notifications', bg: 'bg-orange-50' },
-                                { icon: <Shield className="w-5 h-5 text-orange-500" />, label: 'Change Password', bg: 'bg-orange-50' },
-                                { icon: <Languages className="w-5 h-5 text-orange-500" />, label: 'Language Preference', value: 'English', bg: 'bg-orange-50' },
-                            ].map((item, idx) => (
-                                <button key={idx} className={`w-full flex items-center justify-between p-5 hover:bg-slate-50 transition-colors ${idx !== 2 ? 'border-b border-gray-50' : ''}`}>
+                            {menuItems.map((item, idx) => (
+                                <button 
+                                    key={idx} 
+                                    onClick={() => item.tab && onNavigate(item.tab)}
+                                    className={`w-full flex items-center justify-between p-5 hover:bg-slate-50 transition-colors ${idx !== menuItems.length - 1 ? 'border-b border-gray-50' : ''}`}
+                                >
                                     <div className="flex items-center gap-4">
                                         <div className={`w-10 h-10 rounded-xl ${item.bg} flex items-center justify-center`}>
                                             {item.icon}
@@ -81,27 +93,6 @@ const GuardProfile = ({ guardData, onLogout }) => {
                                         {item.value && <span className="text-[11px] font-bold text-slate-300">{item.value}</span>}
                                         <ChevronRight className="w-4 h-4 text-slate-300" />
                                     </div>
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Support */}
-                    <div>
-                        <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 px-2">Support</h3>
-                        <div className="bg-white rounded-[32px] overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-gray-50">
-                            {[
-                                { icon: <CircleHelp className="w-5 h-5 text-[#1a2b3c]" />, label: 'Help Center', bg: 'bg-blue-50' },
-                                { icon: <Info className="w-5 h-5 text-[#1a2b3c]" />, label: 'About App', bg: 'bg-blue-50' },
-                            ].map((item, idx) => (
-                                <button key={idx} className={`w-full flex items-center justify-between p-5 hover:bg-slate-50 transition-colors ${idx !== 1 ? 'border-b border-gray-50' : ''}`}>
-                                    <div className="flex items-center gap-4">
-                                        <div className={`w-10 h-10 rounded-xl ${item.bg} flex items-center justify-center`}>
-                                            {item.icon}
-                                        </div>
-                                        <span className="text-sm font-bold text-[#1a2b3c]">{item.label}</span>
-                                    </div>
-                                    <ChevronRight className="w-4 h-4 text-slate-300" />
                                 </button>
                             ))}
                         </div>
