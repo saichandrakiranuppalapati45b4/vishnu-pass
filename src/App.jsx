@@ -155,7 +155,7 @@ function App() {
         </div>
       ) : isLoggedIn ? (
         userRole === 'admin' ? (
-          <Dashboard onLogout={handleLogout} branding={branding} onBrandingUpdate={handleBrandingUpdate} />
+          <Dashboard onLogout={handleLogout} branding={branding} onBrandingUpdate={handleBrandingUpdate} adminData={userData} />
         ) : userRole === 'guard' ? (
           <GuardDashboard onLogout={handleLogout} guardData={userData} />
         ) : (

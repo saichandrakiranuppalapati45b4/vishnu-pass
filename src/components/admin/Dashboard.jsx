@@ -52,7 +52,7 @@ const NavIcon = ({ type, className }) => {
     }
 };
 
-const Dashboard = ({ onLogout, branding, onBrandingUpdate }) => {
+const Dashboard = ({ onLogout, branding, onBrandingUpdate, adminData }) => {
     const [activePage, setActivePage] = useState('dashboard');
     const [selectedStudentId, setSelectedStudentId] = useState(null);
     const [selectedAdminId, setSelectedAdminId] = useState(null);
@@ -85,10 +85,13 @@ const Dashboard = ({ onLogout, branding, onBrandingUpdate }) => {
             case 'reports':
                 return <Reports />;
             case 'admin':
-                return <AdminManagement onNavigate={(page, id) => {
-                    if (id) setSelectedAdminId(id);
-                    setActivePage(page);
-                }} />;
+                return <AdminManagement 
+                    currentAdmin={adminData}
+                    onNavigate={(page, id) => {
+                        if (id) setSelectedAdminId(id);
+                        setActivePage(page);
+                    }} 
+                />;
             case 'admin-profile':
                 return <AdminProfile adminId={selectedAdminId} onBack={() => setActivePage('admin')} />;
             case 'permissions':

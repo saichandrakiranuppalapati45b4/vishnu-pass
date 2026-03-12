@@ -25,7 +25,7 @@ const getAvatarColor = (name) => {
     return `hsl(${hue}, 65%, 45%)`;
 };
 
-const AdminManagement = ({ onNavigate }) => {
+const AdminManagement = ({ onNavigate, currentAdmin }) => {
     const [admins, setAdmins] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showAddModal, setShowAddModal] = useState(false);
@@ -307,13 +307,15 @@ const AdminManagement = ({ onNavigate }) => {
                                                 >
                                                     Edit Role
                                                 </button>
-                                                <button 
-                                                    onClick={(e) => { e.stopPropagation(); handleDeleteAdmin(admin.id, admin.name, admin.email); }}
-                                                    disabled={updating === admin.id || admin.role === 'Super Admin'}
-                                                    className="text-[13px] font-bold text-gray-400 hover:text-red-500 transition-colors mr-4 disabled:opacity-50 disabled:cursor-not-allowed"
-                                                >
-                                                    {updating === admin.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Delete'}
-                                                </button>
+                                                {currentAdmin?.permissions?.deleteAdmins && (
+                                                    <button 
+                                                        onClick={(e) => { e.stopPropagation(); handleDeleteAdmin(admin.id, admin.name, admin.email); }}
+                                                        disabled={updating === admin.id || admin.role === 'Super Admin'}
+                                                        className="text-[13px] font-bold text-gray-400 hover:text-red-500 transition-colors mr-4 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    >
+                                                        {updating === admin.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Delete'}
+                                                    </button>
+                                                )}
                                             </>
                                         ) : (
                                             <button 

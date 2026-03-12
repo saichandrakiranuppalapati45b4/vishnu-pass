@@ -20,6 +20,7 @@ const AddAdminModal = ({ admin = null, onClose, onUpdate }) => {
             approvePasses: false,
             securityGuards: false,
             auditLogs: false,
+            deleteAdmins: false,
         }
     });
 
@@ -51,7 +52,8 @@ const AddAdminModal = ({ admin = null, onClose, onUpdate }) => {
                     .from('admins')
                     .update({
                         name: formData.fullName,
-                        role: formData.role
+                        role: formData.role,
+                        permissions: formData.permissions
                     })
                     .eq('id', admin.id);
 
@@ -75,7 +77,8 @@ const AddAdminModal = ({ admin = null, onClose, onUpdate }) => {
                     options: {
                         data: {
                             full_name: formData.fullName,
-                            role: formData.role
+                            role: formData.role,
+                            permissions: formData.permissions
                         }
                     }
                 });
