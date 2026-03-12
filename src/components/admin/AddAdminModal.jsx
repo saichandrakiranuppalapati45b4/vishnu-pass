@@ -81,18 +81,12 @@ const AddAdminModal = ({ admin = null, onClose, onUpdate }) => {
                 });
 
                 if (authError) throw authError;
-
-                // 2. Insert into admins table
-                const { error: dbError } = await supabase
-                    .from('admins')
-                    .insert({
-                        id: authData.user.id,
-                        email: formData.email,
-                        name: formData.fullName,
-                        role: formData.role
-                    });
-
-                if (dbError) throw dbError;
+                
+                console.log("DEBUG: signUp successful. Trigger should handle admins table creation now. No manual insert follow-up.");
+                
+                // Note: The public.admins record is now created automatically by a 
+                // database trigger (on_auth_user_created) after auth.signUp.
+                // This avoids RLS violations caused by session-switching.
 
                 // 3. Log the action
                 await logAuditAction({
