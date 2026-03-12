@@ -172,7 +172,9 @@ const DashboardContent = ({ onNavigate }) => {
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 text-right">
-                                            <p className="text-xs text-gray-400 font-medium">{formatDistanceToNow(new Date(log.created_at), { addSuffix: true })}</p>
+                                            <p className="text-xs text-gray-400 font-medium">
+                                                {log.created_at ? formatDistanceToNow(new Date(log.created_at), { addSuffix: true }) : 'N/A'}
+                                            </p>
                                         </td>
                                     </tr>
                                 ))}

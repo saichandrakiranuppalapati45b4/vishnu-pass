@@ -119,13 +119,19 @@ const AdminManagement = ({ onNavigate, currentAdmin }) => {
     };
 
     const handleDeleteAdmin = async (id, name, email) => {
-        // Double check: Only the primary admin can delete
-        if (currentAdmin?.email !== 'saichandrakiranuppalapati@gmail.com') {
-            alert("Security Violation: You do not have permission to delete administrators.");
+        // Diagnostic Alert 1
+        console.log("handleDeleteAdmin triggered", { id, name, email });
+        
+        const ownerEmail = 'saichandrakiranuppalapati@gmail.com';
+        const currentEmail = currentAdmin?.email?.toLowerCase().trim();
+
+        if (currentEmail !== ownerEmail) {
+            alert(`Permission Denied!\nLogged in as: ${currentEmail || 'Unknown'}\nOnly ${ownerEmail} can delete administrators.`);
             return;
         }
 
-        if (!window.confirm(`Are you sure you want to PERMANENTLY delete administrator ${name} (${email})? This action cannot be undone.`)) {
+        const msg = `Are you sure you want to PERMANENTLY delete administrator ${name} (${email || 'no email'})?\n\nThis action will also remove them from Supabase Authentication.`;
+        if (!window.confirm(msg)) {
             return;
         }
 
@@ -321,11 +327,15 @@ const AdminManagement = ({ onNavigate, currentAdmin }) => {
                                                 >
                                                     Edit Role
                                                 </button>
-                                                {currentAdmin?.email === 'saichandrakiranuppalapati@gmail.com' && (
+                                                {currentAdmin?.email?.toLowerCase().trim() === 'saichandrakiranuppalapati@gmail.com' && (
                                                     <button 
-                                                        onClick={(e) => { e.stopPropagation(); handleDeleteAdmin(admin.id, admin.name, admin.email); }}
+                                                        onClick={(e) => { 
+                                                            e.stopPropagation(); 
+                                                            console.log("Delete button clicked for admin:", admin.id);
+                                                            handleDeleteAdmin(admin.id, admin.name, admin.email); 
+                                                        }}
                                                         disabled={updating === admin.id || admin.id === currentAdmin?.id}
-                                                        className="text-[13px] font-bold text-gray-400 hover:text-red-500 transition-colors mr-4 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                        className="px-4 py-1.5 text-[11px] font-black bg-red-50 text-red-600 hover:bg-red-600 hover:text-white rounded-lg border border-red-100 transition-all mr-4 disabled:opacity-30 disabled:cursor-not-allowed uppercase tracking-tighter"
                                                     >
                                                         {updating === admin.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Delete'}
                                                     </button>
