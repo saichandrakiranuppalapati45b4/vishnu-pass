@@ -118,6 +118,37 @@ const AdminManagement = ({ onNavigate }) => {
         }
     };
 
+    const handleDeleteAdmin = async (id, name, email) => {
+        if (!window.confirm(`Are you sure you want to PERMANENTLY delete administrator ${name} (${email})? This action cannot be undone.`)) {
+            return;
+        }
+
+        setUpdating(id);
+        try {
+            // Call Edge Function to delete user from Auth
+            const { data, error } = await supabase.functions.invoke('delete-admin', {
+                body: { userId: id }
+            });
+
+            if (error) throw error;
+
+            await logAuditAction({
+                action: 'Deleted Admin',
+                resource: `Admin: ${name} (${email})`,
+                details: { admin_id: id, email }
+            });
+
+            // Remove from local state
+            setAdmins(admins.filter(a => a.id !== id));
+            alert("Administrator deleted successfully.");
+        } catch (err) {
+            console.error("Error deleting admin:", err);
+            alert(`Failed to delete admin: ${err.message || "Unknown error"}`);
+        } finally {
+            setUpdating(null);
+        }
+    };
+
     return (
         <div className="flex-1 overflow-y-auto p-10 bg-[#f8f9fb]">
             {/* Header */}
@@ -268,13 +299,22 @@ const AdminManagement = ({ onNavigate }) => {
                                     </td>
                                     <td className="px-6 py-5 text-right whitespace-nowrap">
                                         {editingRoleId !== admin.id ? (
-                                            <button 
-                                                onClick={(e) => { e.stopPropagation(); setEditingRoleId(admin.id); }}
-                                                disabled={updating === admin.id}
-                                                className="text-[13px] font-bold text-[#f47c20] hover:text-[#e06d1c] transition-colors mr-6 disabled:opacity-50"
-                                            >
-                                                Edit Role
-                                            </button>
+                                            <>
+                                                <button 
+                                                    onClick={(e) => { e.stopPropagation(); setEditingRoleId(admin.id); }}
+                                                    disabled={updating === admin.id}
+                                                    className="text-[13px] font-bold text-[#f47c20] hover:text-[#e06d1c] transition-colors mr-4 disabled:opacity-50"
+                                                >
+                                                    Edit Role
+                                                </button>
+                                                <button 
+                                                    onClick={(e) => { e.stopPropagation(); handleDeleteAdmin(admin.id, admin.name, admin.email); }}
+                                                    disabled={updating === admin.id || admin.role === 'Super Admin'}
+                                                    className="text-[13px] font-bold text-gray-400 hover:text-red-500 transition-colors mr-4 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                >
+                                                    {updating === admin.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Delete'}
+                                                </button>
+                                            </>
                                         ) : (
                                             <button 
                                                 onClick={(e) => { e.stopPropagation(); setEditingRoleId(null); }}
