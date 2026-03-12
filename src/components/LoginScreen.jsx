@@ -16,11 +16,7 @@ const LoginScreen = ({ onLogin, branding }) => {
 
         try {
             // Sign in with Supabase Auth
-<<<<<<< HEAD
             const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-=======
-            const { error: authError } = await supabase.auth.signInWithPassword({
->>>>>>> 0398add0c2d50e89698b5ee3881dc5dfec69fe96
                 email: email.trim(),
                 password: password,
             });
@@ -31,7 +27,6 @@ const LoginScreen = ({ onLogin, branding }) => {
                 return;
             }
 
-<<<<<<< HEAD
             const metadataRole = authData.user?.user_metadata?.role;
 
             // Verify the user role and fetch data
@@ -77,45 +72,6 @@ const LoginScreen = ({ onLogin, branding }) => {
                     setLoading(false);
                     return;
                 }
-=======
-            // Verify the user is an admin or student
-            const { data: adminData } = await supabase
-                .from('admins')
-                .select('*')
-                .eq('email', email.trim())
-                .single();
-
-            if (adminData) {
-                onLogin('admin', adminData);
-                setLoading(false);
-                return;
-            }
-
-            // Check student
-            const { data: studentData } = await supabase
-                .from('students')
-                .select('*, departments(name)')
-                .eq('email', email.trim())
-                .single();
-
-            if (studentData) {
-                onLogin('student', studentData);
-                setLoading(false);
-                return;
-            }
-
-            // Check guard
-            const { data: guardData } = await supabase
-                .from('guards')
-                .select('*, guard_gates(name), guard_shifts(name)')
-                .eq('email', email.trim())
-                .single();
-
-            if (guardData) {
-                onLogin('guard', guardData);
-                setLoading(false);
-                return;
->>>>>>> 0398add0c2d50e89698b5ee3881dc5dfec69fe96
             }
 
             // If neither, access denied

@@ -43,7 +43,6 @@ function App() {
       if (!user || !user.email) return;
 
       try {
-<<<<<<< HEAD
         const metadataRole = user.user_metadata?.role;
 
         // Check admin
@@ -95,51 +94,6 @@ function App() {
             setIsAuthLoading(false);
             return;
           }
-=======
-        // Check admin
-        const { data: adminData } = await supabase
-          .from('admins')
-          .select('*')
-          .eq('email', user.email)
-          .single();
-
-        if (adminData && mounted) {
-          setUserRole('admin');
-          setUserData(adminData);
-          setIsLoggedIn(true);
-          setIsAuthLoading(false);
-          return;
-        }
-
-        // Check student
-        const { data: studentData } = await supabase
-          .from('students')
-          .select('*, departments(name)')
-          .eq('email', user.email)
-          .single();
-
-        if (studentData && mounted) {
-          setUserRole('student');
-          setUserData(studentData);
-          setIsLoggedIn(true);
-          setIsAuthLoading(false);
-          return;
-        }
-
-        // Check guard
-        const { data: guardData } = await supabase
-          .from('guards')
-          .select('*, guard_gates(name), guard_shifts(name)')
-          .eq('email', user.email)
-          .single();
-
-        if (guardData && mounted) {
-          setUserRole('guard');
-          setUserData(guardData);
-          setIsLoggedIn(true);
-          setIsAuthLoading(false);
-          return;
->>>>>>> 0398add0c2d50e89698b5ee3881dc5dfec69fe96
         }
       } catch (error) {
         console.error("Error resolving user role:", error);
