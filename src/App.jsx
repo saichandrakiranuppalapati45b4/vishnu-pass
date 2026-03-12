@@ -154,13 +154,10 @@ function App() {
           <div className="w-10 h-10 border-4 border-[#f47c20] border-t-transparent rounded-full animate-spin"></div>
         </div>
       ) : isLoggedIn ? (
-        userRole === 'admin' ? (
-          <Dashboard onLogout={handleLogout} branding={branding} onBrandingUpdate={handleBrandingUpdate} adminData={userData} />
-        ) : userRole === 'guard' ? (
-          <GuardDashboard onLogout={handleLogout} guardData={userData} />
-        ) : (
-          <StudentDashboard onLogout={handleLogout} studentData={userData} />
-        )
+        <div className="p-20 text-4xl font-black text-[#f47c20]">
+          Logged in as {userRole}! Status: {userData ? 'Data Loaded' : 'No Data'}
+          <button onClick={handleLogout} className="mt-8 block px-10 py-4 bg-gray-900 text-white rounded-2xl text-lg">Logout</button>
+        </div>
       ) : (
         <LoginScreen onLogin={handleLogin} branding={branding} />
       )}
