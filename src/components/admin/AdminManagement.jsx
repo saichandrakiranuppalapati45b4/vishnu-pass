@@ -310,7 +310,7 @@ const AdminManagement = ({ onNavigate, currentAdmin }) => {
                                                 {currentAdmin?.permissions?.deleteAdmins && (
                                                     <button 
                                                         onClick={(e) => { e.stopPropagation(); handleDeleteAdmin(admin.id, admin.name, admin.email); }}
-                                                        disabled={updating === admin.id || admin.role === 'Super Admin'}
+                                                        disabled={updating === admin.id || admin.id === currentAdmin?.id}
                                                         className="text-[13px] font-bold text-gray-400 hover:text-red-500 transition-colors mr-4 disabled:opacity-50 disabled:cursor-not-allowed"
                                                     >
                                                         {updating === admin.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Delete'}
