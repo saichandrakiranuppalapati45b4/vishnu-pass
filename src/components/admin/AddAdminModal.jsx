@@ -218,7 +218,8 @@ const AddAdminModal = ({ admin = null, onClose, onUpdate }) => {
                                     { id: 'manageStudents', label: 'Manage Students', desc: 'Add, edit, or remove student records' },
                                     { id: 'approvePasses', label: 'Approve Passes', desc: 'Grant or deny exit/entry requests' },
                                     { id: 'securityGuards', label: 'Security Guards', desc: 'Manage guard shifts and assignments' },
-                                    { id: 'auditLogs', label: 'Audit Logs', desc: 'Access and export system activity reports' }
+                                    { id: 'auditLogs', label: 'Audit Logs', desc: 'Access and export system activity reports' },
+                                    { id: 'deleteAdmins', label: 'Delete Other Admins', desc: 'Permanently remove administrator accounts' }
                                 ].map((p) => (
                                     <label key={p.id} className={`flex items-start gap-4 p-5 rounded-2xl border transition-all cursor-pointer ${formData.permissions[p.id] ? 'bg-orange-50/50 border-[#f47c20]/20 shadow-sm' : 'bg-white border-gray-100 hover:border-gray-200'}`}>
                                         <div className="flex items-center h-5 mt-0.5">

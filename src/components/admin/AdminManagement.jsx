@@ -37,7 +37,7 @@ const AdminManagement = ({ onNavigate, currentAdmin }) => {
             try {
                 const { data, error } = await supabase
                     .from('admins')
-                    .select('id, name, email, role, status')
+                    .select('id, name, email, role, status, permissions')
                     .order('created_at', { ascending: false });
 
                 if (error) throw error;
