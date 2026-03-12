@@ -119,6 +119,12 @@ const AdminManagement = ({ onNavigate, currentAdmin }) => {
     };
 
     const handleDeleteAdmin = async (id, name, email) => {
+        // Double check: Only the primary admin can delete
+        if (currentAdmin?.email !== 'saichandrakiranuppalapati@gmail.com') {
+            alert("Security Violation: You do not have permission to delete administrators.");
+            return;
+        }
+
         if (!window.confirm(`Are you sure you want to PERMANENTLY delete administrator ${name} (${email})? This action cannot be undone.`)) {
             return;
         }
@@ -214,7 +220,15 @@ const AdminManagement = ({ onNavigate, currentAdmin }) => {
                         <button className="p-2.5 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-xl transition-colors">
                             <Filter className="w-4 h-4" />
                         </button>
-                        <button className="p-2.5 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-xl transition-colors">
+                        <button 
+                            onClick={() => {
+                                // Exclude primary admin from download for security
+                                const exportData = admins.filter(a => a.email !== 'saichandrakiranuppalapati@gmail.com');
+                                console.log("Exporting sensitive-cleaned admin list:", exportData);
+                                alert("Admin list (excluding primary admin) ready for export.");
+                            }}
+                            className="p-2.5 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-xl transition-colors"
+                        >
                             <Download className="w-4 h-4" />
                         </button>
                     </div>
@@ -307,7 +321,7 @@ const AdminManagement = ({ onNavigate, currentAdmin }) => {
                                                 >
                                                     Edit Role
                                                 </button>
-                                                {currentAdmin?.permissions?.deleteAdmins && (
+                                                {currentAdmin?.email === 'saichandrakiranuppalapati@gmail.com' && (
                                                     <button 
                                                         onClick={(e) => { e.stopPropagation(); handleDeleteAdmin(admin.id, admin.name, admin.email); }}
                                                         disabled={updating === admin.id || admin.id === currentAdmin?.id}
