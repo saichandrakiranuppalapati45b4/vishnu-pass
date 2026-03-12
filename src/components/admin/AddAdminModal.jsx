@@ -82,7 +82,8 @@ const AddAdminModal = ({ admin = null, onClose, onUpdate }) => {
 
                 if (authError) throw authError;
                 
-                console.log("DEBUG: signUp successful. Trigger should handle admins table creation now. No manual insert follow-up.");
+                console.log("V3_DIAGNOSTIC: signUp successful. Entering trigger-only flow.");
+                console.log("If you see THIS message, the redundant manual insert is NOT in the code.");
                 
                 // Note: The public.admins record is now created automatically by a 
                 // database trigger (on_auth_user_created) after auth.signUp.
