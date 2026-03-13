@@ -38,14 +38,43 @@ const StudentPermissions = () => {
     };
 
     const handleSave = async () => {
-        setSaving(true);
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        setSaving(false);
+        try {
+            setSaving(true);
+            
+            const { error } = await supabase
+                .from('portal_settings')
+                .upsert({ 
+                    key: 'student_policies', 
+                    value: settings 
+                }, { onConflict: 'key' });
+
+            if (error) throw error;
+
+            showNotification('Student policies updated successfully.', 'success');
+        } catch (err) {
+            console.error('Error saving policies:', err);
+            showNotification('Failed to save policies. Please try again.', 'error');
+        } finally {
+            setSaving(false);
+        }
     };
 
-    // Fetch pending students
-    const fetchPending = useCallback(async () => {
+    // Fetch policies and pending students
+    const fetchData = useCallback(async () => {
         setLoadingRequests(true);
+        
+        // 1. Fetch Policies
+        const { data: policyData } = await supabase
+            .from('portal_settings')
+            .select('value')
+            .eq('key', 'student_policies')
+            .single();
+        
+        if (policyData?.value) {
+            setSettings(policyData.value);
+        }
+
+        // 2. Fetch Pending Students
         const { data, error } = await supabase
             .from('students')
             .select('*, departments(name)')
@@ -60,8 +89,8 @@ const StudentPermissions = () => {
     }, []);
 
     useEffect(() => {
-        fetchPending();
-    }, [fetchPending]);
+        fetchData();
+    }, [fetchData]);
 
     const handleApprove = async (studentId, studentName) => {
         try {
@@ -248,7 +277,7 @@ const StudentPermissions = () => {
                         </div>
                         <div className="flex items-center gap-3">
                             <button 
-                                onClick={fetchPending}
+                                onClick={fetchData}
                                 className="p-2.5 bg-[#f8fafc] border border-gray-100 rounded-xl text-gray-400 hover:text-[#f47c20] hover:bg-orange-50/50 transition-all active:scale-95 group"
                                 title="Refresh Requests"
                             >

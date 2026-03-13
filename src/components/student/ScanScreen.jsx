@@ -79,10 +79,44 @@ const ScanScreen = ({ studentData, onBack }) => {
 
     const handleRequestAccess = async (movementType) => {
         setError(null);
-        setStatus('requesting');
-        setTimeLeft(25);
-
+        
         try {
+            // 1. Fetch Policies
+            const { data: policyData } = await supabase
+                .from('portal_settings')
+                .select('value')
+                .eq('key', 'student_policies')
+                .single();
+            
+            const policies = policyData?.value;
+            if (policies) {
+                // Determine limits based on student category
+                const category = studentData.hostel_type === 'hosteler' ? 'hostellers' : 'dayscholars';
+                const limit = movementType === 'IN' ? policies[category].monthlyInLimit : policies[category].monthlyOutLimit;
+                
+                // 2. Count current month movements
+                const startOfMonth = new Date();
+                startOfMonth.setDate(1);
+                startOfMonth.setHours(0, 0, 0, 0);
+                
+                const { count, error: countError } = await supabase
+                    .from('movement_logs')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('student_id', studentData.student_id)
+                    .eq('movement_type', movementType)
+                    .eq('status', 'Success')
+                    .gte('created_at', startOfMonth.toISOString());
+                
+                if (countError) throw countError;
+                
+                if (count >= limit) {
+                    setError(`Monthly ${movementType} limit reached (${count}/${limit}). Please contact administration.`);
+                    return;
+                }
+            }
+
+            setStatus('requesting');
+            setTimeLeft(25);
             const { data, error: insertError } = await supabase
                 .from('scan_sessions')
                 .insert([{
