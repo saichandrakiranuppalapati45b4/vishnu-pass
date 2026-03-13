@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, Shield, Clock, Zap, Loader2, Fingerprint, Camera, ShieldCheck, X } from 'lucide-react';
+import { ChevronLeft, Shield, Clock, Zap, Loader2, Fingerprint, Camera, ShieldCheck, X, LogIn, LogOut } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { Scanner } from '@yudiel/react-qr-scanner';
 
@@ -77,7 +77,7 @@ const ScanScreen = ({ studentData, onBack }) => {
         };
     }, [sessionId]);
 
-    const handleRequestAccess = async () => {
+    const handleRequestAccess = async (movementType) => {
         setError(null);
         setStatus('requesting');
         setTimeLeft(25);
@@ -87,7 +87,8 @@ const ScanScreen = ({ studentData, onBack }) => {
                 .from('scan_sessions')
                 .insert([{
                     student_id: studentData.student_id,
-                    status: 'pending'
+                    status: 'pending',
+                    movement_type: movementType
                 }])
                 .select()
                 .single();
@@ -248,13 +249,22 @@ const ScanScreen = ({ studentData, onBack }) => {
                                 </p>
                             )}
 
-                            <button
-                                onClick={handleRequestAccess}
-                                className="w-full py-5 bg-gradient-to-r from-[#f47c20] to-[#e06b12] text-white font-black rounded-2xl shadow-xl shadow-[#f47c20]/20 flex items-center justify-center gap-3 active:scale-[0.98] transition-all text-sm tracking-[0.2em] uppercase"
-                            >
-                                <Zap className="w-5 h-5 fill-white" />
-                                Request Access
-                            </button>
+                            <div className="flex flex-col gap-3 w-full">
+                                <button
+                                    onClick={() => handleRequestAccess('IN')}
+                                    className="w-full py-5 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-black rounded-2xl shadow-xl shadow-emerald-500/20 flex items-center justify-center gap-3 active:scale-[0.98] transition-all text-sm tracking-[0.2em] uppercase"
+                                >
+                                    <LogIn className="w-5 h-5" />
+                                    Request IN
+                                </button>
+                                <button
+                                    onClick={() => handleRequestAccess('OUT')}
+                                    className="w-full py-5 bg-gradient-to-r from-orange-500 to-orange-600 text-white font-black rounded-2xl shadow-xl shadow-orange-500/20 flex items-center justify-center gap-3 active:scale-[0.98] transition-all text-sm tracking-[0.2em] uppercase"
+                                >
+                                    <LogOut className="w-5 h-5" />
+                                    Request OUT
+                                </button>
+                            </div>
                         </div>
                     ) : status === 'requesting' || status === 'approved' || status === 'processing_scan' ? (
                         <div className="flex flex-col items-center text-center">

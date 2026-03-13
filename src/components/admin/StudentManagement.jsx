@@ -7,6 +7,7 @@ import {
 
 import { supabase } from '../../lib/supabase';
 import { logAuditAction } from '../../utils/auditLogger';
+import { useNotification } from '../../contexts/NotificationContext';
 import EditStudentModal from './EditStudentModal';
 
 // Helper function to generate a consistent color from a name
@@ -34,6 +35,7 @@ const StudentManagement = ({ onNavigate }) => {
     const [isLoading, setIsLoading] = useState(true);
     const [totalCount, setTotalCount] = useState(0);
     const [departments, setDepartments] = useState([]);
+    const { showNotification, showModal } = useNotification();
 
     // Filter State
     const [deptFilter, setDeptFilter] = useState('all');
@@ -107,7 +109,15 @@ const StudentManagement = ({ onNavigate }) => {
     };
 
     const handleDeleteStudent = async (studentId, studentName) => {
-        if (!window.confirm(`Are you sure you want to delete ${studentName}? This action cannot be undone.`)) {
+        const confirmed = await showModal({
+            title: 'Delete Student',
+            message: `Are you sure you want to delete ${studentName}? This action cannot be undone.`,
+            confirmText: 'Delete',
+            cancelText: 'Cancel',
+            type: 'warning'
+        });
+
+        if (!confirmed) {
             return;
         }
 
@@ -129,9 +139,10 @@ const StudentManagement = ({ onNavigate }) => {
             // Refresh list
             fetchStudents();
             setActionMenuId(null);
+            showNotification(`${studentName} deleted successfully.`, 'success');
         } catch (error) {
             console.error('Error deleting student:', error);
-            alert('Failed to delete student. Please try again.');
+            showNotification('Failed to delete student. Please try again.', 'error');
         }
     };
 

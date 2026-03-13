@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { UserCheck, Clock, ShieldAlert, CheckCircle2, XCircle, Save, RotateCcw, Search, Filter, AlertCircle, RefreshCw } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { useNotification } from '../../contexts/NotificationContext';
 
 const StudentPermissions = () => {
     const [saving, setSaving] = useState(false);
     const [pendingStudents, setPendingStudents] = useState([]);
     const [loadingRequests, setLoadingRequests] = useState(true);
+    const { showNotification, showModal } = useNotification();
     
     // Mock settings for student groups
     const [settings, setSettings] = useState({
@@ -13,13 +15,15 @@ const StudentPermissions = () => {
             autoApproveOutpass: true,
             allowLateEntry: false,
             nightPassEnabled: false,
-            maxOutingsPerWeek: 14
+            monthlyInLimit: 60,
+            monthlyOutLimit: 60
         },
         hostellers: {
             autoApproveOutpass: false,
             allowLateEntry: true,
             nightPassEnabled: true,
-            maxOutingsPerWeek: 4
+            monthlyInLimit: 12,
+            monthlyOutLimit: 12
         }
     });
 
@@ -69,15 +73,23 @@ const StudentPermissions = () => {
             if (error) throw error;
 
             setPendingStudents(prev => prev.filter(s => s.id !== studentId));
-            alert(`${studentName}'s account has been approved.`);
+            showNotification(`${studentName}'s account has been approved.`, 'success');
         } catch (err) {
             console.error(err);
-            alert('Failed to approve student.');
+            showNotification('Failed to approve student.', 'error');
         }
     };
 
     const handleReject = async (studentId, studentName) => {
-        if (!window.confirm(`Are you sure you want to reject and delete the request for ${studentName}?`)) return;
+        const confirmed = await showModal({
+            title: 'Reject Request',
+            message: `Are you sure you want to reject and delete the request for ${studentName}?`,
+            confirmText: 'Reject',
+            cancelText: 'Cancel',
+            type: 'warning'
+        });
+
+        if (!confirmed) return;
 
         try {
             const { error } = await supabase
@@ -88,10 +100,10 @@ const StudentPermissions = () => {
             if (error) throw error;
 
             setPendingStudents(prev => prev.filter(s => s.id !== studentId));
-            alert(`${studentName}'s request has been rejected.`);
+            showNotification(`${studentName}'s request has been rejected.`, 'success');
         } catch (err) {
             console.error(err);
-            alert('Failed to reject student.');
+            showNotification('Failed to reject student.', 'error');
         }
     };
 
@@ -179,24 +191,47 @@ const StudentPermissions = () => {
                             </div>
 
                             <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100/50">
-                                <p className="font-bold text-[#1a2b3c] text-sm mb-3">Weekly Outing Limit</p>
+                                <p className="font-bold text-[#1a2b3c] text-sm mb-3 text-emerald-600">Monthly In Limit</p>
                                 <div className="flex items-center gap-4">
                                     <input 
                                         type="range" 
                                         min="0" 
-                                        max="21" 
-                                        className="flex-1 accent-[#f47c20]"
-                                        value={groupSettings.maxOutingsPerWeek}
+                                        max="100" 
+                                        className="flex-1 accent-emerald-500"
+                                        value={groupSettings.monthlyInLimit}
                                         onChange={(e) => {
                                             const val = parseInt(e.target.value);
                                             setSettings(prev => ({
                                                 ...prev,
-                                                [group]: { ...prev[group], maxOutingsPerWeek: val }
+                                                [group]: { ...prev[group], monthlyInLimit: val }
                                             }));
                                         }}
                                     />
-                                    <span className="w-12 text-center font-black text-[#f47c20] bg-white border border-gray-100 py-1 rounded-lg text-xs shadow-sm">
-                                        {groupSettings.maxOutingsPerWeek}
+                                    <span className="w-12 text-center font-black text-emerald-600 bg-white border border-gray-100 py-1 rounded-lg text-xs shadow-sm">
+                                        {groupSettings.monthlyInLimit}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100/50">
+                                <p className="font-bold text-[#1a2b3c] text-sm mb-3 text-orange-600">Monthly Out Limit</p>
+                                <div className="flex items-center gap-4">
+                                    <input 
+                                        type="range" 
+                                        min="0" 
+                                        max="100" 
+                                        className="flex-1 accent-orange-500"
+                                        value={groupSettings.monthlyOutLimit}
+                                        onChange={(e) => {
+                                            const val = parseInt(e.target.value);
+                                            setSettings(prev => ({
+                                                ...prev,
+                                                [group]: { ...prev[group], monthlyOutLimit: val }
+                                            }));
+                                        }}
+                                    />
+                                    <span className="w-12 text-center font-black text-orange-600 bg-white border border-gray-100 py-1 rounded-lg text-xs shadow-sm">
+                                        {groupSettings.monthlyOutLimit}
                                     </span>
                                 </div>
                             </div>

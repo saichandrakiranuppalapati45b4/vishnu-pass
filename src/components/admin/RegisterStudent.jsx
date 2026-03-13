@@ -3,6 +3,7 @@ import { User, GraduationCap, Camera, ChevronDown, Loader2, Lock } from 'lucide-
 import { createClient } from '@supabase/supabase-js';
 import { supabase } from '../../lib/supabase';
 import { logAuditAction } from '../../utils/auditLogger';
+import { useNotification } from '../../contexts/NotificationContext';
 
 // Custom Dropdown Component
 const CustomSelect = ({ label, value, options, placeholder = 'Select', onChange }) => {
@@ -107,6 +108,7 @@ const RegisterStudent = ({ onCancel }) => {
     const [photoPreview, setPhotoPreview] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState(null);
+    const { showNotification } = useNotification();
     const fileInputRef = useRef(null);
 
     // Fetch live departments from Supabase
@@ -215,7 +217,7 @@ const RegisterStudent = ({ onCancel }) => {
             });
 
             // Success
-            alert('Student registered successfully! The account is now pending administrator approval.');
+            showNotification('Student registered successfully! The account is now pending administrator approval.', 'success');
             onCancel();
         } catch (err) {
             console.error("Error registering student:", err);

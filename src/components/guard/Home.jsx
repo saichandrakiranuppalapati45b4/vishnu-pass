@@ -38,7 +38,7 @@ const GuardHome = ({ guardData }) => {
             // ALWAYS fetch fresh session data
             const { data: sessionInfo, error: sessionErr } = await supabase
                 .from('scan_sessions')
-                .select('student_id, gate_id')
+                .select('student_id, gate_id, movement_type')
                 .eq('id', sessionId)
                 .single();
 
@@ -70,7 +70,7 @@ const GuardHome = ({ guardData }) => {
                         user_name: student.full_name,
                         student_id: student.student_id,
                         access_point_id: guardData.gate_id,
-                        movement_type: 'AUTHORIZED',
+                        movement_type: sessionInfo.movement_type || 'AUTHORIZED',
                         status: 'Success'
                     });
                 }
@@ -399,7 +399,15 @@ const GuardHome = ({ guardData }) => {
                                     </div>
                                     <div>
                                         <h4 className="text-sm font-black text-gray-800 leading-none mb-1">{req.students?.full_name}</h4>
-                                        <p className="text-[10px] font-bold text-[#f47c20] uppercase tracking-widest">{req.students?.student_id}</p>
+                                        <div className="flex items-center gap-2">
+                                            <p className="text-[10px] font-bold text-[#f47c20] uppercase tracking-widest">{req.students?.student_id}</p>
+                                            <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-md uppercase ${
+                                                req.movement_type === 'IN' ? 'bg-emerald-100 text-emerald-600' : 
+                                                req.movement_type === 'OUT' ? 'bg-orange-100 text-orange-600' : 'bg-gray-100 text-gray-600'
+                                            }`}>
+                                                {req.movement_type}
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
                                 <button

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Settings as SettingsIcon, Palette, User, Upload, ChevronDown, Building2, Plus, X, Shield, Loader2, CheckCircle2, ShieldCheck, Clock } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { logAuditAction } from '../../utils/auditLogger';
+import { useNotification } from '../../contexts/NotificationContext';
 
 // Custom Time Picker Component to seamlessly match brand colors
 const CustomTimePicker = ({ value, onChange, placeholder }) => {
@@ -95,6 +96,7 @@ const CustomTimePicker = ({ value, onChange, placeholder }) => {
 const SettingsPage = ({ onNavigate, branding, onBrandingUpdate }) => {
     const logoInputRef = React.useRef(null);
     const loginBgInputRef = React.useRef(null);
+    const { showNotification, showModal } = useNotification();
 
     const [notifications, setNotifications] = useState({
         emailAlerts: true,
@@ -208,7 +210,7 @@ const SettingsPage = ({ onNavigate, branding, onBrandingUpdate }) => {
 
         } catch (err) {
             console.error('Error uploading branding asset:', err);
-            alert('Failed to upload image. Please try again.');
+            showNotification('Failed to upload image. Please try again.', 'error');
         } finally {
             setUploading(false);
         }
@@ -377,9 +379,10 @@ const SettingsPage = ({ onNavigate, branding, onBrandingUpdate }) => {
 
             setProfileSaveSuccess(true);
             setTimeout(() => setProfileSaveSuccess(false), 3000);
+            showNotification('Profile updated successfully.', 'success');
         } catch (err) {
             console.error('Error saving profile:', err);
-            alert('Failed to save profile name. Please try again.');
+            showNotification('Failed to save profile name. Please try again.', 'error');
         } finally {
             setIsSavingProfile(false);
         }

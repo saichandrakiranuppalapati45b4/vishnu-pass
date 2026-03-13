@@ -29,7 +29,9 @@ const Reports = () => {
         total: 0,
         weeklyIncrease: 0,
         peakHour: 'N/A',
-        peakHourEntries: 0
+        peakHourEntries: 0,
+        monthlyIn: 0,
+        monthlyOut: 0
     });
     const [accessTypes, setAccessTypes] = useState({
         authorized: 0,
@@ -84,7 +86,21 @@ const Reports = () => {
                 total,
                 weeklyIncrease: weeklyInc.toFixed(1),
                 peakHour: peakHourStr,
-                peakHourEntries: peakHourId in hourCounts ? Math.round(hourCounts[peakHourId] / 7) : 0
+                peakHourEntries: peakHourId in hourCounts ? Math.round(hourCounts[peakHourId] / 7) : 0,
+                monthlyIn: allLogs.filter(l => {
+                    const date = new Date(l.created_at);
+                    const isThisMonth = date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+                    if (!isThisMonth) return false;
+                    const type = (l.movement_type || '').toLowerCase();
+                    return type.includes('entry') || type.includes('authorized') || type.includes('in');
+                }).length,
+                monthlyOut: allLogs.filter(l => {
+                    const date = new Date(l.created_at);
+                    const isThisMonth = date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+                    if (!isThisMonth) return false;
+                    const type = (l.movement_type || '').toLowerCase();
+                    return !(type.includes('entry') || type.includes('authorized') || type.includes('in'));
+                }).length
             });
 
             // 3. Access Types
@@ -207,10 +223,17 @@ const Reports = () => {
                         </div>
                     </div>
                     <h3 className="text-[28px] font-bold text-gray-900 leading-tight mb-1">{stats.total.toLocaleString()}</h3>
-                    <p className={`text-xs font-semibold flex items-center gap-1 ${parseFloat(stats.weeklyIncrease) >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                        <ArrowUpRight className={`w-3 h-3 ${parseFloat(stats.weeklyIncrease) < 0 ? 'rotate-90' : ''}`} />
-                        {stats.weeklyIncrease}% from last week
-                    </p>
+                    <div className="flex items-center gap-4 mt-2 mb-1">
+                        <div>
+                            <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-tight">Monthly In</p>
+                            <p className="text-lg font-black text-emerald-600">{stats.monthlyIn.toLocaleString()}</p>
+                        </div>
+                        <div className="w-px h-8 bg-gray-100"></div>
+                        <div>
+                            <p className="text-[10px] font-bold text-orange-500 uppercase tracking-tight">Monthly Out</p>
+                            <p className="text-lg font-black text-orange-600">{stats.monthlyOut.toLocaleString()}</p>
+                        </div>
+                    </div>
                 </div>
 
                 {/* Peak Hour */}

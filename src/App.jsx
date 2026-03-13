@@ -5,6 +5,8 @@ import Dashboard from './components/admin/Dashboard';
 import StudentDashboard from './components/student/StudentDashboard';
 import GuardDashboard from './components/guard/GuardDashboard';
 import { supabase } from './lib/supabase';
+import { LanguageProvider } from './contexts/LanguageContext';
+import { NotificationProvider } from './contexts/NotificationContext';
 
 function App() {
   const [showSplash, setShowSplash] = useState(true);
@@ -191,25 +193,27 @@ function App() {
   };
 
   return (
-    <>
-      {showSplash ? (
-        <SplashScreen onFinish={() => setShowSplash(false)} branding={branding} />
-      ) : isAuthLoading ? (
-        <div className="flex items-center justify-center min-h-screen bg-[#f9fafb]">
-          <div className="w-10 h-10 border-4 border-[#f47c20] border-t-transparent rounded-full animate-spin"></div>
-        </div>
-      ) : isLoggedIn ? (
-        userRole === 'admin' ? (
-          <Dashboard onLogout={handleLogout} branding={branding} onBrandingUpdate={handleBrandingUpdate} adminData={userData} />
-        ) : userRole === 'guard' ? (
-          <GuardDashboard onLogout={handleLogout} guardData={userData} />
+    <LanguageProvider>
+      <NotificationProvider>
+        {showSplash ? (
+          <SplashScreen onFinish={() => setShowSplash(false)} branding={branding} />
+        ) : isAuthLoading ? (
+          <div className="flex items-center justify-center min-h-screen bg-[#f9fafb]">
+            <div className="w-10 h-10 border-4 border-[#f47c20] border-t-transparent rounded-full animate-spin"></div>
+          </div>
+        ) : isLoggedIn ? (
+          userRole === 'admin' ? (
+            <Dashboard onLogout={handleLogout} branding={branding} onBrandingUpdate={handleBrandingUpdate} adminData={userData} />
+          ) : userRole === 'guard' ? (
+            <GuardDashboard onLogout={handleLogout} guardData={userData} />
+          ) : (
+            <StudentDashboard onLogout={handleLogout} studentData={userData} />
+          )
         ) : (
-          <StudentDashboard onLogout={handleLogout} studentData={userData} />
-        )
-      ) : (
-        <LoginScreen onLogin={handleLogin} branding={branding} />
-      )}
-    </>
+          <LoginScreen onLogin={handleLogin} branding={branding} />
+        )}
+      </NotificationProvider>
+    </LanguageProvider>
   )
 }
 

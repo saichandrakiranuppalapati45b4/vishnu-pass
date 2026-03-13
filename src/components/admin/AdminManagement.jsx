@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { UserPlus, Download, Filter, Shield, Loader2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { logAuditAction } from '../../utils/auditLogger';
+import { useNotification } from '../../contexts/NotificationContext';
 import AddAdminModal from './AddAdminModal';
 
 // Helper to generate initials from name
@@ -28,6 +29,7 @@ const getAvatarColor = (name) => {
 const AdminManagement = ({ onNavigate, currentAdmin }) => {
     const [admins, setAdmins] = useState([]);
     const [loading, setLoading] = useState(true);
+    const { showNotification, showModal } = useNotification();
     const [showAddModal, setShowAddModal] = useState(false);
     const [editingRoleId, setEditingRoleId] = useState(null);
     const [updating, setUpdating] = useState(null);
@@ -86,7 +88,7 @@ const AdminManagement = ({ onNavigate, currentAdmin }) => {
             } : a));
         } catch (err) {
             console.error("Error toggling status:", err);
-            alert("Failed to update status.");
+            showNotification("Failed to update status.", "error");
         } finally {
             setUpdating(null);
         }
@@ -112,7 +114,7 @@ const AdminManagement = ({ onNavigate, currentAdmin }) => {
             setEditingRoleId(null);
         } catch (err) {
             console.error("Error updating role:", err);
-            alert("Failed to update role.");
+            showNotification("Failed to update role.", "error");
         } finally {
             setUpdating(null);
         }
@@ -126,12 +128,23 @@ const AdminManagement = ({ onNavigate, currentAdmin }) => {
         const currentEmail = currentAdmin?.email?.toLowerCase().trim();
 
         if (currentEmail !== ownerEmail) {
-            alert(`Permission Denied!\nLogged in as: ${currentEmail || 'Unknown'}\nOnly ${ownerEmail} can delete administrators.`);
+            showModal({
+                title: 'Permission Denied',
+                message: `Only ${ownerEmail} can delete administrators. (Logged in as: ${currentEmail || 'Unknown'})`,
+                type: 'error'
+            });
             return;
         }
 
-        const msg = `Are you sure you want to PERMANENTLY delete administrator ${name} (${email || 'no email'})?\n\nThis action will also remove them from Supabase Authentication.`;
-        if (!window.confirm(msg)) {
+        const confirmed = await showModal({
+            title: 'Delete Administrator',
+            message: `Are you sure you want to PERMANENTLY delete administrator ${name} (${email || 'no email'})? This action will also remove them from Supabase Authentication.`,
+            confirmText: 'Delete',
+            cancelText: 'Cancel',
+            type: 'warning'
+        });
+
+        if (!confirmed) {
             return;
         }
 
@@ -150,12 +163,14 @@ const AdminManagement = ({ onNavigate, currentAdmin }) => {
                 details: { admin_id: id, email }
             });
 
-            // Remove from local state
-            setAdmins(admins.filter(a => a.id !== id));
-            alert("Administrator deleted successfully.");
+            if (data?.success || !error) {
+                showNotification("Administrator deleted successfully.", "success");
+                // Remove from local state
+                setAdmins(admins.filter(a => a.id !== id));
+            }
         } catch (err) {
             console.error("Error deleting admin:", err);
-            alert(`Failed to delete admin: ${err.message || "Unknown error"}`);
+            showNotification(`Failed to delete admin: ${err.message || "Unknown error"}`, "error");
         } finally {
             setUpdating(null);
         }
@@ -231,7 +246,7 @@ const AdminManagement = ({ onNavigate, currentAdmin }) => {
                                 // Exclude primary admin from download for security
                                 const exportData = admins.filter(a => a.email !== 'saichandrakiranuppalapati@gmail.com');
                                 console.log("Exporting sensitive-cleaned admin list:", exportData);
-                                alert("Admin list (excluding primary admin) ready for export.");
+                                showNotification("Admin list (excluding primary admin) ready for export.", "success");
                             }}
                             className="p-2.5 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-xl transition-colors"
                         >

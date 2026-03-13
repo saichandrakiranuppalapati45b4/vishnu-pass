@@ -4,6 +4,7 @@ import RegisterGuard from './RegisterGuard';
 import GuardProfile from './GuardProfile';
 import { supabase } from '../../lib/supabase';
 import { formatDistanceToNow } from 'date-fns';
+import { useNotification } from '../../contexts/NotificationContext';
 
 // Helper function to generate a consistent color from a name
 const stringToColor = (name) => {
@@ -27,6 +28,7 @@ const GuardManagement = () => {
     const [editGuardData, setEditGuardData] = useState(null);
     const [guards, setGuards] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
+    const { showNotification, showModal } = useNotification();
 
     const tabs = [
         { key: 'all', label: 'All Guards' },
@@ -81,15 +83,25 @@ const GuardManagement = () => {
     const handleDeleteGuard = async (e, guardId) => {
         e.stopPropagation();
         setOpenDropdownId(null);
-        if (window.confirm("Are you sure you want to delete this guard profile?")) {
+
+        const confirmed = await showModal({
+            title: 'Delete Guard',
+            message: "Are you sure you want to delete this guard profile? This action cannot be undone.",
+            confirmText: 'Delete',
+            cancelText: 'Cancel',
+            type: 'warning'
+        });
+
+        if (confirmed) {
             // Delete logic would go here
             try {
                 const { error } = await supabase.from('guards').delete().eq('id', guardId);
                 if (error) throw error;
                 fetchGuards();
+                showNotification('Guard profile deleted successfully.', 'success');
             } catch (err) {
                 console.error("Error deleting guard:", err);
-                alert("Failed to delete guard.");
+                showNotification("Failed to delete guard.", "error");
             }
         }
     };
