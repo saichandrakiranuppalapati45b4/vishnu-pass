@@ -70,13 +70,27 @@ function App() {
             .single();
 
           if (studentData) {
-            if (studentData.status === 'Pending') {
+            if (studentData.status === 'Approved') {
+              // Automatically transition back to Active if they were approved
+              await supabase
+                .from('students')
+                .update({ 
+                  status: 'Active',
+                  login_requested_at: null
+                })
+                .eq('id', studentData.id);
+              finalRole = 'student';
+              finalData = { ...studentData, status: 'Active' };
+            } else if (studentData.status === 'Active') {
+              // Already active, allow session restoration
+              finalRole = 'student';
+              finalData = studentData;
+            } else {
+              // Pending or Logged Out - force logout
               await supabase.auth.signOut();
               setIsAuthLoading(false);
               return;
             }
-            finalRole = 'student';
-            finalData = studentData;
           }
         }
 
@@ -156,6 +170,20 @@ function App() {
   };
 
   const handleLogout = async () => {
+    if (userRole === 'student' && userData?.id) {
+      try {
+        await supabase
+          .from('students')
+          .update({ 
+            status: 'Logged Out',
+            login_requested_at: null 
+          })
+          .eq('id', userData.id);
+      } catch (err) {
+        console.error("Error resetting student status on logout:", err);
+      }
+    }
+
     await supabase.auth.signOut();
     setUserRole(null);
     setUserData(null);

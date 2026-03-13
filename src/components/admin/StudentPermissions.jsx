@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { UserCheck, Clock, ShieldAlert, CheckCircle2, XCircle, Save, RotateCcw, Search, Filter, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { UserCheck, Clock, ShieldAlert, CheckCircle2, XCircle, Save, RotateCcw, Search, Filter, AlertCircle, RefreshCw } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 const StudentPermissions = () => {
@@ -40,28 +40,30 @@ const StudentPermissions = () => {
     };
 
     // Fetch pending students
-    useEffect(() => {
-        const fetchPending = async () => {
-            const { data, error } = await supabase
-                .from('students')
-                .select('*, departments(name)')
-                .eq('status', 'Pending')
-                .not('login_requested_at', 'is', null)
-                .order('login_requested_at', { ascending: false });
+    const fetchPending = useCallback(async () => {
+        setLoadingRequests(true);
+        const { data, error } = await supabase
+            .from('students')
+            .select('*, departments(name)')
+            .in('status', ['Pending', 'Logged Out'])
+            .not('login_requested_at', 'is', null)
+            .order('login_requested_at', { ascending: false });
 
-            if (!error && data) {
-                setPendingStudents(data);
-            }
-            setLoadingRequests(false);
-        };
-        fetchPending();
+        if (!error && data) {
+            setPendingStudents(data);
+        }
+        setLoadingRequests(false);
     }, []);
+
+    useEffect(() => {
+        fetchPending();
+    }, [fetchPending]);
 
     const handleApprove = async (studentId, studentName) => {
         try {
             const { error } = await supabase
                 .from('students')
-                .update({ status: 'Active' })
+                .update({ status: 'Approved' })
                 .eq('id', studentId);
 
             if (error) throw error;
@@ -99,9 +101,9 @@ const StudentPermissions = () => {
             <div className="mb-8 flex items-center justify-between">
                 <div>
                     <h1 className="text-[26px] font-bold text-gray-900 mb-1 italic">Student Permissions</h1>
-                    <p className="text-sm text-gray-500 font-medium text-left">Configure gate pass policies and handle student approval requests.</p>
+                    <p className="text-sm text-gray-500 font-medium">Manage institutional student permissions and login approval requests.</p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex gap-3">
                     <button className="p-2.5 bg-white border border-gray-100 rounded-xl text-gray-400 hover:text-gray-600 shadow-sm transition-all active:rotate-180 duration-500">
                         <RotateCcw className="w-5 h-5" />
                     </button>
@@ -210,6 +212,13 @@ const StudentPermissions = () => {
                             <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mt-0.5">Approve or reject student login requests</p>
                         </div>
                         <div className="flex items-center gap-3">
+                            <button 
+                                onClick={fetchPending}
+                                className="p-2.5 bg-[#f8fafc] border border-gray-100 rounded-xl text-gray-400 hover:text-[#f47c20] hover:bg-orange-50/50 transition-all active:scale-95 group"
+                                title="Refresh Requests"
+                            >
+                                <RefreshCw className={`w-4 h-4 ${loadingRequests ? 'animate-spin text-[#f47c20]' : ''}`} />
+                            </button>
                             <div className="relative">
                                 <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
                                 <input 

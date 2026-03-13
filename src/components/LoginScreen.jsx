@@ -54,11 +54,31 @@ const LoginScreen = ({ onLogin, branding }) => {
                     .single();
 
                 if (studentData) {
-                    if (studentData.status === 'Pending') {
-                        // Mark as login requested
+                    if (studentData.status === 'Approved') {
+                        // Transition to Active once they log in
                         await supabase
                             .from('students')
-                            .update({ login_requested_at: new Date().toISOString() })
+                            .update({ 
+                                status: 'Active',
+                                login_requested_at: null 
+                            })
+                            .eq('id', studentData.id);
+                        
+                        finalRole = 'student';
+                        finalData = { ...studentData, status: 'Active' };
+                    } else {
+                        // If status is Active (stale session), Pending, or Logged Out, 
+                        // they MUST wait for approval.
+                        
+                        // Treat Active as Logged Out for the sake of triggering a fresh request
+                        const newStatus = studentData.status === 'Active' ? 'Logged Out' : studentData.status;
+
+                        await supabase
+                            .from('students')
+                            .update({ 
+                                status: newStatus,
+                                login_requested_at: new Date().toISOString() 
+                            })
                             .eq('id', studentData.id);
 
                         setError('Your request has been passed to the administrator. Please wait for approval before logging in.');
@@ -66,8 +86,6 @@ const LoginScreen = ({ onLogin, branding }) => {
                         setLoading(false);
                         return;
                     }
-                    finalRole = 'student';
-                    finalData = studentData;
                 }
             }
 
