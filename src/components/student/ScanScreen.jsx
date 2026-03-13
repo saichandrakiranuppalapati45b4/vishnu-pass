@@ -91,7 +91,7 @@ const ScanScreen = ({ studentData, onBack }) => {
             const policies = policyData?.value;
             if (policies) {
                 // Determine limits based on student category
-                const category = studentData.hostel_type === 'hosteler' ? 'hostellers' : 'dayscholars';
+                const category = studentData.hostel_type === 'hosteler' ? 'hosteler' : 'dayscholar';
                 const limit = movementType === 'IN' ? policies[category].monthlyInLimit : policies[category].monthlyOutLimit;
                 
                 // 2. Count current month movements

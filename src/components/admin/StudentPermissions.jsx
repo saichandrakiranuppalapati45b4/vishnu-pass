@@ -9,23 +9,24 @@ const StudentPermissions = () => {
     const [loadingRequests, setLoadingRequests] = useState(true);
     const { showNotification, showModal } = useNotification();
     
-    // Mock settings for student groups
-    const [settings, setSettings] = useState({
-        dayscholars: {
+    const initialSettings = {
+        dayscholar: {
             autoApproveOutpass: true,
             allowLateEntry: false,
             nightPassEnabled: false,
             monthlyInLimit: 60,
             monthlyOutLimit: 60
         },
-        hostellers: {
+        hosteler: {
             autoApproveOutpass: false,
             allowLateEntry: true,
             nightPassEnabled: true,
             monthlyInLimit: 12,
             monthlyOutLimit: 12
         }
-    });
+    };
+
+    const [settings, setSettings] = useState(initialSettings);
 
     const handleToggle = (group, key) => {
         setSettings(prev => ({
@@ -41,11 +42,29 @@ const StudentPermissions = () => {
         try {
             setSaving(true);
             
+            // Explicitly construct the value object to ensure clean data
+            const policiesToSave = {
+                dayscholar: {
+                    autoApproveOutpass: settings.dayscholar.autoApproveOutpass,
+                    allowLateEntry: settings.dayscholar.allowLateEntry,
+                    nightPassEnabled: settings.dayscholar.nightPassEnabled,
+                    monthlyInLimit: settings.dayscholar.monthlyInLimit,
+                    monthlyOutLimit: settings.dayscholar.monthlyOutLimit
+                },
+                hosteler: {
+                    autoApproveOutpass: settings.hosteler.autoApproveOutpass,
+                    allowLateEntry: settings.hosteler.allowLateEntry,
+                    nightPassEnabled: settings.hosteler.nightPassEnabled,
+                    monthlyInLimit: settings.hosteler.monthlyInLimit,
+                    monthlyOutLimit: settings.hosteler.monthlyOutLimit
+                }
+            };
+
             const { error } = await supabase
                 .from('portal_settings')
                 .upsert({ 
                     key: 'student_policies', 
-                    value: settings 
+                    value: policiesToSave
                 }, { onConflict: 'key' });
 
             if (error) throw error;
@@ -53,7 +72,7 @@ const StudentPermissions = () => {
             showNotification('Student policies updated successfully.', 'success');
         } catch (err) {
             console.error('Error saving policies:', err);
-            showNotification('Failed to save policies. Please try again.', 'error');
+            showNotification(`Failed to save policies: ${err.message}`, 'error');
         } finally {
             setSaving(false);
         }
@@ -63,15 +82,36 @@ const StudentPermissions = () => {
     const fetchData = useCallback(async () => {
         setLoadingRequests(true);
         
-        // 1. Fetch Policies
-        const { data: policyData } = await supabase
-            .from('portal_settings')
-            .select('value')
-            .eq('key', 'student_policies')
-            .single();
-        
-        if (policyData?.value) {
-            setSettings(policyData.value);
+        try {
+            // 1. Fetch Policies - Use order and limit instead of single for resilience
+            const { data: policiesList, error: fetchError } = await supabase
+                .from('portal_settings')
+                .select('value')
+                .eq('key', 'student_policies')
+                .order('created_at', { ascending: false })
+                .limit(1);
+            
+            if (fetchError) throw fetchError;
+
+            if (policiesList && policiesList.length > 0) {
+                const val = policiesList[0].value;
+                if (val && typeof val === 'object') {
+                    // Robust normalization: support old plural keys and merge with defaults
+                    setSettings({
+                        dayscholar: {
+                            ...initialSettings.dayscholar,
+                            ...(val.dayscholar || val.dayscholars || {})
+                        },
+                        hosteler: {
+                            ...initialSettings.hosteler,
+                            ...(val.hosteler || val.hostellers || {})
+                        }
+                    });
+                }
+            }
+        } catch (err) {
+            console.error('Error fetching policies:', err);
+            // Don't show error notification on mount, just use defaults
         }
 
         // 2. Fetch Pending Students
@@ -165,11 +205,14 @@ const StudentPermissions = () => {
 
             <div className="grid grid-cols-2 gap-8">
                 {/* Group Policy Cards */}
-                {Object.entries(settings).map(([group, groupSettings]) => (
-                    <div key={group} className="bg-white rounded-[32px] border border-gray-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] p-8">
+                {['dayscholar', 'hosteler'].map(group => {
+                    const groupSettings = settings[group];
+                    if (!groupSettings) return null;
+                    return (
+                        <div key={group} className="bg-white rounded-[32px] border border-gray-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] p-8">
                         <div className="flex items-center gap-4 mb-8">
                             <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
-                                group === 'dayscholars' ? 'bg-blue-50 text-blue-600' : 'bg-purple-50 text-purple-600'
+                                group === 'dayscholar' ? 'bg-blue-50 text-blue-600' : 'bg-purple-50 text-purple-600'
                             }`}>
                                 <UserCheck className="w-6 h-6" />
                             </div>
@@ -266,7 +309,8 @@ const StudentPermissions = () => {
                             </div>
                         </div>
                     </div>
-                ))}
+                    );
+                })}
 
                 {/* Pending Approval Requests */}
                 <div className="col-span-2 bg-white rounded-[32px] border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-8">
