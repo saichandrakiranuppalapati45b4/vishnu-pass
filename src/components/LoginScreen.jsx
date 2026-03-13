@@ -53,6 +53,12 @@ const LoginScreen = ({ onLogin, branding }) => {
                     .single();
 
                 if (studentData) {
+                    if (studentData.status === 'Pending') {
+                        setError('Your request has been passed to the administrator. Please wait for approval before logging in.');
+                        await supabase.auth.signOut();
+                        setLoading(false);
+                        return;
+                    }
                     onLogin('student', studentData);
                     setLoading(false);
                     return;

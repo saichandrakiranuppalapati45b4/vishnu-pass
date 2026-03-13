@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { UserCheck, Clock, ShieldAlert, CheckCircle2, XCircle, Save, RotateCcw, Search, Filter, AlertCircle } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
 
 const StudentPermissions = () => {
     const [saving, setSaving] = useState(false);
+    const [pendingStudents, setPendingStudents] = useState([]);
+    const [loadingRequests, setLoadingRequests] = useState(true);
     
     // Mock settings for student groups
     const [settings, setSettings] = useState({
@@ -36,13 +39,66 @@ const StudentPermissions = () => {
         setSaving(false);
     };
 
+    // Fetch pending students
+    useEffect(() => {
+        const fetchPending = async () => {
+            const { data, error } = await supabase
+                .from('students')
+                .select('*, departments(name)')
+                .eq('status', 'Pending')
+                .order('created_at', { ascending: false });
+
+            if (!error && data) {
+                setPendingStudents(data);
+            }
+            setLoadingRequests(false);
+        };
+        fetchPending();
+    }, []);
+
+    const handleApprove = async (studentId, studentName) => {
+        try {
+            const { error } = await supabase
+                .from('students')
+                .update({ status: 'Active' })
+                .eq('id', studentId);
+
+            if (error) throw error;
+
+            setPendingStudents(prev => prev.filter(s => s.id !== studentId));
+            alert(`${studentName}'s account has been approved.`);
+        } catch (err) {
+            console.error(err);
+            alert('Failed to approve student.');
+        }
+    };
+
+    const handleReject = async (studentId, studentName) => {
+        if (!window.confirm(`Are you sure you want to reject and delete the request for ${studentName}?`)) return;
+
+        try {
+            const { error } = await supabase
+                .from('students')
+                .delete()
+                .eq('id', studentId);
+
+            if (error) throw error;
+
+            setPendingStudents(prev => prev.filter(s => s.id !== studentId));
+            alert(`${studentName}'s request has been rejected.`);
+        } catch (err) {
+            console.error(err);
+            alert('Failed to reject student.');
+        }
+    };
+
     return (
         <div className="flex-1 overflow-y-auto p-8 bg-[#f8f9fb]">
             {/* Header */}
             <div className="mb-8 flex items-center justify-between">
                 <div>
                     <h1 className="text-[26px] font-bold text-gray-900 mb-1 italic">Student Permissions</h1>
-                    <p className="text-sm text-gray-500 font-medium text-left">Configure gate pass policies and attendance rules for student categories.</p>
+                    <p className="text-sm text-gray-500 font-medium text-left">Configure gate pass policies and handle student approval requests.</p>
                 </div>
                 <div className="flex items-center gap-3">
                     <button className="p-2.5 bg-white border border-gray-100 rounded-xl text-gray-400 hover:text-gray-600 shadow-sm transition-all active:rotate-180 duration-500">
@@ -145,12 +201,12 @@ const StudentPermissions = () => {
                     </div>
                 ))}
 
-                {/* Individual Exceptions Placeholder */}
+                {/* Pending Approval Requests */}
                 <div className="col-span-2 bg-white rounded-[32px] border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-8">
                     <div className="flex items-center justify-between mb-8">
                         <div>
-                            <h3 className="text-lg font-black text-[#1a2b3c]">Individual Override List</h3>
-                            <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mt-0.5">Special Permissions & Restrictions</p>
+                            <h3 className="text-lg font-black text-[#1a2b3c]">Pending Approval Requests</h3>
+                            <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mt-0.5">Approve or reject student login requests</p>
                         </div>
                         <div className="flex items-center gap-3">
                             <div className="relative">
@@ -161,19 +217,74 @@ const StudentPermissions = () => {
                                     className="pl-9 pr-4 py-2 bg-[#f8fafc] border border-gray-100 rounded-xl text-xs font-bold w-64 focus:outline-none focus:ring-2 focus:ring-[#f47c20]/10"
                                 />
                             </div>
-                            <button className="flex items-center gap-2 px-4 py-2 bg-[#f8fafc] border border-gray-100 rounded-xl text-[10px] font-black uppercase tracking-wider text-gray-400">
-                                <Filter className="w-3 h-3" /> Filter
-                            </button>
                         </div>
                     </div>
 
-                    <div className="flex flex-col items-center justify-center py-16 border-2 border-dashed border-gray-100 rounded-[24px] bg-gray-50/30">
-                        <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-sm mb-4">
-                            <ShieldAlert className="w-8 h-8 text-gray-200" />
+                    {loadingRequests ? (
+                        <div className="flex flex-col items-center justify-center py-20">
+                            <div className="w-8 h-8 border-4 border-[#f47c20] border-t-transparent rounded-full animate-spin mb-4"></div>
+                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Fetching requests...</p>
                         </div>
-                        <h4 className="text-sm font-black text-gray-900 uppercase tracking-tight">No Active Exceptions</h4>
-                        <p className="text-xs text-gray-400 font-medium mt-1">Search and select a student above to add a unique permission override.</p>
-                    </div>
+                    ) : pendingStudents.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-16 border-2 border-dashed border-gray-100 rounded-[24px] bg-gray-50/30">
+                            <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-sm mb-4">
+                                <UserCheck className="w-8 h-8 text-gray-200" />
+                            </div>
+                            <h4 className="text-sm font-black text-gray-900 uppercase tracking-tight">No Pending Requests</h4>
+                            <p className="text-xs text-gray-400 font-medium mt-1">All student accounts are currently processed.</p>
+                        </div>
+                    ) : (
+                        <div className="overflow-hidden border border-gray-100 rounded-2xl">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-gray-50 border-b border-gray-100">
+                                        <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Student Details</th>
+                                        <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Department & Year</th>
+                                        <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-50">
+                                    {pendingStudents.map(student => (
+                                        <tr key={student.id} className="hover:bg-gray-50/50 transition-colors">
+                                            <td className="px-6 py-5">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center font-bold text-[#f47c20]">
+                                                        {student.full_name?.charAt(0) || '?'}
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-sm font-black text-[#1a2b3c]">{student.full_name}</p>
+                                                        <p className="text-[11px] text-gray-400 font-bold uppercase">{student.student_id}</p>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-5">
+                                                <p className="text-sm font-bold text-gray-700">{student.departments?.name || 'Unknown'}</p>
+                                                <p className="text-[11px] text-gray-400 font-medium">{student.year_of_study} Year</p>
+                                            </td>
+                                            <td className="px-6 py-5 text-right">
+                                                <div className="flex items-center justify-end gap-2">
+                                                    <button 
+                                                        onClick={() => handleReject(student.id, student.full_name)}
+                                                        className="p-2 text-rose-500 hover:bg-rose-50 rounded-xl transition-colors"
+                                                        title="Reject Request"
+                                                    >
+                                                        <XCircle className="w-5 h-5" />
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => handleApprove(student.id, student.full_name)}
+                                                        className="p-2 text-emerald-500 hover:bg-emerald-50 rounded-xl transition-colors"
+                                                        title="Approve Request"
+                                                    >
+                                                        <CheckCircle2 className="w-5 h-5" />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
                 </div>
             </div>
 

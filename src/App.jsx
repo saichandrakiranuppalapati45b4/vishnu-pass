@@ -71,6 +71,11 @@ function App() {
             .single();
 
           if (studentData && mounted) {
+            if (studentData.status === 'Pending') {
+              await supabase.auth.signOut();
+              setIsAuthLoading(false);
+              return;
+            }
             setUserRole('student');
             setUserData(studentData);
             setIsLoggedIn(true);
