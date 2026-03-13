@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { User, GraduationCap, Camera, ChevronDown, Loader2, Lock } from 'lucide-react';
+import { createClient } from '@supabase/supabase-js';
 import { supabase } from '../../lib/supabase';
 import { logAuditAction } from '../../utils/auditLogger';
 
@@ -80,6 +81,13 @@ const batchOptions = [
 ];
 
 const RegisterStudent = ({ onCancel }) => {
+    // Secondary Supabase client for non-persistent auth (prevents admin logout)
+    const supabaseAuth = createClient(
+        import.meta.env.VITE_SUPABASE_URL,
+        import.meta.env.VITE_SUPABASE_ANON_KEY,
+        { auth: { persistSession: false } }
+    );
+
     const [formData, setFormData] = useState({
         fullName: '',
         studentId: '',
@@ -163,8 +171,8 @@ const RegisterStudent = ({ onCancel }) => {
                 photoUrl = publicUrl;
             }
 
-            // 2. Create Auth User
-            const { data: authData, error: authError } = await supabase.auth.signUp({
+            // 2. Create Auth User using the non-persistent client
+            const { data: authData, error: authError } = await supabaseAuth.auth.signUp({
                 email: formData.email.trim(),
                 password: formData.password,
                 options: {
@@ -207,6 +215,7 @@ const RegisterStudent = ({ onCancel }) => {
             });
 
             // Success
+            alert('Student registered successfully! The account is now pending administrator approval.');
             onCancel();
         } catch (err) {
             console.error("Error registering student:", err);

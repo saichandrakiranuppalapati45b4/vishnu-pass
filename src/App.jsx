@@ -44,62 +44,66 @@ function App() {
 
       try {
         const metadataRole = user.user_metadata?.role;
+        let finalRole = metadataRole;
+        let finalData = null;
 
-        // Check admin
-        if (metadataRole === 'admin' || !metadataRole) {
+        // 1. Check Admin
+        if (finalRole === 'admin' || !finalRole) {
           const { data: adminData } = await supabase
             .from('admins')
             .select('*')
             .eq('email', user.email)
             .single();
 
-          if (adminData && mounted) {
-            setUserRole('admin');
-            setUserData(adminData);
-            setIsLoggedIn(true);
-            setIsAuthLoading(false);
-            return;
+          if (adminData) {
+            finalRole = 'admin';
+            finalData = adminData;
           }
         }
 
-        // Check student
-        if (metadataRole === 'student') {
+        // 2. Check Student
+        if (!finalData && (finalRole === 'student' || !finalRole)) {
           const { data: studentData } = await supabase
             .from('students')
             .select('*, departments(name)')
             .eq('email', user.email)
             .single();
 
-          if (studentData && mounted) {
+          if (studentData) {
             if (studentData.status === 'Pending') {
               await supabase.auth.signOut();
               setIsAuthLoading(false);
               return;
             }
-            setUserRole('student');
-            setUserData(studentData);
-            setIsLoggedIn(true);
-            setIsAuthLoading(false);
-            return;
+            finalRole = 'student';
+            finalData = studentData;
           }
         }
 
-        // Check guard
-        if (metadataRole === 'guard') {
+        // 3. Check Guard
+        if (!finalData && (finalRole === 'guard' || !finalRole)) {
           const { data: guardData } = await supabase
             .from('guards')
             .select('*, guard_gates(name), guard_shifts(name)')
             .eq('email', user.email)
             .single();
 
-          if (guardData && mounted) {
-            setUserRole('guard');
-            setUserData(guardData);
-            setIsLoggedIn(true);
-            setIsAuthLoading(false);
-            return;
+          if (guardData) {
+            finalRole = 'guard';
+            finalData = guardData;
           }
         }
+
+        if (finalData && mounted) {
+          setUserRole(finalRole);
+          setUserData(finalData);
+          setIsLoggedIn(true);
+          setIsAuthLoading(false);
+          return;
+        }
+
+        // If no record found in any table
+        await supabase.auth.signOut();
       } catch (error) {
         console.error("Error resolving user role:", error);
       }

@@ -27,10 +27,12 @@ const LoginScreen = ({ onLogin, branding }) => {
                 return;
             }
 
-            const metadataRole = authData.user?.user_metadata?.role;
+            let metadataRole = authData.user?.user_metadata?.role;
+            let finalRole = metadataRole;
+            let finalData = null;
 
-            // Verify the user role and fetch data
-            if (metadataRole === 'admin' || !metadataRole) {
+            // 1. Check Admin
+            if (finalRole === 'admin' || !finalRole) {
                 const { data: adminData } = await supabase
                     .from('admins')
                     .select('*')
@@ -38,14 +40,13 @@ const LoginScreen = ({ onLogin, branding }) => {
                     .single();
 
                 if (adminData) {
-                    onLogin('admin', adminData);
-                    setLoading(false);
-                    return;
+                    finalRole = 'admin';
+                    finalData = adminData;
                 }
             }
 
-            // Check student
-            if (metadataRole === 'student') {
+            // 2. Check Student (if not found as admin)
+            if (!finalData && (finalRole === 'student' || !finalRole)) {
                 const { data: studentData } = await supabase
                     .from('students')
                     .select('*, departments(name)')
@@ -54,19 +55,24 @@ const LoginScreen = ({ onLogin, branding }) => {
 
                 if (studentData) {
                     if (studentData.status === 'Pending') {
+                        // Mark as login requested
+                        await supabase
+                            .from('students')
+                            .update({ login_requested_at: new Date().toISOString() })
+                            .eq('id', studentData.id);
+
                         setError('Your request has been passed to the administrator. Please wait for approval before logging in.');
                         await supabase.auth.signOut();
                         setLoading(false);
                         return;
                     }
-                    onLogin('student', studentData);
-                    setLoading(false);
-                    return;
+                    finalRole = 'student';
+                    finalData = studentData;
                 }
             }
 
-            // Check guard
-            if (metadataRole === 'guard') {
+            // 3. Check Guard (if not found in others)
+            if (!finalData && (finalRole === 'guard' || !finalRole)) {
                 const { data: guardData } = await supabase
                     .from('guards')
                     .select('*, guard_gates(name), guard_shifts(name)')
@@ -74,14 +80,18 @@ const LoginScreen = ({ onLogin, branding }) => {
                     .single();
 
                 if (guardData) {
-                    onLogin('guard', guardData);
-                    setLoading(false);
-                    return;
+                    finalRole = 'guard';
+                    finalData = guardData;
                 }
             }
 
-            // If neither, access denied
-            setError('Access denied. No account found for this user.');
+            if (finalData) {
+                onLogin(finalRole, finalData);
+                setLoading(false);
+                return;
+            }
+
+            setError('No user record found for this account.');
             await supabase.auth.signOut();
         } catch (err) {
             console.error(err);

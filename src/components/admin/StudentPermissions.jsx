@@ -46,7 +46,8 @@ const StudentPermissions = () => {
                 .from('students')
                 .select('*, departments(name)')
                 .eq('status', 'Pending')
-                .order('created_at', { ascending: false });
+                .not('login_requested_at', 'is', null)
+                .order('login_requested_at', { ascending: false });
 
             if (!error && data) {
                 setPendingStudents(data);
