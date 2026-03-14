@@ -90,13 +90,19 @@ const ScanScreen = ({ studentData, onBack }) => {
         setMovementType(type);
         
         try {
-            // 1. Fetch Policies
-            const { data: policyData } = await supabase
+            // 1. Fetch Policies (Use resilient pattern to handle potential duplicates)
+            const { data: policyData, error: policyError } = await supabase
                 .from('portal_settings')
                 .select('value')
                 .eq('key', 'student_policies')
-                .single();
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .maybeSingle();
             
+            if (policyError) {
+                console.error("Policy fetch error:", policyError);
+            }
+
             const policies = policyData?.value;
             if (policies) {
                 // Determine limits based on student category
@@ -137,10 +143,10 @@ const ScanScreen = ({ studentData, onBack }) => {
                     movement_type: type
                 }])
                 .select()
-                .single();
+                .maybeSingle();
 
             if (insertError) throw insertError;
-            setSessionId(data.id);
+            if (data) setSessionId(data.id);
 
         } catch (err) {
             console.error("Error creating request:", err);
@@ -184,16 +190,18 @@ const ScanScreen = ({ studentData, onBack }) => {
                 .from('guard_gates')
                 .select('name')
                 .eq('id', scannedGateId)
-                .single();
+                .maybeSingle();
             
             setGateData(gateInfo);
 
-            // Fetch Policies for Auto-Approval check
+            // Fetch Policies for Auto-Approval check (Resilient Pattern)
             const { data: policyData } = await supabase
                 .from('portal_settings')
                 .select('value')
                 .eq('key', 'student_policies')
-                .single();
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .maybeSingle();
             
             const policies = policyData?.value;
             const category = studentData.hostel_type === 'hosteler' ? 'hosteler' : 'dayscholar';
