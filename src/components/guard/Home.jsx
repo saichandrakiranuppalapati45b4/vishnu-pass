@@ -104,15 +104,18 @@ const GuardHome = ({ guardData }) => {
                     }
                 )
                 .on('postgres_changes',
-                    { event: 'INSERT', schema: 'public', table: 'scan_sessions', filter: "status=eq.pending" },
+                    { event: 'INSERT', schema: 'public', table: 'scan_sessions' },
                     async (payload) => {
-                        const { data: student } = await supabase
-                            .from('students')
-                            .select('*, departments(name)')
-                            .eq('student_id', payload.new.student_id)
-                            .single();
-                        if (student) {
-                            setPendingRequests(prev => [{ ...payload.new, students: student }, ...prev]);
+                        // Show in queue if it's pending OR approved (but not completed)
+                        if (payload.new.status === 'pending' || payload.new.status === 'approved') {
+                            const { data: student } = await supabase
+                                .from('students')
+                                .select('*, departments(name)')
+                                .eq('student_id', payload.new.student_id)
+                                .single();
+                            if (student) {
+                                setPendingRequests(prev => [{ ...payload.new, students: student }, ...prev]);
+                            }
                         }
                     }
                 )
@@ -121,17 +124,29 @@ const GuardHome = ({ guardData }) => {
                     async (payload) => {
                         const newStatus = payload.new.status;
                         const sessionId = payload.new.id;
-                        if (newStatus !== 'pending') {
-                            setPendingRequests(prev => prev.filter(req => req.id !== sessionId));
-                        }
+                        
+                        // If it's completed, remove from queue and process verification
                         if (newStatus === 'completed') {
+                            setPendingRequests(prev => prev.filter(req => req.id !== sessionId));
                             processSessionUpdate(sessionId, 'Realtime');
+                        } else if (newStatus === 'expired') {
+                            setPendingRequests(prev => prev.filter(req => req.id !== sessionId));
+                        } else if (newStatus === 'approved') {
+                            // If it moved to approved, update the item in queue if it exists
+                            setPendingRequests(prev => prev.map(req => 
+                                req.id === sessionId ? { ...req, ...payload.new } : req
+                            ));
                         }
                     }
                 )
                 .on('broadcast', { event: 'SCAN_COMPLETED' }, ({ payload }) => {
                     console.log("[GUARD] Broadcast signal received!", payload);
                     if (payload.sessionId) {
+                        // If student auto-completed, they show up in logs/stats anyway via movement_logs trigger
+                        // but if they need manual approval, they should be top of queue
+                        if (payload.autoCompleted) {
+                            setPendingRequests(prev => prev.filter(req => req.id !== payload.sessionId));
+                        }
                         processSessionUpdate(payload.sessionId, 'Broadcast');
                     }
                 })
@@ -249,10 +264,11 @@ const GuardHome = ({ guardData }) => {
 
     const handleApprove = async (sessionId) => {
         try {
+            // If manual approval, we mark as 'completed' (handshake done)
             await supabase
                 .from('scan_sessions')
                 .update({
-                    status: 'approved',
+                    status: 'completed',
                     gate_id: guardData.gate_id
                 })
                 .eq('id', sessionId);

@@ -2,12 +2,16 @@ import React, { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, Shield, Clock, Zap, Loader2, Fingerprint, Camera, ShieldCheck, X, LogIn, LogOut } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { Scanner } from '@yudiel/react-qr-scanner';
+import VerificationResult from './VerificationResult';
 
 const ScanScreen = ({ studentData, onBack }) => {
     const [status, setStatus] = useState('idle'); // idle -> requesting (camera open) -> approved (can scan) -> completed
     const [timeLeft, setTimeLeft] = useState(25);
     const [sessionId, setSessionId] = useState(null);
     const [error, setError] = useState(null);
+    const [movementType, setMovementType] = useState(null);
+    const [gateData, setGateData] = useState(null);
+    const [verifiedAt, setVerifiedAt] = useState(null);
 
     const sessionIdRef = useRef(null);
     const statusRef = useRef('idle');
@@ -67,6 +71,10 @@ const ScanScreen = ({ studentData, onBack }) => {
                         setStatus('approved');
                     } else if (newStatus === 'expired') {
                         setStatus('expired');
+                    } else if (newStatus === 'completed') {
+                        // If guard approves from their end, show success
+                        setStatus('completed');
+                        setVerifiedAt(new Date().toISOString());
                     }
                 }
             )
@@ -77,8 +85,9 @@ const ScanScreen = ({ studentData, onBack }) => {
         };
     }, [sessionId]);
 
-    const handleRequestAccess = async (movementType) => {
+    const handleRequestAccess = async (type) => {
         setError(null);
+        setMovementType(type);
         
         try {
             // 1. Fetch Policies
@@ -92,7 +101,7 @@ const ScanScreen = ({ studentData, onBack }) => {
             if (policies) {
                 // Determine limits based on student category
                 const category = studentData.hostel_type === 'hosteler' ? 'hosteler' : 'dayscholar';
-                const limit = movementType === 'IN' ? policies[category].monthlyInLimit : policies[category].monthlyOutLimit;
+                const limit = type === 'IN' ? policies[category].monthlyInLimit : policies[category].monthlyOutLimit;
                 
                 // 2. Count current month movements
                 const startOfMonth = new Date();
@@ -103,33 +112,36 @@ const ScanScreen = ({ studentData, onBack }) => {
                     .from('movement_logs')
                     .select('*', { count: 'exact', head: true })
                     .eq('student_id', studentData.student_id)
-                    .eq('movement_type', movementType)
+                    .eq('movement_type', type)
                     .eq('status', 'Success')
                     .gte('created_at', startOfMonth.toISOString());
                 
                 if (countError) throw countError;
                 
                 if (count >= limit) {
-                    setError(`Monthly ${movementType} limit reached (${count}/${limit}). Please contact administration.`);
+                    setError(`Monthly ${type} limit reached (${count}/${limit}). Please contact administration.`);
                     return;
                 }
             }
 
+            // Immediately switch to 'requesting' (opens camera)
             setStatus('requesting');
             setTimeLeft(25);
+
+            // Create pending session
             const { data, error: insertError } = await supabase
                 .from('scan_sessions')
                 .insert([{
                     student_id: studentData.student_id,
                     status: 'pending',
-                    movement_type: movementType
+                    movement_type: type
                 }])
                 .select()
                 .single();
 
             if (insertError) throw insertError;
-
             setSessionId(data.id);
+
         } catch (err) {
             console.error("Error creating request:", err);
             setError("Failed to create request. Please try again.");
@@ -143,94 +155,119 @@ const ScanScreen = ({ studentData, onBack }) => {
         const currentStatus = statusRef.current;
         const currentSessionId = sessionIdRef.current;
 
-        // We allow scanning as long as we have requested access (status should be requesting or approved)
+        // Allow scanning in 'requesting' status now
         if (currentStatus === 'idle' || currentStatus === 'completed' || currentStatus === 'expired') {
-            setError(`Scanner ignored scan because status is: ${currentStatus}`);
             return;
         }
 
-        if (!currentSessionId) {
-            setError("Scan detected, but sessionId is missing!");
-            console.error("Scan detected, but sessionId is missing!");
-            return;
-        }
+        if (!currentSessionId) return;
 
         let rawValue = typeof result === 'string' ? result : (result[0]?.rawValue || result?.text || result?.rawValue);
-
-        if (!rawValue) {
-            setError("Scanner read empty value from QR code.");
-            return;
-        }
+        if (!rawValue) return;
 
         try {
             setStatus('processing_scan');
 
-            // Expected format: https://vishnupass.com/gate/{gateId}_{timestamp_token}
-            // Or just: {gateId}_{timestamp_token}
+            // Extraction logic
             let scannedGateId = null;
             if (rawValue.includes('/gate/')) {
-                // Extract gate id, ignoring the token part
                 const dataPart = rawValue.split('/gate/').pop();
                 scannedGateId = dataPart.split('_')[0].trim();
             } else {
-                // In case it's just the raw format like "gate-main_token"
                 scannedGateId = rawValue.split('_')[0].trim();
             }
 
-            console.log("Extracted Gate ID:", scannedGateId);
+            if (!scannedGateId) throw new Error("Invalid Gate QR");
 
-            if (!scannedGateId) {
-                throw new Error("Invalid Gate QR");
-            }
+            // Fetch gate name for the result screen
+            const { data: gateInfo } = await supabase
+                .from('guard_gates')
+                .select('name')
+                .eq('id', scannedGateId)
+                .single();
+            
+            setGateData(gateInfo);
 
-            // Mark session as completed and associate with the gate
-            console.log(`[STUDENT] Updating session ${currentSessionId} with Gate: ${scannedGateId}`);
+            // Fetch Policies for Auto-Approval check
+            const { data: policyData } = await supabase
+                .from('portal_settings')
+                .select('value')
+                .eq('key', 'student_policies')
+                .single();
+            
+            const policies = policyData?.value;
+            const category = studentData.hostel_type === 'hosteler' ? 'hosteler' : 'dayscholar';
+            
+            // Auto-approve logic:
+            // 1. IN requests are usually auto-approved if scanned
+            // 2. OUT requests follow the autoApproveOutpass policy
+            const isAutoApprovable = (movementType === 'IN') || 
+                                     (movementType === 'OUT' && policies?.[category]?.autoApproveOutpass);
+
+            console.log(`[STUDENT] Scan detected at ${scannedGateId}. Auto-Approvable: ${isAutoApprovable}`);
+
+            const newStatus = isAutoApprovable ? 'completed' : 'approved';
+
+            // Update session
             const { error: updateError } = await supabase
                 .from('scan_sessions')
                 .update({
-                    status: 'completed',
+                    status: newStatus,
                     gate_id: scannedGateId
                 })
                 .eq('id', currentSessionId);
 
-            if (updateError) {
-                console.error("[STUDENT] Supabase update error:", updateError);
-                throw updateError;
+            if (updateError) throw updateError;
+
+            // Log movement if auto-completed
+            if (isAutoApprovable) {
+                await supabase.from('movement_logs').insert({
+                    user_name: studentData.full_name,
+                    student_id: studentData.student_id,
+                    access_point_id: scannedGateId,
+                    movement_type: movementType,
+                    status: 'Success'
+                });
+                
+                setVerifiedAt(new Date().toISOString());
+                setStatus('completed');
+            } else {
+                // If not auto-approvable, stay in 'approved' (wait for guard)
+                setStatus('approved');
             }
 
-            console.log("[STUDENT] Session updated successfully. Broadcasting signal...");
-
-            // NEW: Send a high-speed broadcast signal directly to the guard's channel
+            // High-speed broadcast to guard
             const channelName = `gate_monitor_${scannedGateId}`;
             const broadcastChannel = supabase.channel(channelName);
-            
-            // Subscribe first to ensure the channel is "warm"
             broadcastChannel.subscribe(async (status) => {
                 if (status === 'SUBSCRIBED') {
-                    console.log(`[STUDENT] Channel ${channelName} ready. Sending signal...`);
-                    
-                    const resp = await broadcastChannel.send({
+                    await broadcastChannel.send({
                         type: 'broadcast',
                         event: 'SCAN_COMPLETED',
-                        payload: { sessionId: currentSessionId }
+                        payload: { sessionId: currentSessionId, autoCompleted: isAutoApprovable }
                     });
-                    
-                    console.log(`[STUDENT] Signal sent to ${channelName}. Response:`, resp);
-                    
-                    // Small delay to ensure the broadcast clears the network buffer before we move on
-                    setTimeout(() => {
-                        setStatus('completed');
-                        supabase.removeChannel(broadcastChannel);
-                    }, 500);
+                    setTimeout(() => supabase.removeChannel(broadcastChannel), 1000);
                 }
             });
 
         } catch (err) {
-            console.error("Scan error details:", err);
-            setError(err?.message || err?.details || "Failed to update session data");
-            setStatus('approved');
+            console.error("Scan error:", err);
+            setError(err?.message || "Verification failed");
+            setStatus('requesting');
         }
     };
+
+    if (status === 'completed') {
+        return (
+            <VerificationResult 
+                studentData={studentData}
+                gateName={gateData?.name || 'Main Gate'}
+                verifiedAt={verifiedAt ? new Date(verifiedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                onNextScan={onBack}
+                hideNavBar={true}
+            />
+        );
+    }
 
     const initials = studentData?.full_name
         ? studentData.full_name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
@@ -247,7 +284,7 @@ const ScanScreen = ({ studentData, onBack }) => {
                     <ChevronLeft className="w-6 h-6" />
                 </button>
                 <div className="px-8 py-3 rounded-full bg-[#f47c20]/20 border border-[#f47c20]/30 backdrop-blur-xl text-[#f47c20] font-black text-[12px] tracking-[0.2em] uppercase shadow-lg">
-                    {status === 'approved' ? 'Scanner Active' : 'Access Request'}
+                    {status === 'idle' ? 'Access Request' : 'Scanner Active'}
                 </div>
                 <div className="w-12 h-12 relative">
                     <div className="w-12 h-12 rounded-full bg-[#332a22]/80 flex items-center justify-center border border-white/5 overflow-hidden shadow-sm">
@@ -261,7 +298,7 @@ const ScanScreen = ({ studentData, onBack }) => {
             </header>
 
             {/* Main Content Area */}
-            <div className="flex-1 flex flex-col items-center justify-center px-6 relative z-30 pb-20 mt-4">
+            <div className="flex-1 flex flex-col items-center justify-center px-6 relative z-30 pb-20">
                 <div className="w-full bg-[#1e1a17]/95 rounded-[40px] p-8 shadow-2xl border border-white/5 relative overflow-hidden backdrop-blur-2xl">
                     <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-[#f47c20] to-[#e06b12]" />
 
@@ -274,8 +311,14 @@ const ScanScreen = ({ studentData, onBack }) => {
                                 Access Control
                             </h2>
                             <p className="text-sm font-bold text-gray-400 mb-8 leading-relaxed max-w-[240px]">
-                                Tap the button below to request gate access. The guard will approve to unlock your scanner.
+                                Tap to start. Camera will open immediately to scan the Gate QR.
                             </p>
+
+                            {error && (
+                                <p className="text-rose-400 font-bold text-xs mb-6 px-4 py-2 bg-rose-500/10 rounded-xl">
+                                    {error}
+                                </p>
+                            )}
 
                             {status === 'expired' && (
                                 <p className="text-rose-400 font-bold text-xs mb-6 px-4 py-2 bg-rose-500/10 rounded-xl">
@@ -300,13 +343,20 @@ const ScanScreen = ({ studentData, onBack }) => {
                                 </button>
                             </div>
                         </div>
-                    ) : status === 'requesting' || status === 'approved' || status === 'processing_scan' ? (
+                    ) : (
                         <div className="flex flex-col items-center text-center">
-
                             {/* Status Indicator */}
-                            <div className={`flex items-center gap-2 mb-4 px-4 py-2 rounded-xl border bg-emerald-500/10 text-emerald-400 border-emerald-500/20`}>
-                                <ShieldCheck className="w-4 h-4" />
-                                <span className="text-xs font-black uppercase tracking-wider">Scanner Ready - Point at Gate QR</span>
+                            <div className={`flex items-center gap-2 mb-4 px-4 py-2 rounded-xl border ${
+                                status === 'approved' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                            }`}>
+                                {status === 'approved' ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                    <ShieldCheck className="w-4 h-4" />
+                                )}
+                                <span className="text-xs font-black uppercase tracking-wider">
+                                    {status === 'approved' ? 'Awaiting Guard Signal' : 'Scanner Ready - Point at Gate QR'}
+                                </span>
                             </div>
 
                             {error && (
@@ -316,7 +366,9 @@ const ScanScreen = ({ studentData, onBack }) => {
                             )}
 
                             <div className="w-full aspect-square relative rounded-[32px] overflow-hidden border-2 border-[#f47c20]/30 shadow-2xl mb-6 bg-black">
-                                <div className={`absolute inset-0 border-4 transition-colors duration-300 z-30 pointer-events-none border-emerald-500/50`} />
+                                <div className={`absolute inset-0 border-4 transition-colors duration-300 z-30 pointer-events-none ${
+                                    status === 'approved' ? 'border-amber-500/50' : 'border-emerald-500/50'
+                                }`} />
                                 <div className="absolute top-6 left-6 w-8 h-8 border-t-4 border-l-4 border-[#f47c20] rounded-tl-2xl z-20" />
                                 <div className="absolute top-6 right-6 w-8 h-8 border-t-4 border-r-4 border-[#f47c20] rounded-tr-2xl z-20" />
                                 <div className="absolute bottom-6 left-6 w-8 h-8 border-b-4 border-l-4 border-[#f47c20] rounded-bl-2xl z-20" />
@@ -327,89 +379,53 @@ const ScanScreen = ({ studentData, onBack }) => {
                                     onScan={handleScan}
                                     constraints={{
                                         facingMode: "environment",
-                                        width: { min: 1280, ideal: 1920 },
-                                        height: { min: 720, ideal: 1080 },
-                                        frameRate: { ideal: 60 },
-                                        advanced: [
-                                            { focusMode: 'continuous' },
-                                            { whiteBalanceMode: 'continuous' }
-                                        ]
+                                        width: { min: 640, ideal: 1280 },
+                                        height: { min: 480, ideal: 720 }
                                     }}
-                                    components={{
-                                        tracker: false,
-                                        finder: false,
-                                        audio: true,
-                                        torch: true
-                                    }}
+                                    components={{ tracker: false, finder: false, audio: true, torch: true }}
                                     styles={{
                                         container: { width: '100%', height: '100%', background: 'black' },
-                                        video: {
-                                            objectFit: 'cover',
-                                            width: '100%',
-                                            height: '100%',
-                                            opacity: status === 'requesting' ? 0.5 : 1 // Dim camera while waiting for approval
-                                        },
+                                        video: { objectFit: 'cover', width: '100%', height: '100%' },
                                     }}
                                 />
 
-                                {status === 'processing_scan' && (
+                                {(status === 'processing_scan' || status === 'approved') && (
                                     <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-30 flex flex-col items-center justify-center text-white gap-4">
-                                        <Loader2 className="w-8 h-8 text-[#f47c20] animate-spin" />
-                                        <p className="text-xs font-bold tracking-widest uppercase">Verifying Gate...</p>
+                                        <Loader2 className="w-10 h-10 text-[#f47c20] animate-spin" />
+                                        <p className="text-xs font-black tracking-[0.2em] uppercase">
+                                            {status === 'approved' ? 'Waiting for Guard' : 'Verifying Gate...'}
+                                        </p>
                                     </div>
                                 )}
                             </div>
 
-                            <p className="text-xs font-bold text-gray-400 mb-4 leading-relaxed tracking-wide">
-                                {status === 'requesting'
-                                    ? "Camera active. Awaiting guard's signal."
-                                    : "Scan the Guard's Gate QR code now."}
+                            <p className="text-xs font-bold text-gray-400 mb-4 tracking-wide uppercase">
+                                {status === 'approved' ? "Please wait for the guard's monitor to update" : "Aim scanner at the gate QR code"}
                             </p>
 
-                            <div className="text-[#f47c20] font-black text-xl flex items-center justify-between w-full px-4">
+                            <div className="flex items-center justify-between w-full px-4 text-[#f47c20]">
                                 <button
                                     onClick={() => setStatus('idle')}
-                                    className="px-4 py-2 bg-white/5 text-gray-400 font-bold rounded-xl active:scale-[0.98] transition-all text-[10px] tracking-[0.1em] uppercase hover:bg-white/10"
+                                    className="px-6 py-2.5 bg-white/5 text-gray-400 font-bold rounded-xl active:scale-95 transition-all text-[10px] tracking-[0.1em] uppercase border border-white/5"
                                 >
                                     Cancel
                                 </button>
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 font-black text-xl">
                                     <Clock className="w-5 h-5" />
                                     00:{timeLeft.toString().padStart(2, '0')}
                                 </div>
                             </div>
                         </div>
-                    ) : ( // completed
-                        <div className="flex flex-col items-center text-center py-8">
-                            <div className="w-24 h-24 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-6">
-                                <ShieldCheck className="w-12 h-12 text-emerald-400" />
-                            </div>
-                            <h2 className="text-2xl font-black text-white tracking-tight leading-tight mb-2">
-                                Handshake Complete
-                            </h2>
-                            <p className="text-sm font-bold text-emerald-400/80 mb-8 leading-relaxed max-w-[240px]">
-                                Your digital pass is now active on the Guard's monitor. Verification successful.
-                            </p>
-
-                            <button
-                                onClick={onBack}
-                                className="w-full py-5 bg-white/5 text-white font-black rounded-2xl border border-white/10 hover:bg-white/10 active:scale-[0.98] transition-all text-sm tracking-[0.2em] uppercase"
-                            >
-                                Return to Dashboard
-                            </button>
-                        </div>
                     )}
                 </div>
             </div>
 
-            <style dangerouslySetInnerHTML={{
-                __html: `
-                .font-sans { font-family: 'Outfit', 'Inter', -apple-system, sans-serif; }
+            <style dangerouslySetInnerHTML={{ __html: `
+                .font-sans { font-family: 'Outfit', 'Inter', sans-serif; }
                 @keyframes scan {
                     0%, 100% { top: 10%; opacity: 0.1; }
                     50% { top: 90%; opacity: 0.8; }
                 }
-                [class*="tracker"], [class*="finder"], svg { pointer-events: none; }
                 section > div:nth-child(2), section > div:nth-child(3) { display: none !important; }
             ` }} />
         </div>
