@@ -1,11 +1,71 @@
-import React from 'react';
-import { ChevronLeft, CheckCircle2, ShieldCheck, Zap, Download, Scan, UserCircle, History, LayoutDashboard, User } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ChevronLeft, CheckCircle2, ShieldCheck, Zap, Download, Scan, UserCircle, History, LayoutDashboard, User, AlertTriangle, X, Octagon } from 'lucide-react';
 import { format } from 'date-fns';
 
 const VerificationResult = ({ studentData, gateName, verifiedAt, onNextScan, warning, hideNavBar = false }) => {
+    const [isAcknowledged, setIsAcknowledged] = useState(false);
+
+    useEffect(() => {
+        if (warning && !isAcknowledged) {
+            // Play warning sound
+            const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+            audio.volume = 0.6;
+            audio.play().catch(e => console.warn("Audio play blocked:", e));
+        }
+    }, [warning, isAcknowledged]);
+
+    // If there's a warning and it hasn't been acknowledged, show the Dedicated Warning Page
+    if (warning && !isAcknowledged) {
+        return (
+            <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center p-6 bg-gradient-to-br from-[#f47c20] to-[#e76f51] font-sans h-screen overflow-hidden">
+                {/* Background Graphics */}
+                <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none overflow-hidden">
+                    <Octagon className="w-[800px] h-[800px] absolute -top-40 -left-40 animate-pulse text-white" />
+                    <Octagon className="w-[600px] h-[600px] absolute -bottom-20 -right-20 animate-pulse text-white" />
+                </div>
+
+                <div className="relative z-10 w-full max-w-sm flex flex-col items-center text-center animate-in zoom-in duration-500">
+                    {/* Pulsing Icon Container */}
+                    <div className="relative mb-10 mt-10">
+                        <div className="absolute inset-0 bg-white/20 rounded-[40px] animate-ping scale-110" />
+                        <div className="w-40 h-40 bg-white/20 backdrop-blur-3xl rounded-[40px] flex items-center justify-center border-4 border-white/40 shadow-2xl relative z-20">
+                            <AlertTriangle className="w-20 h-20 text-white animate-bounce" />
+                        </div>
+                    </div>
+
+                    <h1 className="text-4xl font-black text-white tracking-tight uppercase mb-4 drop-shadow-md">
+                        Limit Reached
+                    </h1>
+                    
+                    <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-[32px] p-8 mb-10 w-full shadow-2xl">
+                        <p className="text-white text-lg font-black leading-tight mb-3">
+                            {warning}
+                        </p>
+                        <div className="h-px bg-white/20 w-16 mx-auto mb-4" />
+                        <p className="text-white/80 text-[10px] font-bold uppercase tracking-[0.2em] leading-relaxed">
+                            Your monthly scan quota has been exceeded. Please be informed that your activities are being specifically monitored.
+                        </p>
+                    </div>
+
+                    <div className="space-y-4 w-full">
+                        <button
+                            onClick={() => setIsAcknowledged(true)}
+                            className="w-full py-6 bg-white text-[#f47c20] rounded-[24px] font-black text-sm tracking-[0.2em] uppercase shadow-[0_10px_40px_rgba(0,0,0,0.1)] active:scale-[0.98] transition-all hover:shadow-none"
+                        >
+                            I Understand & Continue
+                        </button>
+                        
+                        <p className="text-white/60 text-[9px] font-bold uppercase tracking-widest text-center mt-4">
+                            Authorized access verified for {studentData?.full_name || 'Student'}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
-        <div className="flex flex-col bg-[#f8f9fb] animate-in slide-in-from-bottom duration-500 overflow-y-auto font-sans h-screen pb-32">
+        <div className="flex flex-col bg-[#f8f9fb] animate-in slide-in-from-bottom duration-500 overflow-y-auto font-sans h-screen pb-32 relative">
             {/* Header */}
             <div className="px-6 py-8 flex items-center bg-white justify-between sticky top-0 z-50">
                 <button
@@ -106,10 +166,7 @@ const VerificationResult = ({ studentData, gateName, verifiedAt, onNextScan, war
                         </div>
                     </div>
                 </div>
-
-
             </div>
-
         </div>
     );
 };
