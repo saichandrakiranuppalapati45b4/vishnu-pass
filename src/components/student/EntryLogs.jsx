@@ -19,11 +19,11 @@ const EntryLogs = ({ studentData }) => {
                     .from('scan_sessions')
                     .select(`
                         *,
-                        students (
+                        students!scan_sessions_student_id_fkey (
                             full_name,
                             photo_url
                         ),
-                        guard_gates (
+                        guard_gates!scan_sessions_gate_id_fkey (
                             name
                         )
                     `)

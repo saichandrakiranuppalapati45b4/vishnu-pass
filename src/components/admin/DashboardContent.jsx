@@ -21,7 +21,7 @@ const DashboardContent = ({ onNavigate }) => {
                 supabase.from('students').select('*', { count: 'exact', head: true }),
                 supabase.from('guards').select('*', { count: 'exact', head: true }),
                 supabase.from('scan_sessions').select('*', { count: 'exact', head: true }).in('status', ['denied', 'expired', 'error']),
-                supabase.from('scan_sessions').select('*, students(full_name), guard_gates(name)').order('created_at', { ascending: false }).limit(5)
+                supabase.from('scan_sessions').select('*, students!scan_sessions_student_id_fkey(full_name), guard_gates!scan_sessions_gate_id_fkey(name)').order('created_at', { ascending: false }).limit(5)
             ]);
 
             setStats({

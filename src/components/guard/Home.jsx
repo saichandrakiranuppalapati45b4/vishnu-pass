@@ -191,7 +191,7 @@ const GuardHome = ({ guardData }) => {
 
                 const { data: requests } = await supabase
                     .from('scan_sessions')
-                    .select('*, students(full_name, photo_url)')
+                    .select('*, students!scan_sessions_student_id_fkey(full_name, photo_url)')
                     .eq('gate_id', guardData.gate_id)
                     .order('created_at', { ascending: false })
                     .limit(5);

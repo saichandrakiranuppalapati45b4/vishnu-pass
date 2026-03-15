@@ -26,8 +26,8 @@ const Home = ({ studentData, onNotificationClick }) => {
                     .from('scan_sessions')
                     .select(`
                         *,
-                        students(full_name, photo_url),
-                        guard_gates(name)
+                        students!scan_sessions_student_id_fkey(full_name, photo_url),
+                        guard_gates!scan_sessions_gate_id_fkey(name)
                     `)
                     .eq('student_id', studentData.student_id)
                     .order('created_at', { ascending: false })
