@@ -109,6 +109,32 @@ const ScanScreen = ({ studentData, onBack }) => {
         };
     }, [sessionId]);
 
+    // Unmount cleanup logic
+    useEffect(() => {
+        return () => {
+            const currentSession = sessionIdRef.current;
+            const currentStatus = statusRef.current;
+            const currentLog = logIdRef.current;
+
+            if (currentSession && (currentStatus === 'requesting' || currentStatus === 'approved' || currentStatus === 'pending')) {
+                console.log("[STUDENT] Component unmounting, cancelling abandoned session:", currentSession);
+                supabase
+                    .from('scan_sessions')
+                    .update({ status: 'cancelled' })
+                    .eq('id', currentSession)
+                    .then();
+
+                if (currentLog) {
+                    supabase
+                        .from('movement_logs')
+                        .update({ status: 'Cancelled' })
+                        .eq('id', currentLog)
+                        .then();
+                }
+            }
+        };
+    }, []);
+
     const handleRequestAccess = async (type) => {
         setError(null);
         setMovementType(type);
@@ -140,6 +166,22 @@ const ScanScreen = ({ studentData, onBack }) => {
                     console.error("Failed to parse policies JSON:", e);
                 }
             }
+
+            // 0. Cleanup any existing pending sessions or logs for this student
+            // This prevents duplication in the logs if they click multiple times or restart
+            console.log("[STUDENT] Cleaning up any abandoned pending sessions for:", studentData.student_id);
+            await Promise.all([
+                supabase
+                    .from('scan_sessions')
+                    .update({ status: 'cancelled' })
+                    .eq('student_id', studentData.student_id)
+                    .eq('status', 'pending'),
+                supabase
+                    .from('movement_logs')
+                    .update({ status: 'Cancelled' })
+                    .eq('student_id', studentData.student_id)
+                    .eq('status', 'Pending')
+            ]);
 
             if (policies) {
                 // Determine limits based on student category
