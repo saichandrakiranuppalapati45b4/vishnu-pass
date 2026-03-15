@@ -164,15 +164,25 @@ const Home = ({ studentData, onNotificationClick }) => {
                                             {log.movement_type === 'ENTRY' ? <LogIn className="w-6 h-6" /> : <LogOut className="w-6 h-6" />}
                                         </div>
                                         <div>
-                                            <h4 className="font-black text-gray-900">{log.guard_gates?.name || 'Main Gate'} - {log.movement_type === 'ENTRY' ? t('home.entry') : t('home.exit')}</h4>
+                                            <h4 className="font-black text-gray-900">
+                                                {log.guard_gates?.name || (log.status === 'Pending' ? 'Scanning Gate...' : 'Gate')} - {log.movement_type === 'ENTRY' ? t('home.entry') : t('home.exit')}
+                                            </h4>
                                             <p className="text-xs font-bold text-gray-400 tracking-wide">
                                                 {format(new Date(log.created_at), 'MMM dd, yyyy')} • {format(new Date(log.created_at), 'hh:mm a')}
                                             </p>
                                         </div>
                                     </div>
                                     <div className="flex flex-col items-end gap-1">
-                                        <span className={`px-3 py-1 bg-emerald-50 text-emerald-500 text-[10px] font-black tracking-widest rounded-lg flex items-center gap-1`}>
-                                            <CheckCircle2 className="w-3 h-3" /> VERIFIED
+                                        <span className={`px-3 py-1 ${
+                                            log.status === 'Success' ? 'bg-emerald-50 text-emerald-500' : 
+                                            log.status === 'Pending' ? 'bg-amber-50 text-amber-500' :
+                                            'bg-gray-50 text-gray-400'
+                                            } text-[10px] font-black tracking-widest rounded-lg flex items-center gap-1`}>
+                                            {log.status === 'Success' ? <CheckCircle2 className="w-3 h-3" /> : null}
+                                            {log.status === 'Success' ? 'VERIFIED' : 
+                                             log.status === 'Pending' ? 'PENDING' :
+                                             log.status === 'Cancelled' ? 'CANCELLED' :
+                                             log.status.toUpperCase()}
                                         </span>
                                     </div>
                                 </div>

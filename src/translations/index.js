@@ -10,8 +10,8 @@ export const translations = {
             welcome: 'Welcome back',
             latestActivity: 'Latest Activity',
             generatePass: 'Generate New Pass',
-            entry: 'Gate Entry',
-            exit: 'Gate Exit'
+            entry: 'Entry',
+            exit: 'Exit'
         },
         scan: {
             title: 'Scan QR Code',
@@ -143,8 +143,8 @@ export const translations = {
             welcome: 'స్వాగతం',
             latestActivity: 'తాజా కార్యాచరణ',
             generatePass: 'కొత్త పాస్ సృష్టించండి',
-            entry: 'గేట్ ప్రవేశం',
-            exit: 'గేట్ నిష్క్రమణ'
+            entry: 'ప్రవేశం',
+            exit: 'నిష్క్రమణ'
         },
         scan: {
             title: 'QR కోడ్ స్కాన్ చేయండి',

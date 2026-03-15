@@ -102,8 +102,8 @@ const EntryLogs = ({ studentData }) => {
     const grouped = groupLogsByDate(filteredLogs);
     const filterTabs = [
         { id: 'all', label: 'All' },
-        { id: 'entries', label: 'Entries' },
-        { id: 'exits', label: 'Exits' },
+        { id: 'entries', label: 'Entry' },
+        { id: 'exits', label: 'Exit' },
     ];
 
     return (
@@ -179,7 +179,7 @@ const EntryLogs = ({ studentData }) => {
                                             {/* Details */}
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-sm font-bold text-gray-900 truncate">
-                                                    {log.guard_gates?.name || 'Gate'}
+                                                    {log.guard_gates?.name || (log.status === 'Pending' ? 'Scanning Gate...' : 'Unknown Gate')}
                                                 </p>
                                                 <p className="text-xs text-gray-400 font-medium mt-0.5">
                                                     {entry ? 'Entry' : 'Exit'}
@@ -188,9 +188,17 @@ const EntryLogs = ({ studentData }) => {
 
                                             {/* Status & Time */}
                                             <div className="flex flex-col items-end flex-shrink-0">
-                                                <span className={`text-[10px] font-black uppercase tracking-wider ${log.status === 'Success' ? 'text-[#f47c20]' : 'text-red-500'
+                                                <span className={`text-[10px] font-black uppercase tracking-wider ${
+                                                    log.status === 'Success' ? 'text-[#f47c20]' : 
+                                                    log.status === 'Pending' ? 'text-amber-500' :
+                                                    log.status === 'Cancelled' ? 'text-gray-400' :
+                                                    'text-red-500'
                                                     }`}>
-                                                    {log.status === 'Success' ? 'VERIFIED' : 'DENIED'}
+                                                    {log.status === 'Success' ? 'VERIFIED' : 
+                                                     log.status === 'Pending' ? 'PENDING' :
+                                                     log.status === 'Cancelled' ? 'CANCELLED' :
+                                                     log.status === 'Expired' ? 'EXPIRED' :
+                                                     'DENIED'}
                                                 </span>
                                                 <span className="text-xs text-gray-400 font-medium mt-0.5">
                                                     {format(new Date(log.created_at), 'hh:mm a')}

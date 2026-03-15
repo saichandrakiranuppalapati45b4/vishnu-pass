@@ -12,6 +12,7 @@ const ScanScreen = ({ studentData, onBack }) => {
     const [movementType, setMovementType] = useState(null);
     const [gateData, setGateData] = useState(null);
     const [verifiedAt, setVerifiedAt] = useState(null);
+    const [currentLogId, setCurrentLogId] = useState(null);
 
     const sessionIdRef = useRef(null);
     const statusRef = useRef('idle');
@@ -72,10 +73,25 @@ const ScanScreen = ({ studentData, onBack }) => {
                         setStatus('approved');
                     } else if (newStatus === 'expired') {
                         setStatus('expired');
+                        // Update log to expired if we have one
+                        if (sessionIdRef.current) {
+                            supabase.from('movement_logs')
+                                .update({ status: 'Expired' })
+                                .eq('student_id', studentData.student_id)
+                                .eq('status', 'Pending')
+                                .then();
+                        }
                     } else if (newStatus === 'completed') {
                         // If guard approves from their end, show success
                         setStatus('completed');
                         setVerifiedAt(new Date().toISOString());
+                        
+                        // Update corresponding log to Success
+                        supabase.from('movement_logs')
+                            .update({ status: 'Success' })
+                            .eq('student_id', studentData.student_id)
+                            .eq('status', 'Pending')
+                            .then();
                     }
                 }
             )
@@ -173,6 +189,25 @@ const ScanScreen = ({ studentData, onBack }) => {
             if (data) {
                 console.log("[STUDENT] Session created successfully:", data.id);
                 setSessionId(data.id);
+
+                // 3. Create a PENDING log entry so it shows in Entry Logs immediately
+                const { data: logData, error: logError } = await supabase
+                    .from('movement_logs')
+                    .insert([{
+                        user_name: studentData.full_name,
+                        student_id: studentData.student_id,
+                        movement_type: type === 'IN' ? 'ENTRY' : 'EXIT', // Use standard types
+                        status: 'Pending'
+                    }])
+                    .select()
+                    .maybeSingle();
+
+                if (logError) {
+                    console.error("[STUDENT] Pending log creation error:", logError);
+                } else if (logData) {
+                    console.log("[STUDENT] Pending log created:", logData.id);
+                    setCurrentLogId(logData.id);
+                }
             } else {
                 throw new Error("Failed to retrieve session after creation.");
             }
@@ -261,22 +296,37 @@ const ScanScreen = ({ studentData, onBack }) => {
 
             if (updateError) throw updateError;
 
-            // Log movement if auto-completed
-            if (isAutoApprovable) {
-                const { error: logError } = await supabase.from('movement_logs').insert({
-                    user_name: studentData.full_name,
-                    student_id: studentData.student_id,
+            // Update log (either existing or new if not found)
+            if (currentLogId || isAutoApprovable) {
+                const logUpdate = {
                     access_point_id: scannedGateId,
-                    movement_type: movementType,
-                    status: 'Success'
-                });
+                    status: isAutoApprovable ? 'Success' : 'Pending'
+                };
 
-                if (logError) {
-                    console.error("[SCAN] Movement Log Insertion Error:", logError);
+                let logResult;
+                if (currentLogId) {
+                    logResult = await supabase
+                        .from('movement_logs')
+                        .update(logUpdate)
+                        .eq('id', currentLogId);
                 } else {
-                    console.log("[SCAN] Movement Log inserted successfully");
+                    // Fallback: create if not exists
+                    logResult = await supabase.from('movement_logs').insert({
+                        user_name: studentData.full_name,
+                        student_id: studentData.student_id,
+                        movement_type: movementType === 'IN' ? 'ENTRY' : 'EXIT',
+                        ...logUpdate
+                    });
                 }
-                
+
+                if (logResult.error) {
+                    console.error("[SCAN] Movement Log Update Error:", logResult.error);
+                } else {
+                    console.log("[SCAN] Movement Log updated successfully");
+                }
+            }
+            
+            if (isAutoApprovable) {
                 setVerifiedAt(new Date().toISOString());
                 setStatus('completed');
             } else {
@@ -382,14 +432,14 @@ const ScanScreen = ({ studentData, onBack }) => {
                                     className="w-full py-5 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-black rounded-2xl shadow-xl shadow-emerald-500/20 flex items-center justify-center gap-3 active:scale-[0.98] transition-all text-sm tracking-[0.2em] uppercase"
                                 >
                                     <LogIn className="w-5 h-5" />
-                                    Request IN
+                                    Request Entry
                                 </button>
                                 <button
                                     onClick={() => handleRequestAccess('OUT')}
                                     className="w-full py-5 bg-gradient-to-r from-orange-500 to-orange-600 text-white font-black rounded-2xl shadow-xl shadow-orange-500/20 flex items-center justify-center gap-3 active:scale-[0.98] transition-all text-sm tracking-[0.2em] uppercase"
                                 >
                                     <LogOut className="w-5 h-5" />
-                                    Request OUT
+                                    Request Exit
                                 </button>
                             </div>
                         </div>
@@ -465,7 +515,16 @@ const ScanScreen = ({ studentData, onBack }) => {
 
                             <div className="flex items-center justify-between w-full px-4 text-[#f47c20]">
                                 <button
-                                    onClick={() => setStatus('idle')}
+                                    onClick={() => {
+                                        // Update log to cancelled if it exists
+                                        if (currentLogId) {
+                                            supabase.from('movement_logs')
+                                                .update({ status: 'Cancelled' })
+                                                .eq('id', currentLogId)
+                                                .then();
+                                        }
+                                        setStatus('idle');
+                                    }}
                                     className="px-6 py-2.5 bg-white/5 text-gray-400 font-bold rounded-xl active:scale-95 transition-all text-[10px] tracking-[0.1em] uppercase border border-white/5"
                                 >
                                     Cancel
