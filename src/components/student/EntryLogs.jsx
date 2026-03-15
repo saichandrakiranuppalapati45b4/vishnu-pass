@@ -193,15 +193,15 @@ const EntryLogs = ({ studentData }) => {
                                             {/* Status & Time */}
                                             <div className="flex flex-col items-end flex-shrink-0">
                                                 <span className={`text-[10px] font-black uppercase tracking-wider ${
-                                                    (log.status === 'completed' || log.status === 'approved') ? 'text-[#f47c20]' : 
-                                                    (log.status === 'pending') ? 'text-amber-500' :
-                                                    (log.status === 'cancelled') ? 'text-gray-400' :
+                                                    (log.status?.toLowerCase() === 'completed' || log.status?.toLowerCase() === 'approved') ? 'text-[#f47c20]' : 
+                                                    (log.status?.toLowerCase() === 'pending') ? 'text-amber-500' :
+                                                    (log.status?.toLowerCase() === 'cancelled') ? 'text-gray-400' :
                                                     'text-rose-500'
                                                     }`}>
-                                                    {(log.status === 'completed' || log.status === 'approved') ? 'VERIFIED' : 
-                                                     (log.status === 'pending') ? 'PENDING' :
-                                                     (log.status === 'cancelled') ? 'CANCELLED' :
-                                                     (log.status === 'expired') ? 'EXPIRED' :
+                                                    {(log.status?.toLowerCase() === 'completed' || log.status?.toLowerCase() === 'approved') ? 'VERIFIED' : 
+                                                     (log.status?.toLowerCase() === 'pending') ? 'PENDING' :
+                                                     (log.status?.toLowerCase() === 'cancelled') ? 'CANCELLED' :
+                                                     (log.status?.toLowerCase() === 'expired') ? 'EXPIRED' :
                                                      'DENIED'}
                                                 </span>
                                                 <span className="text-xs text-gray-400 font-medium mt-0.5">

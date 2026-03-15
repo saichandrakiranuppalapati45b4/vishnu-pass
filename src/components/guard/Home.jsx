@@ -128,8 +128,9 @@ const GuardHome = ({ guardData }) => {
                         if (newStatus === 'completed') {
                             setPendingRequests(prev => prev.filter(req => req.id !== sessionId));
                             processSessionUpdate(sessionId, 'Realtime');
-                        } else if (newStatus === 'expired') {
+                        } else if (newStatus === 'expired' || newStatus === 'rejected') {
                             setPendingRequests(prev => prev.filter(req => req.id !== sessionId));
+                            if (newStatus === 'rejected') processSessionUpdate(sessionId, 'Realtime');
                         } else if (newStatus === 'approved') {
                             // If it moved to approved, update the item in queue if it exists
                             setPendingRequests(prev => prev.map(req => 
@@ -508,7 +509,8 @@ const GuardHome = ({ guardData }) => {
                                             ? 'bg-emerald-100 text-emerald-600' 
                                             : 'bg-rose-100 text-rose-600'
                                         }`}>
-                                            {activity.status === 'completed' ? 'Verified' : activity.status}
+                                            {activity.status === 'completed' ? 'Verified' : 
+                                             (activity.status === 'rejected' || activity.status === 'rejected') ? 'Denied' : activity.status}
                                         </span>
                                     </div>
                                     <span className="text-[10px] font-bold text-gray-400 tracking-tighter uppercase leading-none">

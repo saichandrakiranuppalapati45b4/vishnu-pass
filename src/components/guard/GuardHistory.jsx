@@ -71,7 +71,7 @@ const GuardHistory = ({ guardData, onBack }) => {
         const matchesFilter =
             activeFilter === 'ALL' ||
             (activeFilter === 'SUCCESS' && (log.status === 'completed' || log.status === 'approved')) ||
-            (activeFilter === 'DENIED' && (log.status === 'denied' || log.status === 'expired' || log.status === 'error'));
+            (activeFilter === 'DENIED' && (log.status === 'denied' || log.status === 'Denied' || log.status === 'rejected' || log.status === 'expired' || log.status === 'error'));
 
         return matchesSearch && matchesFilter;
     });
