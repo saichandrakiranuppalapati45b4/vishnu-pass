@@ -88,11 +88,16 @@ const GuardHome = ({ guardData }) => {
 
             channel = supabase.channel(channelName)
                 .on('postgres_changes', 
-                    { event: 'INSERT', schema: 'public', table: 'movement_logs', filter: `access_point_id=eq.${guardData.gate_id}` },
+                    { event: '*', schema: 'public', table: 'movement_logs', filter: `access_point_id=eq.${guardData.gate_id}` },
                     (payload) => {
-                        console.log("[GUARD] New movement log detected via Realtime");
-                        setStats(prev => ({ ...prev, totalScans: prev.totalScans + 1 }));
-                        setActivities(prev => [payload.new, ...prev].slice(0, 5));
+                        console.log("[GUARD] Movement log activity detected via Realtime:", payload.eventType);
+                        
+                        if (payload.eventType === 'INSERT') {
+                            setStats(prev => ({ ...prev, totalScans: prev.totalScans + 1 }));
+                        }
+                        
+                        // Refresh activities list
+                        fetchData();
                     }
                 )
                 .on('postgres_changes',
@@ -265,7 +270,7 @@ const GuardHome = ({ guardData }) => {
                 user_name: request.students?.full_name,
                 student_id: request.students?.student_id,
                 access_point_id: guardData.gate_id,
-                movement_type: request.movement_type || 'AUTHORIZED',
+                movement_type: request.movement_type === 'IN' ? 'ENTRY' : (request.movement_type === 'OUT' ? 'EXIT' : 'AUTHORIZED'),
                 status: 'Success'
             });
 

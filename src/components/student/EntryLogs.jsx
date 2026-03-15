@@ -50,13 +50,13 @@ const EntryLogs = ({ studentData }) => {
             .channel(`student_logs_${studentData.student_id}`)
             .on('postgres_changes', 
                 { 
-                    event: 'INSERT', 
+                    event: '*', 
                     schema: 'public', 
                     table: 'movement_logs', 
                     filter: `student_id=eq.${studentData.student_id}` 
                 }, 
                 () => {
-                    console.log("[STUDENT] New log detected, refreshing...");
+                    console.log("[STUDENT] Home logs updated via realtime");
                     fetchLogs();
                 }
             )

@@ -16,6 +16,7 @@ const ScanScreen = ({ studentData, onBack }) => {
 
     const sessionIdRef = useRef(null);
     const statusRef = useRef('idle');
+    const logIdRef = useRef(null);
     const scanLock = useRef(false);
 
     useEffect(() => {
@@ -71,27 +72,33 @@ const ScanScreen = ({ studentData, onBack }) => {
                     const newStatus = payload.new.status;
                     if (newStatus === 'approved') {
                         setStatus('approved');
-                    } else if (newStatus === 'expired') {
-                        setStatus('expired');
-                        // Update log to expired if we have one
-                        if (sessionIdRef.current) {
-                            supabase.from('movement_logs')
-                                .update({ status: 'Expired' })
-                                .eq('student_id', studentData.student_id)
-                                .eq('status', 'Pending')
-                                .then();
-                        }
                     } else if (newStatus === 'completed') {
                         // If guard approves from their end, show success
                         setStatus('completed');
                         setVerifiedAt(new Date().toISOString());
                         
-                        // Update corresponding log to Success
-                        supabase.from('movement_logs')
-                            .update({ status: 'Success' })
-                            .eq('student_id', studentData.student_id)
-                            .eq('status', 'Pending')
-                            .then();
+                        // Update corresponding log to Success by ID if we have it
+                        if (logIdRef.current) {
+                            supabase.from('movement_logs')
+                                .update({ status: 'Success' })
+                                .eq('id', logIdRef.current)
+                                .then();
+                        } else {
+                            // Fallback to updating all pending for this student
+                            supabase.from('movement_logs')
+                                .update({ status: 'Success' })
+                                .eq('student_id', studentData.student_id)
+                                .eq('status', 'Pending')
+                                .then();
+                        }
+                    } else if (newStatus === 'expired') {
+                        setStatus('expired');
+                        if (logIdRef.current) {
+                            supabase.from('movement_logs')
+                                .update({ status: 'Expired' })
+                                .eq('id', logIdRef.current)
+                                .then();
+                        }
                     }
                 }
             )
@@ -140,6 +147,7 @@ const ScanScreen = ({ studentData, onBack }) => {
                 if (!policies[category]) {
                     console.warn(`Policy for category [${category}] not found in settings.`);
                 } else {
+                    const normalizedType = type === 'IN' ? 'ENTRY' : 'EXIT';
                     const limit = type === 'IN' ? policies[category].monthlyInLimit : policies[category].monthlyOutLimit;
                     
                     // 2. Count current month movements
@@ -151,7 +159,7 @@ const ScanScreen = ({ studentData, onBack }) => {
                         .from('movement_logs')
                         .select('*', { count: 'exact', head: true })
                         .eq('student_id', studentData.student_id)
-                        .eq('movement_type', type)
+                        .eq('movement_type', normalizedType)
                         .eq('status', 'Success')
                         .gte('created_at', startOfMonth.toISOString());
                     
@@ -207,6 +215,7 @@ const ScanScreen = ({ studentData, onBack }) => {
                 } else if (logData) {
                     console.log("[STUDENT] Pending log created:", logData.id);
                     setCurrentLogId(logData.id);
+                    logIdRef.current = logData.id;
                 }
             } else {
                 throw new Error("Failed to retrieve session after creation.");

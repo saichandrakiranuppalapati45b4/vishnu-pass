@@ -45,7 +45,14 @@ const Home = ({ studentData, onNotificationClick }) => {
 
         // Subscribe to notification changes
         const channel = supabase
-            .channel('unread_notifications')
+            .channel(`student_home_${studentData.student_id}`)
+            .on('postgres_changes', 
+                { event: '*', schema: 'public', table: 'movement_logs', filter: `student_id=eq.${studentData.student_id}` },
+                () => {
+                    console.log("[STUDENT] Home logs updated via realtime");
+                    fetchLogs();
+                }
+            )
             .on('postgres_changes', 
                 { event: '*', schema: 'public', table: 'notifications', filter: `recipient_id=eq.${studentData.id}` },
                 () => fetchUnreadCount()
