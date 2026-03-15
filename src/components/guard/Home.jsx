@@ -43,7 +43,7 @@ const GuardHome = ({ guardData }) => {
         try {
             const { data: sessionInfo, error: sessionErr } = await supabase
                 .from('scan_sessions')
-                .select('student_id, gate_id, movement_type')
+                .select('student_id, gate_id, movement_type, warning')
                 .eq('id', sessionId)
                 .single();
 
@@ -63,7 +63,8 @@ const GuardHome = ({ guardData }) => {
                     console.log(`[GUARD] [${source}] Show Verification Overlay for:`, student.full_name);
                     setActiveVerification({
                         ...student,
-                        verifiedAt: format(new Date(), 'hh:mm a')
+                        verifiedAt: format(new Date(), 'hh:mm a'),
+                        warning: sessionInfo.warning
                     });
                 }
             }
@@ -301,6 +302,7 @@ const GuardHome = ({ guardData }) => {
                         gateName={guardData?.guard_gates?.name}
                         verifiedAt={activeVerification.verifiedAt}
                         onNextScan={() => setActiveVerification(null)}
+                        warning={activeVerification.warning}
                     />
                 </div>
             )}

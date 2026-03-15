@@ -225,6 +225,7 @@ const EntryLogs = ({ studentData }) => {
                         gateName={selectedLog.guard_gates?.name}
                         verifiedAt={format(new Date(selectedLog.created_at), 'hh:mm a')}
                         onNextScan={() => setSelectedLog(null)}
+                        warning={selectedLog.warning}
                     />
                 </div>
             )}

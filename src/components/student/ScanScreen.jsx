@@ -419,6 +419,7 @@ const ScanScreen = ({ studentData, onBack }) => {
                 gateName={gateData?.name || 'Main Gate'}
                 verifiedAt={verifiedAt ? new Date(verifiedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                 onNextScan={onBack}
+                warning={sessionWarning}
                 hideNavBar={true}
             />
         );
