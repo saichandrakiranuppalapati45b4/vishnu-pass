@@ -187,14 +187,14 @@ const Home = ({ studentData, onNotificationClick }) => {
                                     </div>
                                     <div className="flex flex-col items-end gap-1">
                                         <span className={`px-3 py-1 ${
-                                            log.status === 'Success' ? 'bg-emerald-50 text-emerald-500' : 
-                                            log.status === 'Pending' ? 'bg-amber-50 text-amber-500' :
+                                            (log.status === 'Success' || log.status === 'completed' || log.status === 'approved') ? 'bg-emerald-50 text-emerald-500' : 
+                                            (log.status === 'Pending' || log.status === 'pending') ? 'bg-amber-50 text-amber-500' :
                                             'bg-gray-50 text-gray-400'
                                             } text-[10px] font-black tracking-widest rounded-lg flex items-center gap-1`}>
-                                            {log.status === 'Success' ? <CheckCircle2 className="w-3 h-3" /> : null}
-                                            {log.status === 'Success' ? 'VERIFIED' : 
-                                             log.status === 'Pending' ? 'PENDING' :
-                                             log.status === 'Cancelled' ? 'CANCELLED' :
+                                            {(log.status === 'Success' || log.status === 'completed' || log.status === 'approved') ? <CheckCircle2 className="w-3 h-3" /> : null}
+                                            {(log.status === 'Success' || log.status === 'completed' || log.status === 'approved') ? 'VERIFIED' : 
+                                             (log.status === 'Pending' || log.status === 'pending') ? 'PENDING' :
+                                             (log.status === 'Cancelled' || log.status === 'cancelled') ? 'CANCELLED' :
                                              log.status.toUpperCase()}
                                         </span>
                                     </div>
