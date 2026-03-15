@@ -4,12 +4,22 @@ import { supabase } from '../../lib/supabase';
 import { format } from 'date-fns';
 import { useLanguage } from '../../contexts/LanguageContext';
 
-const Home = ({ studentData }) => {
+const Home = ({ studentData, onNotificationClick }) => {
     const [logs, setLogs] = useState([]);
     const [loadingLogs, setLoadingLogs] = useState(true);
+    const [unreadCount, setUnreadCount] = useState(0);
     const { t } = useLanguage();
 
     useEffect(() => {
+        const fetchUnreadCount = async () => {
+            const { count } = await supabase
+                .from('notifications')
+                .select('*', { count: 'exact', head: true })
+                .eq('recipient_id', studentData.id)
+                .eq('is_read', false);
+            setUnreadCount(count || 0);
+        };
+
         const fetchLogs = async () => {
             try {
                 const { data, error } = await supabase
@@ -30,7 +40,21 @@ const Home = ({ studentData }) => {
 
         if (studentData?.student_id) {
             fetchLogs();
+            fetchUnreadCount();
         }
+
+        // Subscribe to notification changes
+        const channel = supabase
+            .channel('unread_notifications')
+            .on('postgres_changes', 
+                { event: '*', schema: 'public', table: 'notifications', filter: `recipient_id=eq.${studentData.id}` },
+                () => fetchUnreadCount()
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     }, [studentData]);
 
     const initials = studentData?.full_name
@@ -51,9 +75,16 @@ const Home = ({ studentData }) => {
                     <h1 className="text-xl font-black text-gray-900 tracking-tight">Vishnu Pass</h1>
                 </div>
 
-                <button className="relative p-1 text-gray-400">
+                <button 
+                    onClick={onNotificationClick}
+                    className="relative p-1 text-gray-400 hover:text-[#f47c20] transition-colors"
+                >
                     <Bell className="w-6 h-6" />
-                    <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-orange-500 rounded-full border-2 border-white"></span>
+                    {unreadCount > 0 && (
+                        <span className="absolute top-0 right-0 min-w-[18px] h-[18px] px-1 bg-orange-500 text-white text-[8px] font-black rounded-full border-2 border-white flex items-center justify-center animate-in zoom-in duration-300">
+                            {unreadCount > 9 ? '9+' : unreadCount}
+                        </span>
+                    )}
                 </button>
             </header>
 

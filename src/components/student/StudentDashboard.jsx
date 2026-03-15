@@ -4,6 +4,7 @@ import BottomNav from './BottomNav';
 import ScanScreen from './ScanScreen';
 import EntryLogs from './EntryLogs';
 import ProfileScreen from './ProfileScreen';
+import Notifications from './Notifications';
 import { LogOut } from 'lucide-react';
 
 const StudentDashboard = ({ studentData, onLogout }) => {
@@ -12,15 +13,17 @@ const StudentDashboard = ({ studentData, onLogout }) => {
     const renderContent = () => {
         switch (activeTab) {
             case 'home':
-                return <Home studentData={studentData} />;
+                return <Home studentData={studentData} onNotificationClick={() => setActiveTab('notifications')} />;
             case 'scan':
                 return <ScanScreen studentData={studentData} onBack={() => setActiveTab('home')} />;
             case 'logs':
                 return <EntryLogs studentData={studentData} />;
             case 'profile':
                 return <ProfileScreen studentData={studentData} onLogout={onLogout} />;
+            case 'notifications':
+                return <Notifications studentData={studentData} onBack={() => setActiveTab('home')} />;
             default:
-                return <Home studentData={studentData} />;
+                return <Home studentData={studentData} onNotificationClick={() => setActiveTab('notifications')} />;
         }
     };
 

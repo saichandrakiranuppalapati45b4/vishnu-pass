@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Bell, TrendingUp, Clock, ShieldCheck, User, QrCode, CheckCircle2, Zap, RefreshCw } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { format } from 'date-fns';
@@ -14,6 +14,8 @@ const GuardHome = ({ guardData }) => {
     const [qrToken, setQrToken] = useState(crypto.randomUUID());
     const [qrTimeLeft, setQrTimeLeft] = useState(25);
     const [connectionStatus, setConnectionStatus] = useState('connecting'); // connecting, safe, error
+    const processedSessions = useRef(new Set());
+    const lastOverlaySessionId = useRef(null);
 
     // QR Code Refresh Timer
     useEffect(() => {
@@ -32,26 +34,25 @@ const GuardHome = ({ guardData }) => {
 
     // Reusable session processing logic - Wrapped in useCallback to fix lint warning
     const processSessionUpdate = useCallback(async (sessionId, source = 'Realtime') => {
-        console.log(`[GUARD] [${source}] Processing session ${sessionId}...`);
+        // Prevent double-processing for the UI overlay within a short window
+        if (lastOverlaySessionId.current === sessionId) return;
+        lastOverlaySessionId.current = sessionId;
+        
+        console.log(`[GUARD] [${source}] Processing verification overlay for session ${sessionId}...`);
         
         try {
-            // ALWAYS fetch fresh session data
             const { data: sessionInfo, error: sessionErr } = await supabase
                 .from('scan_sessions')
                 .select('student_id, gate_id, movement_type')
                 .eq('id', sessionId)
                 .single();
 
-            if (sessionErr || !sessionInfo) {
-                console.error(`[GUARD] [${source}] Failed to fetch session info:`, sessionErr);
-                return;
-            }
+            if (sessionErr || !sessionInfo) return;
 
             const sessionGate = String(sessionInfo.gate_id).toLowerCase().trim();
             const guardGate = String(guardData.gate_id).toLowerCase().trim();
 
             if (sessionGate === guardGate && sessionInfo.student_id) {
-                console.log(`[GUARD] [${source}] Gate match! Fetching student ${sessionInfo.student_id}...`);
                 const { data: student } = await supabase
                     .from('students')
                     .select('*, departments(name)')
@@ -59,24 +60,15 @@ const GuardHome = ({ guardData }) => {
                     .single();
 
                 if (student) {
-                    console.log(`[GUARD] [${source}] Verification SUCCESS for:`, student.full_name);
+                    console.log(`[GUARD] [${source}] Show Verification Overlay for:`, student.full_name);
                     setActiveVerification({
                         ...student,
                         verifiedAt: format(new Date(), 'hh:mm a')
                     });
-
-                    // Log it in movement_logs
-                    await supabase.from('movement_logs').insert({
-                        user_name: student.full_name,
-                        student_id: student.student_id,
-                        access_point_id: guardData.gate_id,
-                        movement_type: sessionInfo.movement_type || 'AUTHORIZED',
-                        status: 'Success'
-                    });
                 }
             }
         } catch (err) {
-            console.error(`[GUARD] [${source}] Error processing session:`, err);
+            console.error(`[GUARD] [${source}] Error showing verification:`, err);
         }
     }, [guardData.gate_id]);
 
@@ -192,10 +184,9 @@ const GuardHome = ({ guardData }) => {
                     activePasses: studentCount || 0
                 });
 
-                // 3. Fetch Recent Activity from movement_logs
                 const { data: requests } = await supabase
                     .from('movement_logs')
-                    .select('*')
+                    .select('*, students(photo_url)')
                     .eq('access_point_id', guardData.gate_id)
                     .order('created_at', { ascending: false })
                     .limit(5);
@@ -264,7 +255,19 @@ const GuardHome = ({ guardData }) => {
 
     const handleApprove = async (sessionId) => {
         try {
-            // If manual approval, we mark as 'completed' (handshake done)
+            const request = pendingRequests.find(r => r.id === sessionId);
+            if (!request) return;
+
+            // 1. Log the movement (Official record from manual approval)
+            await supabase.from('movement_logs').insert({
+                user_name: request.students?.full_name,
+                student_id: request.students?.student_id,
+                access_point_id: guardData.gate_id,
+                movement_type: request.movement_type || 'AUTHORIZED',
+                status: 'Success'
+            });
+
+            // 2. Mark session as completed (This will trigger the UI overlay via Realtime subscription)
             await supabase
                 .from('scan_sessions')
                 .update({
@@ -463,8 +466,12 @@ const GuardHome = ({ guardData }) => {
                         activities.map((activity) => (
                             <div key={activity.id} className={`bg-white rounded-[28px] p-4 border border-white shadow-sm flex items-center justify-between group`}>
                                 <div className="flex items-center gap-4">
-                                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${activity.status === 'Success' ? 'bg-emerald-50 text-emerald-500' : 'bg-rose-50 text-rose-500'}`}>
-                                        <User className="w-5 h-5" />
+                                    <div className={`w-10 h-10 rounded-lg overflow-hidden flex items-center justify-center ${activity.status === 'Success' ? 'bg-emerald-50' : 'bg-rose-50'}`}>
+                                        {activity.students?.photo_url ? (
+                                            <img src={activity.students.photo_url} alt="" className="w-full h-full object-cover" />
+                                        ) : (
+                                            <User className={`w-5 h-5 ${activity.status === 'Success' ? 'text-emerald-500' : 'text-rose-500'}`} />
+                                        )}
                                     </div>
                                     <div>
                                         <h4 className="text-sm font-black text-gray-800 leading-none mb-1.5">{activity.user_name}</h4>

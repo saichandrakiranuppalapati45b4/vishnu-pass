@@ -101,7 +101,7 @@ const VerificationResult = ({ studentData, gateName, verifiedAt, onNextScan, hid
                             </div>
                             <div className="col-span-2 bg-[#f8f9fb] p-4 rounded-2xl">
                                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Valid Until</p>
-                                <p className="text-[11px] font-black text-[#1a2b3c]">06:00 PM, 24 Oct 2023</p>
+                                <p className="text-[11px] font-black text-[#1a2b3c]">05:00 PM, {format(new Date(), 'dd MMM yyyy')}</p>
                             </div>
                         </div>
                     </div>

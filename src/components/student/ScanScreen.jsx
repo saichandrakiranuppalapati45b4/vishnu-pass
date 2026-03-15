@@ -15,6 +15,7 @@ const ScanScreen = ({ studentData, onBack }) => {
 
     const sessionIdRef = useRef(null);
     const statusRef = useRef('idle');
+    const scanLock = useRef(false);
 
     useEffect(() => {
         sessionIdRef.current = sessionId;
@@ -104,10 +105,19 @@ const ScanScreen = ({ studentData, onBack }) => {
             
             if (policyError) {
                 console.error("Policy fetch error:", policyError);
-                throw new Error(`Policy error: ${policyError.message}`);
             }
 
-            const policies = policyData?.value;
+            let policies = policyData?.value;
+            
+            // Defensively parse JSON if it comes back as a string
+            if (typeof policies === 'string') {
+                try {
+                    policies = JSON.parse(policies);
+                } catch (e) {
+                    console.error("Failed to parse policies JSON:", e);
+                }
+            }
+
             if (policies) {
                 // Determine limits based on student category
                 const category = studentData.hostel_type === 'hosteler' ? 'hosteler' : 'dayscholar';
@@ -175,22 +185,20 @@ const ScanScreen = ({ studentData, onBack }) => {
     };
 
     const handleScan = async (result) => {
-        if (!result) return;
+        if (!result || scanLock.current) return;
 
         const currentStatus = statusRef.current;
         const currentSessionId = sessionIdRef.current;
 
-        // Allow scanning in 'requesting' status now
-        if (currentStatus === 'idle' || currentStatus === 'completed' || currentStatus === 'expired') {
-            return;
-        }
-
+        // Only allow scanning in 'requesting' status
+        if (currentStatus !== 'requesting') return;
         if (!currentSessionId) return;
 
         let rawValue = typeof result === 'string' ? result : (result[0]?.rawValue || result?.text || result?.rawValue);
         if (!rawValue) return;
 
         try {
+            scanLock.current = true;
             setStatus('processing_scan');
 
             // Extraction logic
@@ -220,7 +228,16 @@ const ScanScreen = ({ studentData, onBack }) => {
                 .eq('key', 'student_policies')
                 .maybeSingle();
             
-            const policies = policyData?.value;
+            let policies = policyData?.value;
+
+            // Defensively parse JSON if it comes back as a string
+            if (typeof policies === 'string') {
+                try {
+                    policies = JSON.parse(policies);
+                } catch (e) {
+                    console.error("Failed to parse policies JSON in handleScan:", e);
+                }
+            }
             const category = studentData.hostel_type === 'hosteler' ? 'hosteler' : 'dayscholar';
             
             // Auto-approve logic:
@@ -279,6 +296,8 @@ const ScanScreen = ({ studentData, onBack }) => {
             console.error("Scan error:", err);
             setError(err?.message || "Verification failed");
             setStatus('requesting');
+        } finally {
+            scanLock.current = false;
         }
     };
 

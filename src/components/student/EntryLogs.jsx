@@ -15,12 +15,17 @@ const EntryLogs = ({ studentData }) => {
 
         try {
             setLoading(true);
-            const { data, error } = await supabase
-                .from('movement_logs')
-                .select('*, guard_gates(name)')
-                .eq('student_id', studentData.student_id)
-                .order('created_at', { ascending: false })
-                .limit(50);
+                const { data, error } = await supabase
+                    .from('movement_logs')
+                    .select(`
+                        *,
+                        guard_gates (
+                            name
+                        )
+                    `)
+                    .eq('student_id', studentData.student_id)
+                    .order('created_at', { ascending: false })
+                    .limit(50);
 
             if (error) throw error;
             setLogs(data || []);
@@ -32,9 +37,29 @@ const EntryLogs = ({ studentData }) => {
     }, [studentData?.student_id]);
 
     useEffect(() => {
-        if (studentData?.student_id) {
-            fetchLogs();
-        }
+        if (!studentData?.student_id) return;
+        
+        fetchLogs();
+
+        const channel = supabase
+            .channel(`student_logs_${studentData.student_id}`)
+            .on('postgres_changes', 
+                { 
+                    event: 'INSERT', 
+                    schema: 'public', 
+                    table: 'movement_logs', 
+                    filter: `student_id=eq.${studentData.student_id}` 
+                }, 
+                () => {
+                    console.log("[STUDENT] New log detected, refreshing...");
+                    fetchLogs();
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     }, [studentData?.student_id, fetchLogs]);
 
     // Determine if a log is entry or exit based on movement_type

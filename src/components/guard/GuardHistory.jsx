@@ -19,6 +19,9 @@ const GuardHistory = ({ guardData, onBack }) => {
                     .from('movement_logs')
                     .select(`
                         *,
+                        students (
+                            photo_url
+                        ),
                         guard_gates (
                             name
                         )
@@ -162,8 +165,8 @@ const GuardHistory = ({ guardData, onBack }) => {
                                         <div className="flex items-center gap-4">
                                             <div className="relative">
                                                 <div className="w-14 h-14 rounded-full bg-slate-50 overflow-hidden border border-slate-100 flex items-center justify-center">
-                                                    {log.student_photo ? (
-                                                        <img src={log.student_photo} alt="" className="w-full h-full object-cover" />
+                                                    {log.students?.photo_url ? (
+                                                        <img src={log.students.photo_url} alt="" className="w-full h-full object-cover" />
                                                     ) : (
                                                         <div className="w-full h-full bg-[#f4a261]/10 flex items-center justify-center text-[#f4a261] font-black text-lg">
                                                             {log.user_name?.[0]}

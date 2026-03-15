@@ -93,7 +93,17 @@ const StudentPermissions = () => {
             if (fetchError) throw fetchError;
 
             if (policyData) {
-                const val = policyData.value;
+                let val = policyData.value;
+                
+                // Defensively parse JSON
+                if (typeof val === 'string') {
+                    try {
+                        val = JSON.parse(val);
+                    } catch (e) {
+                        console.error("Failed to parse settings JSON:", e);
+                    }
+                }
+
                 if (val && typeof val === 'object') {
                     // Robust normalization: support old plural keys and merge with defaults
                     setSettings({
