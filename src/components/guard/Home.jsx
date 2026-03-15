@@ -425,14 +425,20 @@ const GuardHome = ({ guardData }) => {
                                         <h4 className="text-sm font-black text-gray-800 leading-none mb-1">{req.students?.full_name}</h4>
                                         <div className="flex items-center gap-2">
                                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                                            {req.students?.student_id} • {req.status === 'completed' ? 'Verified' : req.status}
-                                        </p>
+                                                {req.students?.student_id} • {req.status === 'completed' ? 'Verified' : req.status}
+                                            </p>
                                             <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-md uppercase ${
                                                 req.movement_type === 'IN' ? 'bg-emerald-100 text-emerald-600' : 
                                                 req.movement_type === 'OUT' ? 'bg-orange-100 text-orange-600' : 'bg-gray-100 text-gray-600'
                                             }`}>
                                                 {req.movement_type}
                                             </span>
+                                            {req.warning && (
+                                                <span className="flex items-center gap-1 bg-amber-100 text-amber-600 text-[8px] font-black px-1.5 py-0.5 rounded-md uppercase animate-pulse">
+                                                    <Zap className="w-2.5 h-2.5" />
+                                                    Alert
+                                                </span>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -489,10 +495,19 @@ const GuardHome = ({ guardData }) => {
                                     </div>
                                 </div>
                                 <div className="flex flex-col items-end gap-1.5">
-                                    <span className={`text-[8px] font-black px-2.5 py-1 rounded-lg tracking-wider uppercase ${activity.status === 'Success' ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}`}>
-                                        {activity.status}
-                                    </span>
-                                    <span className="text-[10px] font-bold text-gray-400 tracking-tighter uppercase">
+                                    <div className="flex items-center gap-2">
+                                        {activity.warning && (
+                                            <Zap className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
+                                        )}
+                                        <span className={`text-[8px] font-black px-2.5 py-1 rounded-lg tracking-wider uppercase ${
+                                            (activity.status === 'Success' || activity.status === 'completed' || activity.status === 'approved') 
+                                            ? 'bg-emerald-100 text-emerald-600' 
+                                            : 'bg-rose-100 text-rose-600'
+                                        }`}>
+                                            {activity.status === 'completed' ? 'Verified' : activity.status}
+                                        </span>
+                                    </div>
+                                    <span className="text-[10px] font-bold text-gray-400 tracking-tighter uppercase leading-none">
                                         {activity.movement_type}
                                     </span>
                                 </div>

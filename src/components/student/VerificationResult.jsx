@@ -2,7 +2,7 @@ import React from 'react';
 import { ChevronLeft, CheckCircle2, ShieldCheck, Zap, Download, Scan, UserCircle, History, LayoutDashboard, User } from 'lucide-react';
 import { format } from 'date-fns';
 
-const VerificationResult = ({ studentData, gateName, verifiedAt, onNextScan, hideNavBar = false }) => {
+const VerificationResult = ({ studentData, gateName, verifiedAt, onNextScan, warning, hideNavBar = false }) => {
 
     return (
         <div className="flex flex-col bg-[#f8f9fb] animate-in slide-in-from-bottom duration-500 overflow-y-auto font-sans h-screen pb-32">
@@ -56,14 +56,14 @@ const VerificationResult = ({ studentData, gateName, verifiedAt, onNextScan, hid
                 </div>
 
                 {/* Status Card */}
-                <div className="bg-[#f0f4e8] border border-[#e0e7d0] rounded-[32px] p-6 flex items-center justify-between shadow-sm">
+                <div className={`${warning ? 'bg-amber-50 border-amber-200' : 'bg-[#f0f4e8] border-[#e0e7d0]'} rounded-[32px] p-6 flex items-center justify-between shadow-sm`}>
                     <div>
-                        <h3 className="text-[#a6cc39] text-xl font-black tracking-tight uppercase">Valid Pass</h3>
-                        <p className="text-slate-500 text-xs font-bold">Access Authorized for Entry</p>
+                        <h3 className={`${warning ? 'text-amber-600' : 'text-[#a6cc39]'} text-xl font-black tracking-tight uppercase`}>{warning ? 'Limit Warning' : 'Valid Pass'}</h3>
+                        <p className="text-slate-500 text-xs font-bold">{warning ? warning : 'Access Authorized for Entry'}</p>
                     </div>
-                    <div className="flex items-center gap-2 bg-[#a6cc39] text-white px-4 py-2 rounded-xl text-xs font-black tracking-widest uppercase shadow-lg shadow-[#a6cc39]/20">
-                        <CheckCircle2 className="w-4 h-4" />
-                        Green
+                    <div className={`flex items-center gap-2 ${warning ? 'bg-amber-500 shadow-amber-500/20' : 'bg-[#a6cc39] shadow-[#a6cc39]/20'} text-white px-4 py-2 rounded-xl text-xs font-black tracking-widest uppercase shadow-lg`}>
+                        {warning ? <Zap className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
+                        {warning ? 'Alert' : 'Green'}
                     </div>
                 </div>
 

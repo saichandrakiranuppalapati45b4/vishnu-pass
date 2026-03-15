@@ -12,6 +12,7 @@ const ScanScreen = ({ studentData, onBack }) => {
     const [movementType, setMovementType] = useState(null);
     const [gateData, setGateData] = useState(null);
     const [verifiedAt, setVerifiedAt] = useState(null);
+    const [sessionWarning, setSessionWarning] = useState(null);
     const [currentLogId, setCurrentLogId] = useState(null);
 
     const sessionIdRef = useRef(null);
@@ -70,6 +71,10 @@ const ScanScreen = ({ studentData, onBack }) => {
                 },
                 (payload) => {
                     const newStatus = payload.new.status;
+                    const newWarning = payload.new.warning;
+                    
+                    if (newWarning) setSessionWarning(newWarning);
+                    
                     if (newStatus === 'approved') {
                         setStatus('approved');
                     } else if (newStatus === 'completed') {
@@ -192,75 +197,74 @@ const ScanScreen = ({ studentData, onBack }) => {
                     const normalizedType = type === 'IN' ? 'ENTRY' : 'EXIT';
                     const limit = type === 'IN' ? policies[category].monthlyInLimit : policies[category].monthlyOutLimit;
                     
-                    // 2. Count current month movements
+                    // 2. Count current month movements from scan_sessions (source of truth)
                     const startOfMonth = new Date();
                     startOfMonth.setDate(1);
                     startOfMonth.setHours(0, 0, 0, 0);
                     
                     const { count, error: countError } = await supabase
-                        .from('movement_logs')
+                        .from('scan_sessions')
                         .select('*', { count: 'exact', head: true })
                         .eq('student_id', studentData.student_id)
                         .eq('movement_type', type) // 'IN' or 'OUT'
-                        .eq('status', 'Success')
+                        .eq('status', 'completed')
                         .gte('created_at', startOfMonth.toISOString());
                     
                     if (countError) {
                         console.error("Count query error:", countError);
-                        throw new Error(`Movement count error: ${countError.message}`);
                     }
                     
-                    if (count >= limit) {
-                        setError(`Monthly ${type} limit reached (${count}/${limit}). Please contact administration.`);
-                        return;
+                    const isLimitReached = count !== null && count >= limit;
+                    
+                    // Immediately switch to 'requesting' (opens camera)
+                    setStatus('requesting');
+                    setTimeLeft(25);
+
+                    // Create pending session with warning if limit reached
+                    const { data, error: insertError } = await supabase
+                        .from('scan_sessions')
+                        .insert([{
+                            student_id: studentData.student_id,
+                            status: 'pending',
+                            movement_type: type,
+                            warning: isLimitReached ? `Monthly ${type} limit reached (${count}/${limit})` : null
+                        }])
+                        .select()
+                        .maybeSingle();
+
+                    if (insertError) {
+                        console.error("Insert session error:", insertError);
+                        throw new Error(`Session creation error: ${insertError.message}`);
+                    }
+
+                    if (data) {
+                        console.log("[STUDENT] Session created successfully:", data.id);
+                        setSessionId(data.id);
+                        setSessionWarning(data.warning);
+
+                        // 3. Create a PENDING log entry so it shows in Entry Logs immediately
+                        const { data: logData, error: logError } = await supabase
+                            .from('movement_logs')
+                            .insert([{
+                                user_name: studentData.full_name,
+                                student_id: studentData.student_id,
+                                movement_type: type, // 'IN' or 'OUT'
+                                status: 'Pending'
+                            }])
+                            .select()
+                            .maybeSingle();
+
+                        if (logError) {
+                            console.error("[STUDENT] Pending log creation error:", logError);
+                        } else if (logData) {
+                            console.log("[STUDENT] Pending log created:", logData.id);
+                            setCurrentLogId(logData.id);
+                            logIdRef.current = logData.id;
+                        }
+                    } else {
+                        throw new Error("Failed to retrieve session after creation.");
                     }
                 }
-            }
-
-            // Immediately switch to 'requesting' (opens camera)
-            setStatus('requesting');
-            setTimeLeft(25);
-
-            // Create pending session
-            const { data, error: insertError } = await supabase
-                .from('scan_sessions')
-                .insert([{
-                    student_id: studentData.student_id,
-                    status: 'pending',
-                    movement_type: type
-                }])
-                .select()
-                .maybeSingle();
-
-            if (insertError) {
-                console.error("Insert session error:", insertError);
-                throw new Error(`Session creation error: ${insertError.message}`);
-            }
-            if (data) {
-                console.log("[STUDENT] Session created successfully:", data.id);
-                setSessionId(data.id);
-
-                // 3. Create a PENDING log entry so it shows in Entry Logs immediately
-                const { data: logData, error: logError } = await supabase
-                    .from('movement_logs')
-                    .insert([{
-                        user_name: studentData.full_name,
-                        student_id: studentData.student_id,
-                        movement_type: type, // 'IN' or 'OUT'
-                        status: 'Pending'
-                    }])
-                    .select()
-                    .maybeSingle();
-
-                if (logError) {
-                    console.error("[STUDENT] Pending log creation error:", logError);
-                } else if (logData) {
-                    console.log("[STUDENT] Pending log created:", logData.id);
-                    setCurrentLogId(logData.id);
-                    logIdRef.current = logData.id;
-                }
-            } else {
-                throw new Error("Failed to retrieve session after creation.");
             }
 
         } catch (err) {
