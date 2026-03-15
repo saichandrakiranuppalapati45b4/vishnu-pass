@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Analytics } from '@vercel/analytics/react';
 import SplashScreen from './components/SplashScreen';
 import LoginScreen from './components/LoginScreen';
 import Dashboard from './components/admin/Dashboard';
@@ -195,6 +196,7 @@ function App() {
   return (
     <LanguageProvider>
       <NotificationProvider>
+        <Analytics />
         {showSplash ? (
           <SplashScreen onFinish={() => setShowSplash(false)} branding={branding} />
         ) : isAuthLoading ? (
