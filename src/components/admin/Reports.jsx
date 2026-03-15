@@ -50,9 +50,10 @@ const Reports = () => {
         try {
             // 1. Fetch all logs
             const { data: allLogs, error: statsError } = await supabase
-                .from('movement_logs')
+                .from('scan_sessions')
                 .select(`
                     *,
+                    students(full_name, photo_url),
                     guard_gates(name)
                 `)
                 .order('created_at', { ascending: false });
@@ -153,7 +154,7 @@ const Reports = () => {
         // Real-time subscription
         const channel = supabase
             .channel('reports_changes')
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'movement_logs' }, () => {
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'scan_sessions' }, () => {
                 fetchInitialData(false); // Refresh data on new entry
             })
             .subscribe();
@@ -473,9 +474,9 @@ const Reports = () => {
                                     </span>
                                 </td>
                                 <td className="px-6 py-4">
-                                    <span className={`text-sm font-semibold ${log.status === 'Success' ? 'text-emerald-600' : 'text-red-600'} flex items-center gap-1.5`}>
-                                        <span className={`w-1.5 h-1.5 rounded-full ${log.status === 'Success' ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
-                                        {log.status}
+                                    <span className={`text-sm font-semibold ${log.status === 'completed' || log.status === 'approved' ? 'text-emerald-600' : 'text-red-600'} flex items-center gap-1.5`}>
+                                        <span className={`w-1.5 h-1.5 rounded-full ${log.status === 'completed' || log.status === 'approved' ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
+                                        {log.status === 'completed' ? 'Verified' : log.status}
                                     </span>
                                 </td>
                                 <td className="px-6 py-4 text-gray-500 font-medium text-xs whitespace-nowrap">

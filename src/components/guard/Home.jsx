@@ -88,7 +88,7 @@ const GuardHome = ({ guardData }) => {
 
             channel = supabase.channel(channelName)
                 .on('postgres_changes', 
-                    { event: '*', schema: 'public', table: 'movement_logs', filter: `access_point_id=eq.${guardData.gate_id}` },
+                    { event: '*', schema: 'public', table: 'scan_sessions', filter: `gate_id=eq.${guardData.gate_id}` },
                     (payload) => {
                         console.log("[GUARD] Movement log activity detected via Realtime:", payload.eventType);
                         
@@ -189,14 +189,12 @@ const GuardHome = ({ guardData }) => {
                     activePasses: studentCount || 0
                 });
 
-                const { data: requests, error: activeErr } = await supabase
-                    .from('movement_logs')
-                    .select('*')
-                    .eq('access_point_id', guardData.gate_id)
+                const { data: requests } = await supabase
+                    .from('scan_sessions')
+                    .select('*, students(full_name, photo_url)')
+                    .eq('gate_id', guardData.gate_id)
                     .order('created_at', { ascending: false })
                     .limit(5);
-
-                if (activeErr) console.error("[GUARD] Fetch Activity Error:", activeErr);
 
                 if (requests) setActivities(requests);
 
@@ -240,9 +238,9 @@ const GuardHome = ({ guardData }) => {
         if (scanCount !== null) setStats(prev => ({ ...prev, totalScans: scanCount }));
 
         const { data: requests } = await supabase
-            .from('movement_logs')
-            .select('*')
-            .eq('access_point_id', guardData.gate_id)
+            .from('scan_sessions')
+            .select('*, students(full_name, photo_url)')
+            .eq('gate_id', guardData.gate_id)
             .order('created_at', { ascending: false })
             .limit(5);
         if (requests) setActivities(requests);
@@ -426,7 +424,9 @@ const GuardHome = ({ guardData }) => {
                                     <div>
                                         <h4 className="text-sm font-black text-gray-800 leading-none mb-1">{req.students?.full_name}</h4>
                                         <div className="flex items-center gap-2">
-                                            <p className="text-[10px] font-bold text-[#f47c20] uppercase tracking-widest">{req.students?.student_id}</p>
+                                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                                            {req.students?.student_id} • {req.status === 'completed' ? 'Verified' : req.status}
+                                        </p>
                                             <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-md uppercase ${
                                                 req.movement_type === 'IN' ? 'bg-emerald-100 text-emerald-600' : 
                                                 req.movement_type === 'OUT' ? 'bg-orange-100 text-orange-600' : 'bg-gray-100 text-gray-600'
@@ -473,11 +473,15 @@ const GuardHome = ({ guardData }) => {
                         activities.map((activity) => (
                             <div key={activity.id} className={`bg-white rounded-[28px] p-4 border border-white shadow-sm flex items-center justify-between group`}>
                                 <div className="flex items-center gap-4">
-                                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${activity.status === 'Success' ? 'bg-emerald-50 text-emerald-500' : 'bg-rose-50 text-rose-500'}`}>
-                                        <User className="w-5 h-5" />
+                                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${activity.status === 'completed' || activity.status === 'approved' ? 'bg-emerald-50 text-emerald-500' : 'bg-rose-50 text-rose-500'}`}>
+                                        {activity.students?.photo_url ? (
+                                            <img src={activity.students.photo_url} alt="P" className="w-full h-full object-cover rounded-lg" />
+                                        ) : (
+                                            <User className="w-5 h-5" />
+                                        )}
                                     </div>
                                     <div>
-                                        <h4 className="text-sm font-black text-gray-800 leading-none mb-1.5">{activity.user_name}</h4>
+                                        <h4 className="text-sm font-black text-gray-800 leading-none mb-1.5">{activity.students?.full_name || 'Student'}</h4>
                                         <p className="text-[10px] font-bold text-gray-400 uppercase">
                                             <Clock className="w-3 h-3 inline mr-1 -mt-0.5" />
                                             {format(new Date(activity.created_at), 'hh:mm a')} • {activity.student_id || 'GUEST'}

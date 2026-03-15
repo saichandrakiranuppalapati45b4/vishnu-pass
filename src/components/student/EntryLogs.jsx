@@ -16,9 +16,13 @@ const EntryLogs = ({ studentData }) => {
         try {
             setLoading(true);
                 const { data, error } = await supabase
-                    .from('movement_logs')
+                    .from('scan_sessions')
                     .select(`
                         *,
+                        students (
+                            full_name,
+                            photo_url
+                        ),
                         guard_gates (
                             name
                         )
@@ -52,11 +56,11 @@ const EntryLogs = ({ studentData }) => {
                 { 
                     event: '*', 
                     schema: 'public', 
-                    table: 'movement_logs', 
+                    table: 'scan_sessions', 
                     filter: `student_id=eq.${studentData.student_id}` 
                 }, 
                 () => {
-                    console.log("[STUDENT] Home logs updated via realtime");
+                    console.log("[STUDENT] Scan session logs updated via realtime");
                     fetchLogs();
                 }
             )

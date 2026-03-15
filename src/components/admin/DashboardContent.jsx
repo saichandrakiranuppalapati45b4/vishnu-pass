@@ -20,8 +20,8 @@ const DashboardContent = ({ onNavigate }) => {
             const [studentsCount, guardsCount, alertsCount, activityLogs] = await Promise.all([
                 supabase.from('students').select('*', { count: 'exact', head: true }),
                 supabase.from('guards').select('*', { count: 'exact', head: true }),
-                supabase.from('movement_logs').select('*', { count: 'exact', head: true }).neq('status', 'Success'),
-                supabase.from('movement_logs').select('*, guard_gates(name)').order('created_at', { ascending: false }).limit(5)
+                supabase.from('scan_sessions').select('*', { count: 'exact', head: true }).in('status', ['denied', 'expired', 'error']),
+                supabase.from('scan_sessions').select('*, students(full_name), guard_gates(name)').order('created_at', { ascending: false }).limit(5)
             ]);
 
             setStats({
@@ -46,7 +46,7 @@ const DashboardContent = ({ onNavigate }) => {
         // Real-time updates
         const channel = supabase
             .channel('dashboard_updates')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'movement_logs' }, () => {
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'scan_sessions' }, () => {
                 fetchDashboardData(false);
             })
             .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, () => {

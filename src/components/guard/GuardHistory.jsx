@@ -16,9 +16,13 @@ const GuardHistory = ({ guardData, onBack }) => {
             setIsLoading(true);
             try {
                 let query = supabase
-                    .from('movement_logs')
+                    .from('scan_sessions')
                     .select(`
                         *,
+                        students (
+                            full_name,
+                            photo_url
+                        ),
                         guard_gates (
                             name
                         )
@@ -45,7 +49,7 @@ const GuardHistory = ({ guardData, onBack }) => {
 
         const subscription = supabase
             .channel('history_updates')
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'movement_logs' }, async () => {
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'scan_sessions' }, async () => {
                 // To get the gate name for the new entry, we could do a small fetch or just use what we have
                 // For simplicity, we'll just re-fetch the list if a new record appears
                 fetchLogs();
@@ -66,8 +70,8 @@ const GuardHistory = ({ guardData, onBack }) => {
 
         const matchesFilter =
             activeFilter === 'ALL' ||
-            (activeFilter === 'SUCCESS' && log.status === 'Success') ||
-            (activeFilter === 'DENIED' && (log.status === 'Denied' || log.status === 'Error'));
+            (activeFilter === 'SUCCESS' && (log.status === 'completed' || log.status === 'approved')) ||
+            (activeFilter === 'DENIED' && (log.status === 'denied' || log.status === 'expired' || log.status === 'error'));
 
         return matchesSearch && matchesFilter;
     });
@@ -171,14 +175,14 @@ const GuardHistory = ({ guardData, onBack }) => {
                                                         {log.user_name?.[0]}
                                                     </div>
                                                 </div>
-                                                <div className={`absolute -bottom-0.5 -right-0.5 w-6 h-6 rounded-full border-2 border-white flex items-center justify-center shadow-sm ${log.status === 'Success' ? 'bg-emerald-500' : 'bg-rose-500'
+                                                <div className={`absolute -bottom-0.5 -right-0.5 w-6 h-6 rounded-full border-2 border-white flex items-center justify-center shadow-sm ${(log.status === 'completed' || log.status === 'approved') ? 'bg-emerald-500' : 'bg-rose-500'
                                                     }`}>
-                                                    {log.status === 'Success' ? <CheckCircle2 className="w-3.5 h-3.5 text-white" /> : <XCircle className="w-3.5 h-3.5 text-white" />}
+                                                    {(log.status === 'completed' || log.status === 'approved') ? <CheckCircle2 className="w-3.5 h-3.5 text-white" /> : <XCircle className="w-3.5 h-3.5 text-white" />}
                                                 </div>
                                             </div>
                                             <div>
                                                 <h4 className="text-base font-black text-gray-800 leading-none mb-1.5 tracking-tight group-hover:text-[#f47c20] transition-colors">
-                                                    {log.user_name}
+                                                    {log.students?.full_name || 'STUDENT'}
                                                 </h4>
                                                 <p className="text-[11px] font-bold text-gray-400 mb-1 leading-none">
                                                     ID: {log.student_id || 'GUEST-SCAN'}

@@ -23,16 +23,23 @@ const Home = ({ studentData, onNotificationClick }) => {
         const fetchLogs = async () => {
             try {
                 const { data, error } = await supabase
-                    .from('movement_logs')
-                    .select('*, guard_gates(name)')
+                    .from('scan_sessions')
+                    .select(`
+                        *,
+                        students(full_name, photo_url),
+                        guard_gates(name)
+                    `)
                     .eq('student_id', studentData.student_id)
                     .order('created_at', { ascending: false })
-                    .limit(5);
-
-                if (error) throw error;
+                    .limit(4);
+                
+                if (error) {
+                    console.error("[STUDENT] Fetch logs error:", error);
+                    throw error;
+                }
                 setLogs(data || []);
             } catch (error) {
-                console.error('Error fetching student logs:', error);
+                console.error('Error fetching logs:', error);
             } finally {
                 setLoadingLogs(false);
             }
@@ -43,13 +50,13 @@ const Home = ({ studentData, onNotificationClick }) => {
             fetchUnreadCount();
         }
 
-        // Subscribe to notification changes
+        // Subscribe to scan_sessions changes
         const channel = supabase
             .channel(`student_home_${studentData.student_id}`)
             .on('postgres_changes', 
-                { event: '*', schema: 'public', table: 'movement_logs', filter: `student_id=eq.${studentData.student_id}` },
+                { event: '*', schema: 'public', table: 'scan_sessions', filter: `student_id=eq.${studentData.student_id}` },
                 () => {
-                    console.log("[STUDENT] Home logs updated via realtime");
+                    console.log("[STUDENT] Home logs updated via realtime from scan_sessions");
                     fetchLogs();
                 }
             )
