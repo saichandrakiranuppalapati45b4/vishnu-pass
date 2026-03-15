@@ -166,13 +166,12 @@ const Home = ({ studentData, onNotificationClick }) => {
                             logs.map((log) => (
                                 <div key={log.id} className="bg-white rounded-[32px] p-5 flex items-center justify-between border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
                                     <div className="flex items-center gap-4">
-                                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${log.movement_type === 'ENTRY' ? 'bg-emerald-50 text-emerald-500' : 'bg-orange-50 text-orange-500'
-                                            }`}>
-                                            {log.movement_type === 'ENTRY' ? <LogIn className="w-6 h-6" /> : <LogOut className="w-6 h-6" />}
+                                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${(log.movement_type === 'IN' || log.movement_type === 'ENTRY') ? 'bg-emerald-50 text-emerald-500' : 'bg-orange-50 text-orange-500'}`}>
+                                            {(log.movement_type === 'IN' || log.movement_type === 'ENTRY') ? <LogIn className="w-6 h-6" /> : <LogOut className="w-6 h-6" />}
                                         </div>
                                         <div>
                                             <h4 className="font-black text-gray-900">
-                                                {log.guard_gates?.name || (log.status === 'Pending' ? 'Scanning Gate...' : 'Gate')} - {log.movement_type === 'ENTRY' ? t('home.entry') : t('home.exit')}
+                                                {log.guard_gates?.name || (log.status === 'Pending' ? 'Scanning Gate...' : 'Gate')} - {(log.movement_type === 'IN' || log.movement_type === 'ENTRY') ? t('home.entry') : t('home.exit')}
                                             </h4>
                                             <p className="text-xs font-bold text-gray-400 tracking-wide">
                                                 {format(new Date(log.created_at), 'MMM dd, yyyy')} • {format(new Date(log.created_at), 'hh:mm a')}

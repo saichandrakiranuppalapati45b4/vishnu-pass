@@ -159,7 +159,7 @@ const ScanScreen = ({ studentData, onBack }) => {
                         .from('movement_logs')
                         .select('*', { count: 'exact', head: true })
                         .eq('student_id', studentData.student_id)
-                        .eq('movement_type', normalizedType)
+                        .eq('movement_type', type) // 'IN' or 'OUT'
                         .eq('status', 'Success')
                         .gte('created_at', startOfMonth.toISOString());
                     
@@ -204,7 +204,7 @@ const ScanScreen = ({ studentData, onBack }) => {
                     .insert([{
                         user_name: studentData.full_name,
                         student_id: studentData.student_id,
-                        movement_type: type === 'IN' ? 'ENTRY' : 'EXIT', // Use standard types
+                        movement_type: type, // 'IN' or 'OUT'
                         status: 'Pending'
                     }])
                     .select()
@@ -323,7 +323,7 @@ const ScanScreen = ({ studentData, onBack }) => {
                     logResult = await supabase.from('movement_logs').insert({
                         user_name: studentData.full_name,
                         student_id: studentData.student_id,
-                        movement_type: movementType === 'IN' ? 'ENTRY' : 'EXIT',
+                        movement_type: movementType, // Already 'IN' or 'OUT'
                         ...logUpdate
                     });
                 }

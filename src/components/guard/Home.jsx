@@ -270,7 +270,7 @@ const GuardHome = ({ guardData }) => {
                 user_name: request.students?.full_name,
                 student_id: request.students?.student_id,
                 access_point_id: guardData.gate_id,
-                movement_type: request.movement_type === 'IN' ? 'ENTRY' : (request.movement_type === 'OUT' ? 'EXIT' : 'AUTHORIZED'),
+                movement_type: request.movement_type || 'AUTHORIZED', // request.movement_type is 'IN' or 'OUT'
                 status: 'Success'
             });
 

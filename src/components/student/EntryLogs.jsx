@@ -75,9 +75,9 @@ const EntryLogs = ({ studentData }) => {
 
     // Filter logs
     const filteredLogs = logs.filter(log => {
-        if (filter === 'entries') return isEntry(log);
-        if (filter === 'exits') return !isEntry(log);
-        return true;
+        if (filter === 'all') return true;
+        const entry = log.movement_type === 'IN' || log.movement_type === 'ENTRY';
+        return filter === 'entries' ? entry : !entry;
     });
 
     // Group logs by date
@@ -182,7 +182,7 @@ const EntryLogs = ({ studentData }) => {
                                                     {log.guard_gates?.name || (log.status === 'Pending' ? 'Scanning Gate...' : 'Unknown Gate')}
                                                 </p>
                                                 <p className="text-xs text-gray-400 font-medium mt-0.5">
-                                                    {entry ? 'Entry' : 'Exit'}
+                                                    {(log.movement_type === 'IN' || log.movement_type === 'ENTRY') ? 'Entry' : 'Exit'}
                                                 </p>
                                             </div>
 
