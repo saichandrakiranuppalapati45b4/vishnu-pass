@@ -184,12 +184,14 @@ const GuardHome = ({ guardData }) => {
                     activePasses: studentCount || 0
                 });
 
-                const { data: requests } = await supabase
+                const { data: requests, error: activeErr } = await supabase
                     .from('movement_logs')
-                    .select('*, students(photo_url)')
+                    .select('*')
                     .eq('access_point_id', guardData.gate_id)
                     .order('created_at', { ascending: false })
                     .limit(5);
+
+                if (activeErr) console.error("[GUARD] Fetch Activity Error:", activeErr);
 
                 if (requests) setActivities(requests);
 
@@ -466,12 +468,8 @@ const GuardHome = ({ guardData }) => {
                         activities.map((activity) => (
                             <div key={activity.id} className={`bg-white rounded-[28px] p-4 border border-white shadow-sm flex items-center justify-between group`}>
                                 <div className="flex items-center gap-4">
-                                    <div className={`w-10 h-10 rounded-lg overflow-hidden flex items-center justify-center ${activity.status === 'Success' ? 'bg-emerald-50' : 'bg-rose-50'}`}>
-                                        {activity.students?.photo_url ? (
-                                            <img src={activity.students.photo_url} alt="" className="w-full h-full object-cover" />
-                                        ) : (
-                                            <User className={`w-5 h-5 ${activity.status === 'Success' ? 'text-emerald-500' : 'text-rose-500'}`} />
-                                        )}
+                                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${activity.status === 'Success' ? 'bg-emerald-50 text-emerald-500' : 'bg-rose-50 text-rose-500'}`}>
+                                        <User className="w-5 h-5" />
                                     </div>
                                     <div>
                                         <h4 className="text-sm font-black text-gray-800 leading-none mb-1.5">{activity.user_name}</h4>

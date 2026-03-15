@@ -19,9 +19,6 @@ const GuardHistory = ({ guardData, onBack }) => {
                     .from('movement_logs')
                     .select(`
                         *,
-                        students (
-                            photo_url
-                        ),
                         guard_gates (
                             name
                         )
@@ -30,7 +27,12 @@ const GuardHistory = ({ guardData, onBack }) => {
 
                 const { data, error } = await query;
 
-                if (error) throw error;
+                console.log("[GUARD] Fetching logs result:", { data, error });
+
+                if (error) {
+                    console.error("[GUARD] Supabase Error:", error);
+                    throw error;
+                }
                 setLogs(data || []);
             } catch (err) {
                 console.error("Error fetching logs:", err);
@@ -165,13 +167,9 @@ const GuardHistory = ({ guardData, onBack }) => {
                                         <div className="flex items-center gap-4">
                                             <div className="relative">
                                                 <div className="w-14 h-14 rounded-full bg-slate-50 overflow-hidden border border-slate-100 flex items-center justify-center">
-                                                    {log.students?.photo_url ? (
-                                                        <img src={log.students.photo_url} alt="" className="w-full h-full object-cover" />
-                                                    ) : (
-                                                        <div className="w-full h-full bg-[#f4a261]/10 flex items-center justify-center text-[#f4a261] font-black text-lg">
-                                                            {log.user_name?.[0]}
-                                                        </div>
-                                                    )}
+                                                    <div className="w-full h-full bg-[#f4a261]/10 flex items-center justify-center text-[#f4a261] font-black text-lg">
+                                                        {log.user_name?.[0]}
+                                                    </div>
                                                 </div>
                                                 <div className={`absolute -bottom-0.5 -right-0.5 w-6 h-6 rounded-full border-2 border-white flex items-center justify-center shadow-sm ${log.status === 'Success' ? 'bg-emerald-500' : 'bg-rose-500'
                                                     }`}>

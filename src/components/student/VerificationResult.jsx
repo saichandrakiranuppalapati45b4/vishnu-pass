@@ -110,27 +110,6 @@ const VerificationResult = ({ studentData, gateName, verifiedAt, onNextScan, hid
 
             </div>
 
-            {/* Bottom Nav Simulation (Optional, depends on if it's rendered within dashboard) */}
-            {!hideNavBar && (
-                <div className="fixed bottom-0 left-0 right-0 h-16 bg-white border-t border-gray-100 flex items-center justify-around px-6 z-50">
-                    <div className="flex flex-col items-center gap-1 text-[#f47c20]">
-                        <LayoutDashboard className="w-5 h-5 fill-current" />
-                        <span className="text-[9px] font-black uppercase">Home</span>
-                    </div>
-                    <div className="flex flex-col items-center gap-1 text-slate-300">
-                        <History className="w-5 h-5" />
-                        <span className="text-[9px] font-black uppercase">History</span>
-                    </div>
-                    <div className="flex flex-col items-center gap-1 text-slate-300">
-                        <UserCircle className="w-5 h-5" />
-                        <span className="text-[9px] font-black uppercase">Roster</span>
-                    </div>
-                    <div className="flex flex-col items-center gap-1 text-slate-300">
-                        <User className="w-5 h-5" />
-                        <span className="text-[9px] font-black uppercase">Profile</span>
-                    </div>
-                </div>
-            )}
         </div>
     );
 };

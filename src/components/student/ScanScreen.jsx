@@ -263,13 +263,19 @@ const ScanScreen = ({ studentData, onBack }) => {
 
             // Log movement if auto-completed
             if (isAutoApprovable) {
-                await supabase.from('movement_logs').insert({
+                const { error: logError } = await supabase.from('movement_logs').insert({
                     user_name: studentData.full_name,
                     student_id: studentData.student_id,
                     access_point_id: scannedGateId,
                     movement_type: movementType,
                     status: 'Success'
                 });
+
+                if (logError) {
+                    console.error("[SCAN] Movement Log Insertion Error:", logError);
+                } else {
+                    console.log("[SCAN] Movement Log inserted successfully");
+                }
                 
                 setVerifiedAt(new Date().toISOString());
                 setStatus('completed');

@@ -27,7 +27,12 @@ const EntryLogs = ({ studentData }) => {
                     .order('created_at', { ascending: false })
                     .limit(50);
 
-            if (error) throw error;
+            console.log("[STUDENT] Fetching logs result:", { data, error });
+
+            if (error) {
+                console.error("[STUDENT] Supabase Error:", error);
+                throw error;
+            }
             setLogs(data || []);
         } catch (error) {
             console.error('Error fetching logs:', error);
