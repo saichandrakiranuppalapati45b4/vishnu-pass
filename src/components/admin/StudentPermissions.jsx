@@ -83,18 +83,17 @@ const StudentPermissions = () => {
         setLoadingRequests(true);
         
         try {
-            // 1. Fetch Policies - Use order and limit instead of single for resilience
-            const { data: policiesList, error: fetchError } = await supabase
+            // 1. Fetch Policies
+            const { data: policyData, error: fetchError } = await supabase
                 .from('portal_settings')
                 .select('value')
                 .eq('key', 'student_policies')
-                .order('created_at', { ascending: false })
-                .limit(1);
+                .maybeSingle();
             
             if (fetchError) throw fetchError;
 
-            if (policiesList && policiesList.length > 0) {
-                const val = policiesList[0].value;
+            if (policyData) {
+                const val = policyData.value;
                 if (val && typeof val === 'object') {
                     // Robust normalization: support old plural keys and merge with defaults
                     setSettings({

@@ -88,45 +88,56 @@ const ScanScreen = ({ studentData, onBack }) => {
     const handleRequestAccess = async (type) => {
         setError(null);
         setMovementType(type);
+        console.log(`[STUDENT] Requesting ${type} access for student:`, studentData?.student_id);
         
         try {
-            // 1. Fetch Policies (Use resilient pattern to handle potential duplicates)
+            if (!studentData?.student_id) {
+                throw new Error("Student ID missing. Please re-login.");
+            }
+
+            // 1. Fetch Policies (Use maybeSingle as 'key' should be unique)
             const { data: policyData, error: policyError } = await supabase
                 .from('portal_settings')
                 .select('value')
                 .eq('key', 'student_policies')
-                .order('created_at', { ascending: false })
-                .limit(1)
                 .maybeSingle();
             
             if (policyError) {
                 console.error("Policy fetch error:", policyError);
+                throw new Error(`Policy error: ${policyError.message}`);
             }
 
             const policies = policyData?.value;
             if (policies) {
                 // Determine limits based on student category
                 const category = studentData.hostel_type === 'hosteler' ? 'hosteler' : 'dayscholar';
-                const limit = type === 'IN' ? policies[category].monthlyInLimit : policies[category].monthlyOutLimit;
-                
-                // 2. Count current month movements
-                const startOfMonth = new Date();
-                startOfMonth.setDate(1);
-                startOfMonth.setHours(0, 0, 0, 0);
-                
-                const { count, error: countError } = await supabase
-                    .from('movement_logs')
-                    .select('*', { count: 'exact', head: true })
-                    .eq('student_id', studentData.student_id)
-                    .eq('movement_type', type)
-                    .eq('status', 'Success')
-                    .gte('created_at', startOfMonth.toISOString());
-                
-                if (countError) throw countError;
-                
-                if (count >= limit) {
-                    setError(`Monthly ${type} limit reached (${count}/${limit}). Please contact administration.`);
-                    return;
+                if (!policies[category]) {
+                    console.warn(`Policy for category [${category}] not found in settings.`);
+                } else {
+                    const limit = type === 'IN' ? policies[category].monthlyInLimit : policies[category].monthlyOutLimit;
+                    
+                    // 2. Count current month movements
+                    const startOfMonth = new Date();
+                    startOfMonth.setDate(1);
+                    startOfMonth.setHours(0, 0, 0, 0);
+                    
+                    const { count, error: countError } = await supabase
+                        .from('movement_logs')
+                        .select('*', { count: 'exact', head: true })
+                        .eq('student_id', studentData.student_id)
+                        .eq('movement_type', type)
+                        .eq('status', 'Success')
+                        .gte('created_at', startOfMonth.toISOString());
+                    
+                    if (countError) {
+                        console.error("Count query error:", countError);
+                        throw new Error(`Movement count error: ${countError.message}`);
+                    }
+                    
+                    if (count >= limit) {
+                        setError(`Monthly ${type} limit reached (${count}/${limit}). Please contact administration.`);
+                        return;
+                    }
                 }
             }
 
@@ -145,12 +156,20 @@ const ScanScreen = ({ studentData, onBack }) => {
                 .select()
                 .maybeSingle();
 
-            if (insertError) throw insertError;
-            if (data) setSessionId(data.id);
+            if (insertError) {
+                console.error("Insert session error:", insertError);
+                throw new Error(`Session creation error: ${insertError.message}`);
+            }
+            if (data) {
+                console.log("[STUDENT] Session created successfully:", data.id);
+                setSessionId(data.id);
+            } else {
+                throw new Error("Failed to retrieve session after creation.");
+            }
 
         } catch (err) {
             console.error("Error creating request:", err);
-            setError("Failed to create request. Please try again.");
+            setError(`Request Failed: ${err.message || 'Please try again.'}`);
             setStatus('idle');
         }
     };
@@ -194,13 +213,11 @@ const ScanScreen = ({ studentData, onBack }) => {
             
             setGateData(gateInfo);
 
-            // Fetch Policies for Auto-Approval check (Resilient Pattern)
+            // Fetch Policies for Auto-Approval check
             const { data: policyData } = await supabase
                 .from('portal_settings')
                 .select('value')
                 .eq('key', 'student_policies')
-                .order('created_at', { ascending: false })
-                .limit(1)
                 .maybeSingle();
             
             const policies = policyData?.value;
@@ -383,16 +400,26 @@ const ScanScreen = ({ studentData, onBack }) => {
                                 <div className="absolute bottom-6 right-6 w-8 h-8 border-b-4 border-r-4 border-[#f47c20] rounded-br-2xl z-20" />
                                 <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-[#f47c20] to-transparent z-20 animate-[scan_3s_ease-in-out_infinite]" />
 
+                                <div className="absolute inset-0 flex items-center justify-center bg-black z-10">
+                                    <div className="flex flex-col items-center gap-3">
+                                        <Loader2 className="w-8 h-8 text-[#f47c20] animate-spin opacity-50" />
+                                        <p className="text-[10px] font-bold text-gray-600 uppercase tracking-widest">Loading Camera...</p>
+                                    </div>
+                                </div>
+
                                 <Scanner
                                     onScan={handleScan}
+                                    onError={(err) => {
+                                        console.error("Scanner Error:", err);
+                                        const msg = typeof err === 'string' ? err : err?.message || 'Permission denied or not found';
+                                        setError(`Camera error: ${msg}`);
+                                    }}
                                     constraints={{
-                                        facingMode: "environment",
-                                        width: { min: 640, ideal: 1280 },
-                                        height: { min: 480, ideal: 720 }
+                                        facingMode: "environment"
                                     }}
                                     components={{ tracker: false, finder: false, audio: true, torch: true }}
                                     styles={{
-                                        container: { width: '100%', height: '100%', background: 'black' },
+                                        container: { width: '100%', height: '100%', background: 'black', position: 'relative', zIndex: 20 },
                                         video: { objectFit: 'cover', width: '100%', height: '100%' },
                                     }}
                                 />
@@ -434,7 +461,6 @@ const ScanScreen = ({ studentData, onBack }) => {
                     0%, 100% { top: 10%; opacity: 0.1; }
                     50% { top: 90%; opacity: 0.8; }
                 }
-                section > div:nth-child(2), section > div:nth-child(3) { display: none !important; }
             ` }} />
         </div>
     );
