@@ -13,6 +13,7 @@ const ScanScreen = ({ studentData, onBack }) => {
     const [gateData, setGateData] = useState(null);
     const [verifiedAt, setVerifiedAt] = useState(null);
     const [sessionWarning, setSessionWarning] = useState(null);
+    const [isLimitReached, setIsLimitReached] = useState(false);
     const [currentLogId, setCurrentLogId] = useState(null);
 
     const sessionIdRef = useRef(null);
@@ -214,7 +215,8 @@ const ScanScreen = ({ studentData, onBack }) => {
                         console.error("Count query error:", countError);
                     }
                     
-                    const isLimitReached = count !== null && count >= limit;
+                    const isLimitReachedCurrent = count !== null && count >= limit;
+                    setIsLimitReached(isLimitReachedCurrent);
                     
                     // Immediately switch to 'requesting' (opens camera)
                     setStatus('requesting');
@@ -227,7 +229,7 @@ const ScanScreen = ({ studentData, onBack }) => {
                             student_id: studentData.student_id,
                             status: 'pending',
                             movement_type: type,
-                            warning: isLimitReached ? `Monthly ${type} limit reached (${count}/${limit})` : null
+                            warning: isLimitReachedCurrent ? `Monthly ${type} limit reached (${count}/${limit})` : null
                         }])
                         .select()
                         .maybeSingle();
@@ -336,9 +338,10 @@ const ScanScreen = ({ studentData, onBack }) => {
             const isAutoApprovable = (movementType === 'IN') || 
                                      (movementType === 'OUT' && policies?.[category]?.autoApproveOutpass);
 
-            console.log(`[STUDENT] Scan detected at ${scannedGateId}. Auto-Approvable: ${isAutoApprovable}`);
-
-            const newStatus = isAutoApprovable ? 'completed' : 'approved';
+            console.log(`[STUDENT] Scan detected at ${scannedGateId}. Auto-Approvable: ${isAutoApprovable}, Limit Reached: ${isLimitReached}`);
+            
+            // If limit is reached, it's an automatic REJECTION
+            const newStatus = isLimitReached ? 'rejected' : (isAutoApprovable ? 'completed' : 'approved');
 
             // Update session
             const { error: updateError } = await supabase
@@ -355,7 +358,7 @@ const ScanScreen = ({ studentData, onBack }) => {
             if (currentLogId || isAutoApprovable) {
                 const logUpdate = {
                     access_point_id: scannedGateId,
-                    status: isAutoApprovable ? 'Success' : 'Pending'
+                    status: isLimitReached ? 'Denied' : (isAutoApprovable ? 'Success' : 'Pending')
                 };
 
                 let logResult;
@@ -381,7 +384,10 @@ const ScanScreen = ({ studentData, onBack }) => {
                 }
             }
             
-            if (isAutoApprovable) {
+            if (isLimitReached) {
+                setVerifiedAt(new Date().toISOString());
+                setStatus('completed'); // We use 'completed' UI state but session status is 'rejected'
+            } else if (isAutoApprovable) {
                 setVerifiedAt(new Date().toISOString());
                 setStatus('completed');
             } else {
@@ -420,6 +426,7 @@ const ScanScreen = ({ studentData, onBack }) => {
                 verifiedAt={verifiedAt ? new Date(verifiedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                 onNextScan={onBack}
                 warning={sessionWarning}
+                status={isLimitReached ? 'rejected' : 'completed'}
                 hideNavBar={true}
             />
         );

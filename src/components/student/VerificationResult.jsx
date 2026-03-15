@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, CheckCircle2, ShieldCheck, Zap, Download, Scan, UserCircle, History, LayoutDashboard, User, AlertTriangle, X, Octagon } from 'lucide-react';
+import { ChevronLeft, CheckCircle2, ShieldCheck, Zap, Download, Scan, UserCircle, History, LayoutDashboard, User, AlertTriangle, X, Octagon, XCircle } from 'lucide-react';
 import { format } from 'date-fns';
 
-const VerificationResult = ({ studentData, gateName, verifiedAt, onNextScan, warning, hideNavBar = false }) => {
+const VerificationResult = ({ studentData, gateName, verifiedAt, onNextScan, warning, status, hideNavBar = false }) => {
     const [isAcknowledged, setIsAcknowledged] = useState(false);
+
+    // Consider 'rejected', 'denied', 'cancelled', 'expired', 'error' as failure statuses
+    const isDenied = status && ['rejected', 'denied', 'cancelled', 'expired', 'error'].includes(status.toLowerCase());
 
     useEffect(() => {
         if (warning && !isAcknowledged) {
@@ -87,16 +90,18 @@ const VerificationResult = ({ studentData, gateName, verifiedAt, onNextScan, war
                         {/* Status Label Popup */}
                         <div className={`absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] border-2 shadow-lg z-20 backdrop-blur-md ${
                             String(studentData?.hostel_type).toLowerCase().includes('dayscholar') 
-                            ? 'bg-blue-500/10 border-blue-500/30 text-blue-600 shadow-blue-500/10' 
-                            : 'bg-rose-500/10 border-rose-500/30 text-rose-600 shadow-rose-500/10'
+                                ? 'bg-blue-500/10 border-blue-500/30 text-blue-600 shadow-blue-500/10' 
+                                : 'bg-rose-500/10 border-rose-500/30 text-rose-600 shadow-rose-500/10'
                         }`}>
                             {String(studentData?.hostel_type).toLowerCase().includes('dayscholar') ? 'Dayscholar' : 'Hosteller'}
                         </div>
 
                         <div className={`w-44 h-44 rounded-full overflow-hidden border-4 bg-white relative z-10 shadow-2xl transition-all duration-500 ${
-                            String(studentData?.hostel_type).toLowerCase().includes('dayscholar') 
-                            ? 'border-blue-100 shadow-blue-500/20 ring-4 ring-blue-500/10' 
-                            : 'border-rose-100 shadow-rose-500/20 ring-4 ring-rose-500/10'
+                            isDenied 
+                                ? 'border-rose-100 shadow-rose-500/20 ring-4 ring-rose-500/10' 
+                                : String(studentData?.hostel_type).toLowerCase().includes('dayscholar') 
+                                    ? 'border-blue-100 shadow-blue-500/20 ring-4 ring-blue-500/10' 
+                                    : 'border-[#a6cc39]/20 shadow-[#a6cc39]/20 ring-4 ring-[#a6cc39]/10'
                         }`}>
                             {studentData?.photo_url ? (
                                 <img src={studentData.photo_url} alt="Profile" className="w-full h-full object-cover" />
@@ -106,8 +111,10 @@ const VerificationResult = ({ studentData, gateName, verifiedAt, onNextScan, war
                                 </div>
                             )}
                         </div>
-                        <div className="absolute bottom-2 right-2 w-10 h-10 bg-[#a6cc39] rounded-full flex items-center justify-center border-4 border-white shadow-lg z-20">
-                            <CheckCircle2 className="w-5 h-5 text-white" />
+                        <div className={`absolute bottom-2 right-2 w-10 h-10 rounded-full flex items-center justify-center border-4 border-white shadow-lg z-20 ${
+                            isDenied ? 'bg-rose-500' : 'bg-[#a6cc39]'
+                        }`}>
+                            {isDenied ? <XCircle className="w-5 h-5 text-white" /> : <CheckCircle2 className="w-5 h-5 text-white" />}
                         </div>
                     </div>
 
@@ -116,14 +123,32 @@ const VerificationResult = ({ studentData, gateName, verifiedAt, onNextScan, war
                 </div>
 
                 {/* Status Card */}
-                <div className={`${warning ? 'bg-amber-50 border-amber-200' : 'bg-[#f0f4e8] border-[#e0e7d0]'} rounded-[32px] p-6 flex items-center justify-between shadow-sm`}>
+                <div className={`${
+                    isDenied 
+                        ? 'bg-rose-50 border-rose-200' 
+                        : warning 
+                            ? 'bg-amber-50 border-amber-200' 
+                            : 'bg-[#f0f4e8] border-[#e0e7d0]'
+                } rounded-[32px] p-6 flex items-center justify-between shadow-sm`}>
                     <div>
-                        <h3 className={`${warning ? 'text-amber-600' : 'text-[#a6cc39]'} text-xl font-black tracking-tight uppercase`}>{warning ? 'Limit Warning' : 'Valid Pass'}</h3>
-                        <p className="text-slate-500 text-xs font-bold">{warning ? warning : 'Access Authorized for Entry'}</p>
+                        <h3 className={`${
+                            isDenied ? 'text-rose-600' : warning ? 'text-amber-600' : 'text-[#a6cc39]'
+                        } text-xl font-black tracking-tight uppercase`}>
+                            {isDenied ? 'Access Denied' : warning ? 'Limit Warning' : 'Valid Pass'}
+                        </h3>
+                        <p className="text-slate-500 text-xs font-bold">
+                            {isDenied ? 'Request was rejected by guard' : warning ? warning : 'Access Authorized for Entry'}
+                        </p>
                     </div>
-                    <div className={`flex items-center gap-2 ${warning ? 'bg-amber-500 shadow-amber-500/20' : 'bg-[#a6cc39] shadow-[#a6cc39]/20'} text-white px-4 py-2 rounded-xl text-xs font-black tracking-widest uppercase shadow-lg`}>
-                        {warning ? <Zap className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
-                        {warning ? 'Alert' : 'Green'}
+                    <div className={`flex items-center gap-2 ${
+                        isDenied 
+                            ? 'bg-rose-500 shadow-rose-500/20' 
+                            : warning 
+                                ? 'bg-amber-500 shadow-amber-500/20' 
+                                : 'bg-[#a6cc39] shadow-[#a6cc39]/20'
+                    } text-white px-4 py-2 rounded-xl text-xs font-black tracking-widest uppercase shadow-lg`}>
+                        {isDenied ? <XCircle className="w-4 h-4" /> : warning ? <Zap className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
+                        {isDenied ? 'Denied' : warning ? 'Alert' : 'Green'}
                     </div>
                 </div>
 

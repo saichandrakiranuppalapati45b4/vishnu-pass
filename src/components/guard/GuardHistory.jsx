@@ -187,13 +187,20 @@ const GuardHistory = ({ guardData, onBack }) => {
                                                 <p className="text-[11px] font-bold text-gray-400 mb-1 leading-none">
                                                     ID: {log.student_id || 'GUEST-SCAN'}
                                                 </p>
-                                                <p className={`text-[11px] font-bold leading-none ${(log.status === 'Success' || log.status === 'completed' || log.status === 'approved') ? 'text-[#f47c20]' : 'text-rose-500'}`}>
-                                                    {log.guard_gates?.name || 'Main Entrance'} {!(log.status === 'Success' || log.status === 'completed' || log.status === 'approved' || log.status === 'Pending' || log.status === 'pending') && ' • Denied'}
+                                                <p className={`text-[11px] font-bold leading-none ${(log.status === 'completed' || log.status === 'approved') ? 'text-[#f47c20]' : 'text-rose-500'}`}>
+                                                    {log.guard_gates?.name || 'Main Entrance'} {!(['completed', 'approved'].includes(log.status)) && ' • Denied'}
                                                 </p>
                                             </div>
                                         </div>
-                                        <div className="text-[11px] font-black text-slate-400 uppercase tracking-tighter">
-                                            {format(new Date(log.created_at), 'hh:mm a')}
+                                        <div className="flex flex-col items-end gap-1.5">
+                                            <div className="text-[11px] font-black text-slate-400 uppercase tracking-tighter">
+                                                {format(new Date(log.created_at), 'hh:mm a')}
+                                            </div>
+                                            {!(['completed', 'approved'].includes(log.status)) && (
+                                                <span className="bg-rose-50 text-rose-500 text-[8px] font-black px-2 py-0.5 rounded-full border border-rose-100 uppercase tracking-widest">
+                                                    Denied
+                                                </span>
+                                            )}
                                         </div>
                                     </div>
                                 ))}

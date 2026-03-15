@@ -193,15 +193,15 @@ const EntryLogs = ({ studentData }) => {
                                             {/* Status & Time */}
                                             <div className="flex flex-col items-end flex-shrink-0">
                                                 <span className={`text-[10px] font-black uppercase tracking-wider ${
-                                                    (log.status === 'Success' || log.status === 'completed' || log.status === 'approved') ? 'text-[#f47c20]' : 
-                                                    (log.status === 'Pending' || log.status === 'pending') ? 'text-amber-500' :
-                                                    (log.status === 'Cancelled' || log.status === 'cancelled') ? 'text-gray-400' :
-                                                    'text-red-500'
+                                                    (log.status === 'completed' || log.status === 'approved') ? 'text-[#f47c20]' : 
+                                                    (log.status === 'pending') ? 'text-amber-500' :
+                                                    (log.status === 'cancelled') ? 'text-gray-400' :
+                                                    'text-rose-500'
                                                     }`}>
-                                                    {(log.status === 'Success' || log.status === 'completed' || log.status === 'approved') ? 'VERIFIED' : 
-                                                     (log.status === 'Pending' || log.status === 'pending') ? 'PENDING' :
-                                                     (log.status === 'Cancelled' || log.status === 'cancelled') ? 'CANCELLED' :
-                                                     (log.status === 'Expired' || log.status === 'expired') ? 'EXPIRED' :
+                                                    {(log.status === 'completed' || log.status === 'approved') ? 'VERIFIED' : 
+                                                     (log.status === 'pending') ? 'PENDING' :
+                                                     (log.status === 'cancelled') ? 'CANCELLED' :
+                                                     (log.status === 'expired') ? 'EXPIRED' :
                                                      'DENIED'}
                                                 </span>
                                                 <span className="text-xs text-gray-400 font-medium mt-0.5">
@@ -226,6 +226,7 @@ const EntryLogs = ({ studentData }) => {
                         verifiedAt={format(new Date(selectedLog.created_at), 'hh:mm a')}
                         onNextScan={() => setSelectedLog(null)}
                         warning={selectedLog.warning}
+                        status={selectedLog.status}
                     />
                 </div>
             )}
