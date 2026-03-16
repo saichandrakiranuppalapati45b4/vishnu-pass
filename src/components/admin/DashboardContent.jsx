@@ -7,34 +7,62 @@ const DashboardContent = ({ onNavigate }) => {
     const [stats, setStats] = useState({
         totalStudents: 0,
         totalGuards: 0,
-        activePasses: 0, // Placeholder for now
-        recentAlerts: 0
+        activePasses: 0,
+        totalScans: 0
     });
     const [recentActivity, setRecentActivity] = useState([]);
+    const [health, setHealth] = useState({
+        apiGateway: 'Healthy',
+        uptime: '99.99%',
+        lastMaintenance: 'N/A'
+    });
     const [loading, setLoading] = useState(true);
 
     const fetchDashboardData = useCallback(async (showLoading = true) => {
         if (showLoading) setLoading(true);
         try {
             // Fetch counts in parallel
-            const [studentsCount, guardsCount, alertsCount, activityLogs] = await Promise.all([
+            const now = new Date();
+            const last24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+            const [studentsCount, guardsCount, scansCount, activityLogs, errorLogs, settings, activePassesCount] = await Promise.all([
                 supabase.from('students').select('*', { count: 'exact', head: true }),
                 supabase.from('guards').select('*', { count: 'exact', head: true }),
-                supabase.from('scan_sessions').select('*', { count: 'exact', head: true }).in('status', ['denied', 'expired', 'error']),
-                supabase.from('scan_sessions').select('*, students!scan_sessions_student_id_fkey(full_name), guard_gates!scan_sessions_gate_id_fkey(name)').order('created_at', { ascending: false }).limit(5)
+                supabase.from('movement_logs').select('*', { count: 'exact', head: true }),
+                supabase.from('movement_logs').select('*, guard_gates!movement_logs_access_point_id_fkey(name)').order('created_at', { ascending: false }).limit(5),
+                supabase.from('movement_logs').select('*', { count: 'exact', head: true }).neq('status', 'Success').gt('created_at', last24h.toISOString()),
+                supabase.from('portal_settings').select('updated_at').order('updated_at', { ascending: false }).limit(1),
+                supabase.from('students').select('*', { count: 'exact', head: true }).eq('status', 'Active')
             ]);
+
+            // Calculate Uptime (Simulated based on error logs in 24h)
+            const errorCount = errorLogs.count || 0;
+            const uptimeVal = errorCount === 0 ? 99.99 : Math.max(95, 99.99 - (errorCount * 0.05));
 
             setStats({
                 totalStudents: studentsCount.count || 0,
                 totalGuards: guardsCount.count || 0,
-                activePasses: 12, // Placeholder
-                recentAlerts: alertsCount.count || 0
+                activePasses: activePassesCount.count || 0,
+                totalScans: scansCount.count || 0
             });
 
             setRecentActivity(activityLogs.data || []);
+            
+            setHealth({
+                apiGateway: 'Healthy',
+                uptime: `${uptimeVal.toFixed(2)}%`,
+                lastMaintenance: settings.data?.[0]?.updated_at ? new Date(settings.data[0].updated_at).toLocaleString('en-US', { 
+                    month: 'short', 
+                    day: 'numeric', 
+                    year: 'numeric', 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                }) : 'N/A'
+            });
 
         } catch (error) {
             console.error('Error fetching dashboard data:', error);
+            setHealth(prev => ({ ...prev, apiGateway: 'Degraded' }));
         } finally {
             setLoading(false);
         }
@@ -46,10 +74,13 @@ const DashboardContent = ({ onNavigate }) => {
         // Real-time updates
         const channel = supabase
             .channel('dashboard_updates')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'scan_sessions' }, () => {
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'movement_logs' }, () => {
                 fetchDashboardData(false);
             })
             .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, () => {
+                fetchDashboardData(false);
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'guards' }, () => {
                 fetchDashboardData(false);
             })
             .subscribe();
@@ -103,14 +134,14 @@ const DashboardContent = ({ onNavigate }) => {
                     <h3 className="text-[26px] font-bold text-gray-900 leading-tight">{stats.activePasses.toLocaleString()}</h3>
                 </div>
 
-                {/* Recent Alerts */}
+                {/* Total Scans */}
                 <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
                     <div className="flex items-center justify-between mb-4">
-                        <AlertTriangle className="w-5 h-5 text-[#f47c20] opacity-80" />
-                        <span className="text-[11px] font-bold text-emerald-500 bg-emerald-50 px-2.5 py-1 rounded-full">+2%</span>
+                        <Zap className="w-5 h-5 text-[#f47c20] opacity-80" />
+                        <span className="text-[11px] font-bold text-emerald-500 bg-emerald-50 px-2.5 py-1 rounded-full">+4%</span>
                     </div>
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.05em] mb-1">Recent Alerts</p>
-                    <h3 className="text-[26px] font-bold text-gray-900 leading-tight">{stats.recentAlerts.toLocaleString()}</h3>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.05em] mb-1">Total Scans</p>
+                    <h3 className="text-[26px] font-bold text-gray-900 leading-tight">{stats.totalScans.toLocaleString()}</h3>
                 </div>
             </div>
 
@@ -147,7 +178,7 @@ const DashboardContent = ({ onNavigate }) => {
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
                                                 {log.students?.photo_url ? (
-                                                    <img src={log.students.photo_url} alt="" className="w-8 h-8 rounded-full object-cover border border-gray-100" />
+                                                    <img src={log.students.photo_url} alt="" className="w-9 h-9 rounded-full object-cover border-2 border-white shadow-sm" />
                                                 ) : (
                                                     <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center text-[#f47c20] text-[10px] font-bold">
                                                         {log.user_name ? log.user_name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : '??'}
@@ -167,8 +198,8 @@ const DashboardContent = ({ onNavigate }) => {
                                                 ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
                                                 : 'bg-red-50 text-red-600 border-red-100'
                                                 }`}>
-                                                <span className={`w-1.5 h-1.5 rounded-full ${log.status === 'Success' ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
-                                                {log.movement_type === 'GUEST ACCESS' ? 'Guest' : (log.status === 'Success' ? 'Authorized' : 'Denied')}
+                                                <span className={`w-1.5 h-1.5 rounded-full ${['completed', 'approved'].includes(log.status?.toLowerCase()) ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
+                                                {['completed', 'approved'].includes(log.status?.toLowerCase()) ? 'Authorized' : 'Denied'}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 text-right">
@@ -200,17 +231,17 @@ const DashboardContent = ({ onNavigate }) => {
                         <div className="space-y-4 mb-8">
                             <div className="flex justify-between items-center">
                                 <span className="text-sm text-gray-500 font-medium">API Gateway</span>
-                                <span className="text-sm font-bold text-emerald-500">Healthy</span>
+                                <span className={`text-sm font-bold ${health.apiGateway === 'Healthy' ? 'text-emerald-500' : 'text-red-500'}`}>{health.apiGateway}</span>
                             </div>
                             <div className="flex justify-between items-center">
                                 <span className="text-sm text-gray-500 font-medium">Server Uptime</span>
-                                <span className="text-sm font-bold text-gray-900">99.98%</span>
+                                <span className="text-sm font-bold text-gray-900">{health.uptime}</span>
                             </div>
                         </div>
 
                         <div className="pt-5 border-t border-gray-50">
-                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Last Maintenance</p>
-                            <p className="text-[13px] font-bold text-gray-700">Oct 24, 2023 at 04:00 AM</p>
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Last System Update</p>
+                            <p className="text-[13px] font-bold text-gray-700">{health.lastMaintenance}</p>
                         </div>
                     </div>
 

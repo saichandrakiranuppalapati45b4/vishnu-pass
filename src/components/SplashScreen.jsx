@@ -1,102 +1,145 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 
 const SplashScreen = ({ onFinish, branding }) => {
-    const [progress, setProgress] = React.useState(0);
+    const [progress, setProgress] = useState(0);
+    const [typedText, setTypedText] = useState('');
+    const [isStarted, setIsStarted] = useState(false);
+    const fullText = "VISHNU UNIVERSAL LEARNING";
 
     useEffect(() => {
-        // Increment progress from 0 to 100 over 2.5 seconds
-        const step = 2500 / 100; // time per 1%
+        // Simple fade-in and progress loader
+        const duration = 1200;
+        const step = 10;
+        const increment = 100 / (duration / step);
+        
         const interval = setInterval(() => {
             setProgress(prev => {
                 if (prev >= 100) {
                     clearInterval(interval);
+                    setIsStarted(true);
                     return 100;
                 }
-                return prev + 1;
+                return prev + increment;
             });
         }, step);
 
-        const timer = setTimeout(() => {
-            onFinish();
-        }, 2600); // Slightly after 100% for smooth finish
+        return () => clearInterval(interval);
+    }, []);
 
-        return () => {
-            clearInterval(interval);
-            clearTimeout(timer);
-        };
-    }, [onFinish]);
+    useEffect(() => {
+        // Sequential Typing 
+        if (!isStarted) return;
 
-    const renderLogo = (isFilling = false) => {
-        if (branding?.portalLogo) {
-            return (
-                <img
-                    src={branding.portalLogo}
-                    alt="Portal Logo"
-                    className={`w-full h-full object-contain mb-2 ${!isFilling ? 'opacity-20 grayscale' : ''}`}
-                />
-            );
-        }
+        const typingDuration = 1500;
+        const charStep = typingDuration / fullText.length;
+        let charIndex = 0;
+        
+        const typingInterval = setInterval(() => {
+            if (charIndex <= fullText.length) {
+                setTypedText(fullText.substring(0, charIndex));
+                charIndex++;
+            } else {
+                clearInterval(typingInterval);
+                setTimeout(onFinish, 1000);
+            }
+        }, charStep);
 
-        return (
-            <div className={!isFilling ? 'opacity-20 grayscale' : ''}>
-                <svg width="100" height="100" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="mb-2">
-                    <defs>
-                        <path id="chevron" d="M 50 15 L 75 28 L 65 44 L 50 35 L 35 44 L 25 28 Z" />
-                    </defs>
-                    <use href="#chevron" fill="#F47C20" />
-                    <use href="#chevron" fill="#8DC63F" transform="rotate(120 50 50)" />
-                    <use href="#chevron" fill="#9C2A8C" transform="rotate(240 50 50)" />
-                </svg>
-                <div className="text-center w-full mt-2">
-                    <h1 className="text-3xl font-extrabold tracking-widest text-[#212121] mb-1">VISHNU</h1>
-                    <p className="text-[9px] font-bold tracking-[0.2em] text-[#212121]">UNIVERSAL LEARNING</p>
-                </div>
-            </div>
-        );
-    };
+        return () => clearInterval(typingInterval);
+    }, [isStarted, onFinish]);
 
     return (
-        <div className="flex flex-col items-center justify-between min-h-screen bg-white py-12 font-sans">
-            {/* Top spacer */}
+        <div className="flex flex-col items-center justify-between min-h-screen bg-white py-20 font-sans overflow-hidden">
             <div className="flex-1"></div>
 
-            {/* Main Content */}
-            <div className="flex flex-col items-center flex-1 w-full max-w-sm px-6">
+            <div className="flex flex-col items-center flex-1 w-full max-w-sm px-8">
+                <div className="relative w-48 h-48 flex items-center justify-center mb-12">
+                    {branding?.portalLogo ? (
+                        <div className="relative w-32 h-32 flex items-center justify-center z-10">
+                            <img 
+                                src={branding.portalLogo} 
+                                alt="College Logo" 
+                                className={`w-full h-full object-contain transition-all duration-1000 ${progress > 0 ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}
+                            />
+                        </div>
+                    ) : (
+                        <div className={`w-32 h-32 rounded-full bg-gray-50 flex items-center justify-center transition-all duration-1000 ${progress > 0 ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}>
+                            <div className="w-12 h-12 border-2 border-[#f47c20]/20 border-t-[#f47c20] rounded-full animate-spin"></div>
+                        </div>
+                    )}
+                    
+                    {/* Ring Loader */}
+                    <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none">
+                        <circle
+                            cx="50%"
+                            cy="50%"
+                            r="38%"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            fill="transparent"
+                            className="text-gray-100"
+                        />
+                        <circle
+                            cx="50%"
+                            cy="50%"
+                            r="38%"
+                            stroke="#f47c20"
+                            strokeWidth="2.5"
+                            strokeLinecap="round"
+                            fill="transparent"
+                            strokeDasharray="239"
+                            strokeDashoffset={239 - (239 * progress) / 100}
+                            className="transition-all duration-300 shadow-[0_0_10px_rgba(244,124,32,0.2)]"
+                        />
+                    </svg>
+                </div>
 
-                {/* Logo Box with Fill Animation */}
-                <div className="w-56 h-56 bg-[#f7f8f8] flex flex-col items-center justify-center p-6 mb-12 mt-8 overflow-hidden relative">
-                    {/* Background "Empty" Logo */}
-                    <div className="absolute inset-0 flex items-center justify-center p-6">
-                        {renderLogo(false)}
-                    </div>
-
-                    {/* Foreground "Filling" Logo */}
-                    <div
-                        className="absolute inset-0 flex items-center justify-center p-6 transition-all duration-100 ease-linear"
-                        style={{
-                            clipPath: `inset(${100 - progress}% 0 0 0)`
-                        }}
-                    >
-                        {renderLogo(true)}
+                <div className="text-center w-full h-24 flex flex-col items-center justify-start overflow-hidden">
+                    <h1 className={`text-4xl font-black tracking-[0.4em] text-[#1e293b] mb-4 transition-all duration-1000 ${isStarted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+                        VISHNU
+                    </h1>
+                    <div className="h-10 flex items-center justify-center px-4">
+                        <p className={`text-[12px] font-bold tracking-[0.5em] text-[#64748b] leading-none ${typedText.length > 0 ? 'border-r-2 border-[#f47c20] pr-2' : ''} whitespace-nowrap animate-cursor text-center`}>
+                            {typedText}
+                        </p>
                     </div>
                 </div>
 
-                {/* Title & Subtitle */}
-                <h2 className="text-4xl font-bold text-[#1f2937] mb-2 tracking-tight">
-                    Vishnu <span className="text-[#f47c20]">Pass</span>
-                </h2>
-                <p className="text-xs font-semibold tracking-widest text-gray-500 uppercase mt-1">
-                    Digital College Identity
-                </p>
-
+                <div className={`transition-all duration-1000 flex flex-col items-center mt-12 ${isStarted ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}>
+                    <h2 className="text-4xl font-black text-[#1f2937] mb-2 tracking-tighter">
+                        Vishnu <span className="text-[#f47c20]">Pass</span>
+                    </h2>
+                    <div className="flex items-center gap-4 w-full">
+                        <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent to-gray-200"></div>
+                        <span className="text-[10px] font-bold tracking-[0.6em] text-gray-400 uppercase whitespace-nowrap">
+                            Digital Key
+                        </span>
+                        <div className="h-[1px] flex-1 bg-gradient-to-l from-transparent to-gray-200"></div>
+                    </div>
+                </div>
             </div>
 
-            {/* Footer */}
-            <div className="flex-1 flex items-end pb-8">
-                <p className="text-[11px] font-medium text-gray-400">
-                    Powered by <span className="text-gray-600 font-bold">Vishnu Institute</span>
-                </p>
+            <div className="flex-1 flex items-end pb-12">
+                <div className="flex flex-col items-center gap-4">
+                    <div className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 rounded-full bg-[#f47c20]"></div>
+                        <div className="w-1.5 h-1.5 rounded-full bg-gray-200"></div>
+                        <div className="w-1.5 h-1.5 rounded-full bg-gray-200"></div>
+                    </div>
+                    <p className="text-[10px] font-bold text-gray-300 tracking-[0.3em] uppercase">
+                        Sri Vishnu Educational Society
+                    </p>
+                </div>
             </div>
+
+            <style>{`
+                @keyframes cursor-blink {
+                    0%, 100% { border-color: transparent; }
+                    50% { border-color: #f47c20; }
+                }
+                .animate-cursor {
+                    animation: cursor-blink 0.6s step-end infinite;
+                }
+            `}</style>
         </div>
     );
 };

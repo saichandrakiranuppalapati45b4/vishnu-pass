@@ -90,15 +90,10 @@ const GuardHome = ({ guardData }) => {
 
             channel = supabase.channel(channelName)
                 .on('postgres_changes', 
-                    { event: '*', schema: 'public', table: 'scan_sessions', filter: `gate_id=eq.${guardData.gate_id}` },
+                    { event: 'INSERT', schema: 'public', table: 'movement_logs' },
                     (payload) => {
-                        console.log("[GUARD] Movement log activity detected via Realtime:", payload.eventType);
-                        
-                        if (payload.eventType === 'INSERT') {
-                            setStats(prev => ({ ...prev, totalScans: prev.totalScans + 1 }));
-                        }
-                        
-                        // Refresh activities list
+                        console.log("[GUARD] New movement log detected via Realtime:", payload.new);
+                        setStats(prev => ({ ...prev, totalScans: prev.totalScans + 1 }));
                         fetchData();
                     }
                 )
@@ -175,11 +170,10 @@ const GuardHome = ({ guardData }) => {
 
         const fetchData = async () => {
             try {
-                // 1. Fetch Total Scans from movement_logs for this gate
+                // 1. Fetch Total Scans from movement_logs (Global)
                 const { count: scanCount } = await supabase
                     .from('movement_logs')
-                    .select('*', { count: 'exact', head: true })
-                    .eq('access_point_id', guardData.gate_id);
+                    .select('*', { count: 'exact', head: true });
 
                 // 2. Fetch Active Pass holders
                 const { count: studentCount } = await supabase
@@ -232,11 +226,10 @@ const GuardHome = ({ guardData }) => {
         const oldChannel = supabase.getChannels().find(c => c.name === channelName);
         if (oldChannel) supabase.removeChannel(oldChannel);
         
-        // 2. Refresh basic data
+        // 2. Refresh basic data (Global Scans)
         const { count: scanCount } = await supabase
             .from('movement_logs')
-            .select('*', { count: 'exact', head: true })
-            .eq('access_point_id', guardData.gate_id);
+            .select('*', { count: 'exact', head: true });
         
         if (scanCount !== null) setStats(prev => ({ ...prev, totalScans: scanCount }));
 

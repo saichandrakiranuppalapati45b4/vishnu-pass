@@ -17,10 +17,18 @@ const stringToColor = (name) => {
     return color;
 };
 
-const movementTypeStyles = {
-    'AUTHORIZED': 'text-blue-600 bg-blue-50',
-    'MANUAL OVERRIDE': 'text-amber-600 bg-amber-50',
-    'GUEST ACCESS': 'text-emerald-600 bg-emerald-50',
+// Helper function to get access category
+const getAccessCategory = (log) => {
+    const status = (log.status || '').toLowerCase();
+    if (status === 'completed' || status === 'approved') return 'AUTHORIZED';
+    if (['rejected', 'denied', 'expired', 'error'].includes(status)) return 'ACCESS DENIED';
+    return 'OTHERS';
+};
+
+const statusStyles = {
+    'AUTHORIZED': 'text-emerald-600 bg-emerald-50',
+    'ACCESS DENIED': 'text-rose-600 bg-rose-50',
+    'OTHERS': 'text-violet-600 bg-violet-50',
 };
 
 const Reports = () => {
@@ -35,8 +43,8 @@ const Reports = () => {
     });
     const [accessTypes, setAccessTypes] = useState({
         authorized: 0,
-        override: 0,
-        guest: 0
+        denied: 0,
+        others: 0
     });
     const [trendData, setTrendData] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -104,14 +112,25 @@ const Reports = () => {
                 }).length
             });
 
-            // 3. Access Types
-            const types = { 'AUTHORIZED': 0, 'MANUAL OVERRIDE': 0, 'GUEST ACCESS': 0 };
-            allLogs.forEach(l => types[l.movement_type] = (types[l.movement_type] || 0) + 1);
-            setAccessTypes({
-                authorized: types['AUTHORIZED'],
-                override: types['MANUAL OVERRIDE'],
-                guest: types['GUEST ACCESS']
+            // 3. Access Types (Categorized by actual status results)
+            let authorized = 0;
+            let denied = 0;
+            let others = 0;
+
+            allLogs.forEach(l => {
+                const status = (l.status || '').toLowerCase();
+                const mType = (l.movement_type || '').toUpperCase();
+
+                if (status === 'completed' || status === 'approved') {
+                    authorized++;
+                } else if (['rejected', 'denied', 'expired', 'error'].includes(status)) {
+                    denied++;
+                } else {
+                    others++;
+                }
             });
+
+            setAccessTypes({ authorized, denied, others });
 
             // 4. Trend Data (Dynamic based on dateRange)
             const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
@@ -201,15 +220,15 @@ const Reports = () => {
         );
     }
 
-    const totalAccess = accessTypes.authorized + accessTypes.override + accessTypes.guest || 1;
+    const totalAccess = accessTypes.authorized + accessTypes.denied + accessTypes.others || 1;
     const authPct = Math.round((accessTypes.authorized / totalAccess) * 100);
-    const overPct = Math.round((accessTypes.override / totalAccess) * 100);
-    const guestPct = 100 - authPct - overPct;
+    const deniedPct = Math.round((accessTypes.denied / totalAccess) * 100);
+    const otherPct = 100 - authPct - deniedPct;
 
     const strokeDash = 376.99; // 2 * PI * 60
     const authOffset = 0;
-    const overOffset = -(authPct / 100) * strokeDash;
-    const guestOffset = -((authPct + overPct) / 100) * strokeDash;
+    const deniedOffset = -(authPct / 100) * strokeDash;
+    const otherOffset = -((authPct + deniedPct) / 100) * strokeDash;
     return (
         <div className="flex-1 overflow-y-auto p-8">
 
@@ -373,17 +392,17 @@ const Reports = () => {
                                     transform="rotate(-90 80 80)"
                                     strokeLinecap="round"
                                 />
-                                {/* Manual Override */}
-                                <circle cx="80" cy="80" r="60" fill="none" stroke="#7c3aed" strokeWidth="20"
-                                    strokeDasharray={`${(overPct / 100) * strokeDash} ${strokeDash}`}
-                                    strokeDashoffset={overOffset}
+                                {/* Access Denied */}
+                                <circle cx="80" cy="80" r="60" fill="none" stroke="#f43f5e" strokeWidth="20"
+                                    strokeDasharray={`${(deniedPct / 100) * strokeDash} ${strokeDash}`}
+                                    strokeDashoffset={deniedOffset}
                                     transform="rotate(-90 80 80)"
                                     strokeLinecap="round"
                                 />
-                                {/* Guest Access */}
-                                <circle cx="80" cy="80" r="60" fill="none" stroke="#84cc16" strokeWidth="20"
-                                    strokeDasharray={`${(guestPct / 100) * strokeDash} ${strokeDash}`}
-                                    strokeDashoffset={guestOffset}
+                                {/* Others */}
+                                <circle cx="80" cy="80" r="60" fill="none" stroke="#7c3aed" strokeWidth="20"
+                                    strokeDasharray={`${(otherPct / 100) * strokeDash} ${strokeDash}`}
+                                    strokeDashoffset={otherOffset}
                                     transform="rotate(-90 80 80)"
                                     strokeLinecap="round"
                                 />
@@ -400,24 +419,24 @@ const Reports = () => {
                     <div className="space-y-2.5">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                                <span className="w-2.5 h-2.5 rounded-full bg-[#f47c20]"></span>
+                                <span className="w-2.5 h-2.5 rounded-full bg-[#10b981]"></span>
                                 <span className="text-sm text-gray-600 font-medium">Authorized</span>
                             </div>
                             <span className="text-sm font-bold text-gray-900">{authPct}%</span>
                         </div>
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                                <span className="w-2.5 h-2.5 rounded-full bg-[#7c3aed]"></span>
-                                <span className="text-sm text-gray-600 font-medium">Manual Override</span>
+                                <span className="w-2.5 h-2.5 rounded-full bg-[#f43f5e]"></span>
+                                <span className="text-sm text-gray-600 font-medium">Access Denied</span>
                             </div>
-                            <span className="text-sm font-bold text-gray-900">{overPct}%</span>
+                            <span className="text-sm font-bold text-gray-900">{deniedPct}%</span>
                         </div>
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                                <span className="w-2.5 h-2.5 rounded-full bg-[#84cc16]"></span>
-                                <span className="text-sm text-gray-600 font-medium">Guest Access</span>
+                                <span className="w-2.5 h-2.5 rounded-full bg-[#7c3aed]"></span>
+                                <span className="text-sm text-gray-600 font-medium">Others</span>
                             </div>
-                            <span className="text-sm font-bold text-gray-900">{guestPct}%</span>
+                            <span className="text-sm font-bold text-gray-900">{otherPct}%</span>
                         </div>
                     </div>
                 </div>
@@ -469,14 +488,15 @@ const Reports = () => {
                                 </td>
                                 <td className="px-6 py-4 text-gray-600 font-medium">{log.guard_gates?.name || 'Gate 1'}</td>
                                 <td className="px-6 py-4">
-                                    <span className={`inline-flex px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md ${movementTypeStyles[log.movement_type]}`}>
-                                        {log.movement_type}
+                                    <span className={`inline-flex px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md ${statusStyles[getAccessCategory(log)]}`}>
+                                        {getAccessCategory(log)}
                                     </span>
                                 </td>
                                 <td className="px-6 py-4">
-                                    <span className={`text-sm font-semibold ${log.status === 'completed' || log.status === 'approved' ? 'text-emerald-600' : 'text-red-600'} flex items-center gap-1.5`}>
-                                        <span className={`w-1.5 h-1.5 rounded-full ${log.status === 'completed' || log.status === 'approved' ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
-                                        {log.status === 'completed' ? 'Verified' : log.status}
+                                    <span className={`text-sm font-semibold ${(log.status === 'completed' || log.status === 'approved') ? 'text-emerald-600' : 'text-rose-600'} flex items-center gap-1.5`}>
+                                        <span className={`w-1.5 h-1.5 rounded-full ${(log.status === 'completed' || log.status === 'approved') ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
+                                        {['completed', 'approved'].includes(log.status?.toLowerCase()) ? 'Authorized' : 
+                                         ['rejected', 'denied', 'expired', 'error'].includes(log.status?.toLowerCase()) ? 'Access Denied' : log.status}
                                     </span>
                                 </td>
                                 <td className="px-6 py-4 text-gray-500 font-medium text-xs whitespace-nowrap">
