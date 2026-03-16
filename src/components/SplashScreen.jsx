@@ -1,166 +1,91 @@
-import React, { useEffect, useState } from 'react';
-import AnimatedLogo from './AnimatedLogo';
+import React, { useEffect } from 'react';
 
 const SplashScreen = ({ onFinish, branding }) => {
-    const [progress, setProgress] = useState(0);
-    const [typedText, setTypedText] = useState('');
-    const [isStarted, setIsStarted] = useState(false);
-    const fullText = "VISHNU UNIVERSAL LEARNING";
-    const hasCustomLogo = Boolean(branding?.portalLogo);
+    const [progress, setProgress] = React.useState(0);
 
     useEffect(() => {
-        // Simple progress loader - 1.5 seconds
-        const duration = 1500;
-        const step = 10;
-        const increment = 100 / (duration / step);
-        
+        // Increment progress from 0 to 100 over 2.5 seconds
+        const step = 2500 / 100; // time per 1%
         const interval = setInterval(() => {
             setProgress(prev => {
                 if (prev >= 100) {
                     clearInterval(interval);
-                    setIsStarted(true);
                     return 100;
                 }
-                return prev + increment;
+                return prev + 1;
             });
         }, step);
 
-        return () => clearInterval(interval);
-    }, []);
+        const timer = setTimeout(() => {
+            onFinish();
+        }, 2600); // Slightly after 100% for smooth finish
 
-    useEffect(() => {
-        // Sequential Typing starts after logo animation completes
-        if (!isStarted) return;
+        return () => {
+            clearInterval(interval);
+            clearTimeout(timer);
+        };
+    }, [onFinish]);
 
-        const typingDuration = 1500;
-        const charStep = typingDuration / fullText.length;
-        let charIndex = 0;
-        
-        const typingInterval = setInterval(() => {
-            if (charIndex <= fullText.length) {
-                setTypedText(fullText.substring(0, charIndex));
-                charIndex++;
-            } else {
-                clearInterval(typingInterval);
-                setTimeout(onFinish, 1200);
-            }
-        }, charStep);
+    const renderLogoIcon = () => {
+        if (branding?.portalLogo) {
+            return (
+                <img
+                    src={branding.portalLogo}
+                    alt="Portal Logo"
+                    className="w-full h-full object-contain"
+                />
+            );
+        }
 
-        return () => clearInterval(typingInterval);
-    }, [isStarted, onFinish]);
+        return (
+            <svg width="100" height="100" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <path id="chevron" d="M 50 15 L 75 28 L 65 44 L 50 35 L 35 44 L 25 28 Z" />
+                </defs>
+                <use href="#chevron" fill="#F47C20" />
+                <use href="#chevron" fill="#8DC63F" transform="rotate(120 50 50)" />
+                <use href="#chevron" fill="#9C2A8C" transform="rotate(240 50 50)" />
+            </svg>
+        );
+    };
 
     return (
-        <div className="flex flex-col items-center justify-between min-h-screen bg-white py-20 font-sans overflow-hidden">
+        <div className="flex flex-col items-center justify-between min-h-screen bg-white py-12 font-sans">
+            {/* Top spacer */}
             <div className="flex-1"></div>
 
-            <div className="flex flex-col items-center flex-1 w-full max-w-sm px-8">
-                {/* Logo Area */}
-                <div className="relative w-64 h-64 flex items-center justify-center mb-12">
-                    {hasCustomLogo ? (
-                        <div className="relative w-48 h-48 flex items-center justify-center">
-                            {/* Background "Empty" Logo */}
-                            <div className="absolute inset-0 flex items-center justify-center">
-                                <img
-                                    src={branding.portalLogo}
-                                    alt="Portal Logo"
-                                    className="w-full h-full object-contain opacity-10 grayscale blur-[1px]"
-                                />
-                            </div>
+            {/* Main Content */}
+            <div className="flex flex-col items-center flex-1 w-full max-w-sm px-6">
 
-                            {/* Foreground "Filling" Logo */}
-                            <div
-                                className="absolute inset-0 flex items-center justify-center transition-all duration-100 ease-linear"
-                                style={{
-                                    clipPath: `inset(${100 - progress}% 0 0 0)`
-                                }}
-                            >
-                                <img
-                                    src={branding.portalLogo}
-                                    alt="Portal Logo"
-                                    className="w-full h-full object-contain"
-                                />
-                            </div>
-
-                            {/* Ring Loader Outline */}
-                            <svg className="absolute inset-x-[-20%] inset-y-[-20%] w-[140%] h-[140%] -rotate-90 pointer-events-none opacity-20">
-                                <circle
-                                    cx="50%"
-                                    cy="50%"
-                                    r="35%"
-                                    stroke="currentColor"
-                                    strokeWidth="1"
-                                    fill="transparent"
-                                    className="text-gray-200"
-                                />
-                                <circle
-                                    cx="50%"
-                                    cy="50%"
-                                    r="35%"
-                                    stroke="#f47c20"
-                                    strokeWidth="2"
-                                    fill="transparent"
-                                    strokeDasharray="220"
-                                    strokeDashoffset={220 - (220 * progress) / 100}
-                                    className="transition-all duration-300"
-                                />
-                            </svg>
-                        </div>
-                    ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                            <AnimatedLogo />
-                        </div>
-                    )}
-                </div>
-
-                {/* Text Content */}
-                <div className="text-center w-full h-24 flex flex-col items-center justify-start overflow-hidden">
-                    <h1 className={`text-4xl font-black tracking-[0.4em] text-[#1e293b] mb-4 transition-all duration-1000 ${isStarted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-                        VISHNU
-                    </h1>
-                    <div className="h-10 flex items-center justify-center px-4">
-                        <p className={`text-[12px] font-bold tracking-[0.5em] text-[#64748b] leading-none ${typedText.length > 0 ? 'border-r-2 border-[#f47c20] pr-2' : ''} whitespace-nowrap animate-cursor text-center`}>
-                            {typedText}
-                        </p>
+                {/* Logo Container - Simplified without redundant text */}
+                <div className="w-56 h-56 flex items-center justify-center mb-12 mt-8 overflow-hidden relative">
+                    {/* Foreground "Filling" Logo */}
+                    <div
+                        className="absolute inset-0 flex items-center justify-center p-6 transition-all duration-100 ease-linear"
+                        style={{
+                            clipPath: `inset(${100 - progress}% 0 0 0)`
+                        }}
+                    >
+                        {renderLogoIcon()}
                     </div>
                 </div>
 
-                <div className={`transition-all duration-1000 flex flex-col items-center mt-12 ${isStarted ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}>
-                    <h2 className="text-4xl font-black text-[#1f2937] mb-2 tracking-tighter">
-                        Vishnu <span className="text-[#f47c20]">Pass</span>
-                    </h2>
-                    <div className="flex items-center gap-4 w-full">
-                        <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent to-gray-200"></div>
-                        <span className="text-[10px] font-bold tracking-[0.6em] text-gray-400 uppercase whitespace-nowrap">
-                            Digital Key
-                        </span>
-                        <div className="h-[1px] flex-1 bg-gradient-to-l from-transparent to-gray-200"></div>
-                    </div>
-                </div>
+                {/* Title & Subtitle */}
+                <h2 className="text-4xl font-bold text-[#1f2937] mb-2 tracking-tight">
+                    Vishnu <span className="text-[#f47c20]">Pass</span>
+                </h2>
+                <p className="text-xs font-semibold tracking-widest text-gray-500 uppercase mt-1">
+                    Digital College Identity
+                </p>
+
             </div>
 
             {/* Footer */}
-            <div className="flex-1 flex items-end pb-12">
-                <div className="flex flex-col items-center gap-4">
-                    <div className="flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 rounded-full bg-[#f47c20]"></div>
-                        <div className="w-1.5 h-1.5 rounded-full bg-gray-200"></div>
-                        <div className="w-1.5 h-1.5 rounded-full bg-gray-200"></div>
-                    </div>
-                    <p className="text-[10px] font-bold text-gray-300 tracking-[0.3em] uppercase">
-                        Sri Vishnu Educational Society
-                    </p>
-                </div>
+            <div className="flex-1 flex items-end pb-8">
+                <p className="text-[11px] font-medium text-gray-400">
+                    Powered by <span className="text-gray-600 font-bold">Vishnu Institute</span>
+                </p>
             </div>
-
-            <style>{`
-                @keyframes cursor-blink {
-                    0%, 100% { border-color: transparent; }
-                    50% { border-color: #f47c20; }
-                }
-                .animate-cursor {
-                    animation: cursor-blink 0.6s step-end infinite;
-                }
-            `}</style>
         </div>
     );
 };

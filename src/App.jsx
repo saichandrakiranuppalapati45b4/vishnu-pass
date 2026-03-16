@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { Analytics } from '@vercel/analytics/react';
 import SplashScreen from './components/SplashScreen';
 import LoginScreen from './components/LoginScreen';
 import Dashboard from './components/admin/Dashboard';
@@ -172,6 +171,10 @@ function App() {
     setIsLoggedIn(true);
   };
 
+  const handleSplashFinish = React.useCallback(() => {
+    setShowSplash(false);
+  }, []);
+
   const handleLogout = async () => {
     if (userRole === 'student' && userData?.id) {
       try {
@@ -196,9 +199,8 @@ function App() {
   return (
     <LanguageProvider>
       <NotificationProvider>
-        <Analytics />
         {showSplash ? (
-          <SplashScreen onFinish={() => setShowSplash(false)} branding={branding} />
+          <SplashScreen onFinish={handleSplashFinish} branding={branding} />
         ) : isAuthLoading ? (
           <div className="flex items-center justify-center min-h-screen bg-[#f9fafb]">
             <div className="w-10 h-10 border-4 border-[#f47c20] border-t-transparent rounded-full animate-spin"></div>
