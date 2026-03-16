@@ -1,14 +1,16 @@
 import React, { useEffect, useState } from 'react';
+import AnimatedLogo from './AnimatedLogo';
 
 const SplashScreen = ({ onFinish, branding }) => {
     const [progress, setProgress] = useState(0);
     const [typedText, setTypedText] = useState('');
     const [isStarted, setIsStarted] = useState(false);
     const fullText = "VISHNU UNIVERSAL LEARNING";
+    const hasCustomLogo = Boolean(branding?.portalLogo);
 
     useEffect(() => {
-        // Simple fade-in and progress loader
-        const duration = 1200;
+        // Simple progress loader - 1.5 seconds
+        const duration = 1500;
         const step = 10;
         const increment = 100 / (duration / step);
         
@@ -27,7 +29,7 @@ const SplashScreen = ({ onFinish, branding }) => {
     }, []);
 
     useEffect(() => {
-        // Sequential Typing 
+        // Sequential Typing starts after logo animation completes
         if (!isStarted) return;
 
         const typingDuration = 1500;
@@ -40,7 +42,7 @@ const SplashScreen = ({ onFinish, branding }) => {
                 charIndex++;
             } else {
                 clearInterval(typingInterval);
-                setTimeout(onFinish, 1000);
+                setTimeout(onFinish, 1200);
             }
         }, charStep);
 
@@ -52,47 +54,65 @@ const SplashScreen = ({ onFinish, branding }) => {
             <div className="flex-1"></div>
 
             <div className="flex flex-col items-center flex-1 w-full max-w-sm px-8">
-                <div className="relative w-48 h-48 flex items-center justify-center mb-12">
-                    {branding?.portalLogo ? (
-                        <div className="relative w-32 h-32 flex items-center justify-center z-10">
-                            <img 
-                                src={branding.portalLogo} 
-                                alt="College Logo" 
-                                className={`w-full h-full object-contain transition-all duration-1000 ${progress > 0 ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}
-                            />
+                {/* Logo Area */}
+                <div className="relative w-64 h-64 flex items-center justify-center mb-12">
+                    {hasCustomLogo ? (
+                        <div className="relative w-48 h-48 flex items-center justify-center">
+                            {/* Background "Empty" Logo */}
+                            <div className="absolute inset-0 flex items-center justify-center">
+                                <img
+                                    src={branding.portalLogo}
+                                    alt="Portal Logo"
+                                    className="w-full h-full object-contain opacity-10 grayscale blur-[1px]"
+                                />
+                            </div>
+
+                            {/* Foreground "Filling" Logo */}
+                            <div
+                                className="absolute inset-0 flex items-center justify-center transition-all duration-100 ease-linear"
+                                style={{
+                                    clipPath: `inset(${100 - progress}% 0 0 0)`
+                                }}
+                            >
+                                <img
+                                    src={branding.portalLogo}
+                                    alt="Portal Logo"
+                                    className="w-full h-full object-contain"
+                                />
+                            </div>
+
+                            {/* Ring Loader Outline */}
+                            <svg className="absolute inset-x-[-20%] inset-y-[-20%] w-[140%] h-[140%] -rotate-90 pointer-events-none opacity-20">
+                                <circle
+                                    cx="50%"
+                                    cy="50%"
+                                    r="35%"
+                                    stroke="currentColor"
+                                    strokeWidth="1"
+                                    fill="transparent"
+                                    className="text-gray-200"
+                                />
+                                <circle
+                                    cx="50%"
+                                    cy="50%"
+                                    r="35%"
+                                    stroke="#f47c20"
+                                    strokeWidth="2"
+                                    fill="transparent"
+                                    strokeDasharray="220"
+                                    strokeDashoffset={220 - (220 * progress) / 100}
+                                    className="transition-all duration-300"
+                                />
+                            </svg>
                         </div>
                     ) : (
-                        <div className={`w-32 h-32 rounded-full bg-gray-50 flex items-center justify-center transition-all duration-1000 ${progress > 0 ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}>
-                            <div className="w-12 h-12 border-2 border-[#f47c20]/20 border-t-[#f47c20] rounded-full animate-spin"></div>
+                        <div className="w-full h-full flex items-center justify-center">
+                            <AnimatedLogo />
                         </div>
                     )}
-                    
-                    {/* Ring Loader */}
-                    <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none">
-                        <circle
-                            cx="50%"
-                            cy="50%"
-                            r="38%"
-                            stroke="currentColor"
-                            strokeWidth="1.5"
-                            fill="transparent"
-                            className="text-gray-100"
-                        />
-                        <circle
-                            cx="50%"
-                            cy="50%"
-                            r="38%"
-                            stroke="#f47c20"
-                            strokeWidth="2.5"
-                            strokeLinecap="round"
-                            fill="transparent"
-                            strokeDasharray="239"
-                            strokeDashoffset={239 - (239 * progress) / 100}
-                            className="transition-all duration-300 shadow-[0_0_10px_rgba(244,124,32,0.2)]"
-                        />
-                    </svg>
                 </div>
 
+                {/* Text Content */}
                 <div className="text-center w-full h-24 flex flex-col items-center justify-start overflow-hidden">
                     <h1 className={`text-4xl font-black tracking-[0.4em] text-[#1e293b] mb-4 transition-all duration-1000 ${isStarted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
                         VISHNU
@@ -118,6 +138,7 @@ const SplashScreen = ({ onFinish, branding }) => {
                 </div>
             </div>
 
+            {/* Footer */}
             <div className="flex-1 flex items-end pb-12">
                 <div className="flex flex-col items-center gap-4">
                     <div className="flex items-center gap-2">
