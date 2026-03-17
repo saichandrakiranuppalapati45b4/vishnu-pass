@@ -45,41 +45,65 @@ const GuardDashboard = ({ onLogout, guardData }) => {
 
             {/* Bottom Navigation */}
             {!isSubTab && (
-                <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-6 py-3 flex justify-around items-center z-50 shadow-[0_-4px_20px_rgba(0,0,0,0.03)]">
-                <button
-                    onClick={() => setActiveTab('home')}
-                    className={`flex flex-col items-center gap-1 transition-all ${activeTab === 'home' ? 'text-[#f47c20]' : 'text-gray-400'}`}
-                >
-                    <Home className={`w-6 h-6 ${activeTab === 'home' ? 'fill-[#f47c20]/10' : ''}`} />
-                    <span className="text-[10px] font-bold uppercase tracking-wider">{t('nav.home')}</span>
-                </button>
+                <div className="fixed bottom-0 left-0 right-0 px-4 pb-[env(safe-area-inset-bottom,16px)] z-50 pointer-events-none">
+                    <nav className="max-w-md mx-auto bg-white/80 backdrop-blur-xl border border-white/20 shadow-[0_8px_32px_rgba(0,0,0,0.08)] rounded-[32px] flex items-center justify-around p-2 pointer-events-auto mb-4">
+                        <button
+                            onClick={() => setActiveTab('home')}
+                            className="relative flex flex-col items-center justify-center py-2 px-1 min-w-[64px] transition-all duration-300 active:scale-90 group"
+                        >
+                            <div className={`p-2 rounded-2xl transition-all duration-300 ${activeTab === 'home' ? 'bg-[#f47c20] text-white shadow-lg shadow-[#f47c20]/20' : 'text-gray-400 group-hover:bg-gray-50'
+                                }`}>
+                                <Home className="w-5 h-5 flex-shrink-0" />
+                            </div>
+                            <span className={`text-[9px] font-bold uppercase tracking-wider mt-1.5 transition-all duration-300 ${activeTab === 'home' ? 'text-[#f47c20]' : 'text-gray-400 opacity-60'
+                                }`}>
+                                {t('nav.home')}
+                            </span>
+                        </button>
 
-                <button
-                    onClick={() => setActiveTab('history')}
-                    className={`flex flex-col items-center gap-1 transition-all ${activeTab === 'history' ? 'text-[#f47c20]' : 'text-gray-400'}`}
-                >
-                    <History className={`w-6 h-6 ${activeTab === 'history' ? 'fill-[#f47c20]/10' : ''}`} />
-                    <span className="text-[10px] font-bold uppercase tracking-wider">{t('nav.logs')}</span>
-                </button>
+                        <button
+                            onClick={() => setActiveTab('history')}
+                            className="relative flex flex-col items-center justify-center py-2 px-1 min-w-[64px] transition-all duration-300 active:scale-90 group"
+                        >
+                            <div className={`p-2 rounded-2xl transition-all duration-300 ${activeTab === 'history' ? 'bg-[#f47c20] text-white shadow-lg shadow-[#f47c20]/20' : 'text-gray-400 group-hover:bg-gray-50'
+                                }`}>
+                                <History className="w-5 h-5 flex-shrink-0" />
+                            </div>
+                            <span className={`text-[9px] font-bold uppercase tracking-wider mt-1.5 transition-all duration-300 ${activeTab === 'history' ? 'text-[#f47c20]' : 'text-gray-400 opacity-60'
+                                }`}>
+                                {t('nav.logs')}
+                            </span>
+                        </button>
 
+                        <button
+                            onClick={() => setActiveTab('roster')}
+                            className="relative flex flex-col items-center justify-center py-2 px-1 min-w-[64px] transition-all duration-300 active:scale-90 group"
+                        >
+                            <div className={`p-2 rounded-2xl transition-all duration-300 ${activeTab === 'roster' ? 'bg-[#f47c20] text-white shadow-lg shadow-[#f47c20]/20' : 'text-gray-400 group-hover:bg-gray-50'
+                                }`}>
+                                <Users className="w-5 h-5 flex-shrink-0" />
+                            </div>
+                            <span className={`text-[9px] font-bold uppercase tracking-wider mt-1.5 transition-all duration-300 ${activeTab === 'roster' ? 'text-[#f47c20]' : 'text-gray-400 opacity-60'
+                                }`}>
+                                {t('nav.scan')}
+                            </span>
+                        </button>
 
-
-                <button
-                    onClick={() => setActiveTab('roster')}
-                    className={`flex flex-col items-center gap-1 transition-all ${activeTab === 'roster' ? 'text-[#f47c20]' : 'text-gray-400'}`}
-                >
-                    <Users className={`w-6 h-6 ${activeTab === 'roster' ? 'fill-[#f47c20]/10' : ''}`} />
-                    <span className="text-[10px] font-bold uppercase tracking-wider">{t('nav.scan')}</span>
-                </button>
-
-                <button
-                    onClick={() => setActiveTab('profile')}
-                    className={`flex flex-col items-center gap-1 transition-all ${activeTab === 'profile' ? 'text-[#f47c20]' : 'text-gray-400'}`}
-                >
-                    <User className={`w-6 h-6 ${activeTab === 'profile' ? 'fill-[#f47c20]/10' : ''}`} />
-                    <span className="text-[10px] font-bold uppercase tracking-wider">{t('nav.profile')}</span>
-                </button>
-            </nav>
+                        <button
+                            onClick={() => setActiveTab('profile')}
+                            className="relative flex flex-col items-center justify-center py-2 px-1 min-w-[64px] transition-all duration-300 active:scale-90 group"
+                        >
+                            <div className={`p-2 rounded-2xl transition-all duration-300 ${activeTab === 'profile' ? 'bg-[#f47c20] text-white shadow-lg shadow-[#f47c20]/20' : 'text-gray-400 group-hover:bg-gray-50'
+                                }`}>
+                                <User className="w-5 h-5 flex-shrink-0" />
+                            </div>
+                            <span className={`text-[9px] font-bold uppercase tracking-wider mt-1.5 transition-all duration-300 ${activeTab === 'profile' ? 'text-[#f47c20]' : 'text-gray-400 opacity-60'
+                                }`}>
+                                {t('nav.profile')}
+                            </span>
+                        </button>
+                    </nav>
+                </div>
             )}
         </div>
     );
